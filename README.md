@@ -34,35 +34,64 @@ AINative is a powerful, open-source development environment with built-in AI cap
 
 ### Installation
 
+**Linux:**
 ```bash
-# Clone the repository
-git clone https://github.com/ainative/ainative.git
+# 1. Install correct Node.js version
+nvm install
+nvm use
 
-# Navigate to the project
-cd ainative/ainative-studio
+# 2. Install Node.js global tools
+npm install -g node-gyp
 
-# Install dependencies
+# 3. Install build dependencies
+sudo apt-get install build-essential g++ libx11-dev libxkbfile-dev libsecret-1-dev libkrb5-dev python-is-python3
+
+# 4. Clone repository
+git clone https://github.com/AINative-Studio/AINativeStudio-IDE.git
+cd AINativeStudio-IDE/ainative-studio
+
+# 5. Install dependencies
 npm install
-```
 
-### Running the Application
+# 6. Build React components
+NODE_OPTIONS="--max-old-space-size=8192" npm run buildreact
 
-#### Development Mode
-```bash
-# Start the build in watch mode (in one terminal)
+# 7. Start build process and run application
 npm run watch
-
-# In another terminal, start the application
+# Wait until compilation completes with 0 errors, then run:
 ./scripts/code.sh
 ```
 
-#### Production Build
+**macOS:**
 ```bash
-# Build the application
-npm run build
+# Prerequisites: Python and Xcode Command Line Tools
+# If you don't have Xcode tools: xcode-select --install
 
-# Run the built application
+nvm install
+nvm use
+git clone https://github.com/AINative-Studio/AINativeStudio-IDE.git
+cd AINativeStudio-IDE/ainative-studio
+npm install
+NODE_OPTIONS="--max-old-space-size=8192" npm run buildreact
+npm run watch
+# Wait until compilation completes, then run:
 ./scripts/code.sh
+```
+
+**Windows:**
+```bash
+# Prerequisites: Install Visual Studio 2022 with C++ development tools
+# See ainative-studio/README.md for detailed Windows setup
+
+nvm install
+nvm use
+git clone https://github.com/AINative-Studio/AINativeStudio-IDE.git
+cd AINativeStudio-IDE/ainative-studio
+npm install
+NODE_OPTIONS="--max-old-space-size=8192" npm run buildreact
+npm run watch
+# Wait until compilation completes, then run:
+./scripts/code.bat
 ```
 
 For detailed platform-specific setup and troubleshooting, see the [ainative-studio README](ainative-studio/README.md).

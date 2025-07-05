@@ -50,41 +50,33 @@ nvm use
 
 4. Click **Install**
 
-**Linux (Ubuntu/Debian):**
+**Linux:**
 ```bash
-# Install build dependencies
+# 1. Install correct Node.js version
+nvm install
+nvm use
+
+# 2. Install Node.js global tools
+npm install -g node-gyp
+
+# 3. Install build dependencies
 sudo apt-get install build-essential g++ libx11-dev libxkbfile-dev libsecret-1-dev libkrb5-dev python-is-python3
 
-# Install runtime dependencies for Electron
-sudo apt-get install libnss3 libnspr4 libasound2t64
+# 4. Clone repository
+git clone https://github.com/AINative-Studio/AINativeStudio-IDE.git
+cd ainative-studio
 
-# Install node-gyp globally
-npm install -g node-gyp
+# 5. Install dependencies
+npm install
+
+# 6. Build React components
+NODE_OPTIONS="--max-old-space-size=8192" npm run buildreact
+
+# 7. Start build process and run application
+npm run watch
+# Wait until compilation completes with 0 errors, then run:
+./scripts/code.sh
 ```
-
-### Building from Source
-
-1. **Clone and install dependencies:**
-   ```bash
-   git clone https://github.com/voideditor/void
-   cd void
-   npm install
-   ```
-
-2. **Build React components:**
-   ```bash
-   npm run buildreact
-   ```
-
-3. **Start the build process:**
-   ```bash
-   npm run watch
-   ```
-   Wait until you see both extensions and client compilation complete with 0 errors.
-
-4. **Run the application:**
-   - **macOS/Linux:** `./scripts/code.sh`
-   - **Windows:** `./scripts/code.bat`
 
 ### Development Tips
 
@@ -92,8 +84,6 @@ npm install -g node-gyp
 - Add `--user-data-dir ./.tmp/user-data --extensions-dir ./.tmp/extensions` flags to isolate development data
 - The build process takes ~5 minutes initially
 - React components need separate building when modified
-
-For detailed build instructions and troubleshooting, see [HOW_TO_CONTRIBUTE.md](HOW_TO_CONTRIBUTE.md).
 
 ## Contributing
 
