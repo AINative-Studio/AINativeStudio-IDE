@@ -6,7 +6,7 @@ node_modules/
 .build/
 .vscode/extensions/**/out/
 extensions/**/dist/
-/out*/
+# /out*/ - Keeping compiled output for faster deployment
 /extensions/**/out/
 build/node_modules
 coverage/
@@ -26,5 +26,5 @@ product.overrides.json
 .tmp/
 .tmp2/
 .tool-versions
-src/vs/workbench/contrib/void/browser/react/out/**
-src/vs/workbench/contrib/void/browser/react/src2/**
+# src/vs/workbench/contrib/void/browser/react/out/** - Keeping React build output
+# src/vs/workbench/contrib/void/browser/react/src2/** - Keeping React build output
