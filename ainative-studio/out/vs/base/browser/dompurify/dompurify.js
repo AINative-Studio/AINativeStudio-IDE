@@ -1552,4 +1552,4 @@ var purify = createDOMPurify();
 
 export { purify as default };
 //# sourceMappingURL=purify.es.mjs.map
-//# sourceURL=file:///home/darthvader/AINativeStudio-IDE/ainative-studio/src/vs/base/browser/dompurify/dompurify.js
+//# sourceURL=file:///home/darthvader/test/AINativeStudio-IDE/ainative-studio/src/vs/base/browser/dompurify/dompurify.js

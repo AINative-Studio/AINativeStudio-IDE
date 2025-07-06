@@ -4,4 +4,4 @@
  *--------------------------------------------------------------------------------------------*/
 export const CONTEXT_MENU_CHANNEL = 'vscode:contextmenu';
 export const CONTEXT_MENU_CLOSE_CHANNEL = 'vscode:onCloseContextMenu';
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiY29udGV4dG1lbnUuanMiLCJzb3VyY2VSb290IjoiZmlsZTovLy9ob21lL2RhcnRodmFkZXIvQUlOYXRpdmVTdHVkaW8tSURFL2FpbmF0aXZlLXN0dWRpby9zcmMvIiwic291cmNlcyI6WyJ2cy9iYXNlL3BhcnRzL2NvbnRleHRtZW51L2NvbW1vbi9jb250ZXh0bWVudS50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiQUFBQTs7O2dHQUdnRztBQXFDaEcsTUFBTSxDQUFDLE1BQU0sb0JBQW9CLEdBQUcsb0JBQW9CLENBQUM7QUFDekQsTUFBTSxDQUFDLE1BQU0sMEJBQTBCLEdBQUcsMkJBQTJCLENBQUMifQ==
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiY29udGV4dG1lbnUuanMiLCJzb3VyY2VSb290IjoiZmlsZTovLy9ob21lL2RhcnRodmFkZXIvdGVzdC9BSU5hdGl2ZVN0dWRpby1JREUvYWluYXRpdmUtc3R1ZGlvL3NyYy8iLCJzb3VyY2VzIjpbInZzL2Jhc2UvcGFydHMvY29udGV4dG1lbnUvY29tbW9uL2NvbnRleHRtZW51LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBOzs7Z0dBR2dHO0FBcUNoRyxNQUFNLENBQUMsTUFBTSxvQkFBb0IsR0FBRyxvQkFBb0IsQ0FBQztBQUN6RCxNQUFNLENBQUMsTUFBTSwwQkFBMEIsR0FBRywyQkFBMkIsQ0FBQyJ9

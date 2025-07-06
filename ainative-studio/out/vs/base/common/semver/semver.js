@@ -51,4 +51,4 @@ export const SemVer = module.exports.SemVer;
 export const Comparator = module.exports.Comparator;
 export const Range = module.exports.Range;
 
-//# sourceURL=file:///home/darthvader/AINativeStudio-IDE/ainative-studio/src/vs/base/common/semver/semver.js
+//# sourceURL=file:///home/darthvader/test/AINativeStudio-IDE/ainative-studio/src/vs/base/common/semver/semver.js

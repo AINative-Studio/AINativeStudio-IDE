@@ -1045,4 +1045,4 @@ define({
 	}
 });
 
-//# sourceURL=file:///home/darthvader/AINativeStudio-IDE/ainative-studio/src/vs/workbench/services/keybinding/test/node/linux_en_uk.js
+//# sourceURL=file:///home/darthvader/test/AINativeStudio-IDE/ainative-studio/src/vs/workbench/services/keybinding/test/node/linux_en_uk.js

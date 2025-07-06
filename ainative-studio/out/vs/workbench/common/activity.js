@@ -4,4 +4,4 @@
  *--------------------------------------------------------------------------------------------*/
 export const GLOBAL_ACTIVITY_ID = 'workbench.actions.manage';
 export const ACCOUNTS_ACTIVITY_ID = 'workbench.actions.accounts';
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYWN0aXZpdHkuanMiLCJzb3VyY2VSb290IjoiZmlsZTovLy9ob21lL2RhcnRodmFkZXIvQUlOYXRpdmVTdHVkaW8tSURFL2FpbmF0aXZlLXN0dWRpby9zcmMvIiwic291cmNlcyI6WyJ2cy93b3JrYmVuY2gvY29tbW9uL2FjdGl2aXR5LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBOzs7Z0dBR2dHO0FBRWhHLE1BQU0sQ0FBQyxNQUFNLGtCQUFrQixHQUFHLDBCQUEwQixDQUFDO0FBQzdELE1BQU0sQ0FBQyxNQUFNLG9CQUFvQixHQUFHLDRCQUE0QixDQUFDIn0=
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYWN0aXZpdHkuanMiLCJzb3VyY2VSb290IjoiZmlsZTovLy9ob21lL2RhcnRodmFkZXIvdGVzdC9BSU5hdGl2ZVN0dWRpby1JREUvYWluYXRpdmUtc3R1ZGlvL3NyYy8iLCJzb3VyY2VzIjpbInZzL3dvcmtiZW5jaC9jb21tb24vYWN0aXZpdHkudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IkFBQUE7OztnR0FHZ0c7QUFFaEcsTUFBTSxDQUFDLE1BQU0sa0JBQWtCLEdBQUcsMEJBQTBCLENBQUM7QUFDN0QsTUFBTSxDQUFDLE1BQU0sb0JBQW9CLEdBQUcsNEJBQTRCLENBQUMifQ==

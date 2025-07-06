@@ -11,6 +11,28 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
+# Setup Node.js version with NVM
+if [ -f ".nvmrc" ]; then
+    echo "📦 Setting up Node.js version..."
+    # Source NVM if it exists
+    if [ -s "$HOME/.nvm/nvm.sh" ]; then
+        source "$HOME/.nvm/nvm.sh"
+        nvm install
+        nvm use
+    elif command -v nvm &> /dev/null; then
+        nvm install
+        nvm use
+    else
+        echo "⚠️  NVM not found, but .nvmrc exists. Please install NVM or use Node.js $(cat .nvmrc)"
+    fi
+fi
+
+# Install dependencies if node_modules doesn't exist or is outdated
+if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then
+    echo "📦 Installing dependencies..."
+    npm install
+fi
+
 # Function to cleanup processes on exit
 cleanup() {
     echo "🛑 Stopping development processes..."

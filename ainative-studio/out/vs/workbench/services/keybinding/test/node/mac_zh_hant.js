@@ -1187,4 +1187,4 @@ define({
 	}
 });
 
-//# sourceURL=file:///home/darthvader/AINativeStudio-IDE/ainative-studio/src/vs/workbench/services/keybinding/test/node/mac_zh_hant.js
+//# sourceURL=file:///home/darthvader/test/AINativeStudio-IDE/ainative-studio/src/vs/workbench/services/keybinding/test/node/mac_zh_hant.js

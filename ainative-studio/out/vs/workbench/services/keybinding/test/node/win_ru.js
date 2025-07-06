@@ -1092,4 +1092,4 @@ define({
 	}
 });
 
-//# sourceURL=file:///home/darthvader/AINativeStudio-IDE/ainative-studio/src/vs/workbench/services/keybinding/test/node/win_ru.js
+//# sourceURL=file:///home/darthvader/test/AINativeStudio-IDE/ainative-studio/src/vs/workbench/services/keybinding/test/node/win_ru.js

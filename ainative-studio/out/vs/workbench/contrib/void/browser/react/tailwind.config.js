@@ -198,4 +198,4 @@ module.exports = {
 }
 
 
-//# sourceURL=file:///home/darthvader/AINativeStudio-IDE/ainative-studio/src/vs/workbench/contrib/void/browser/react/tailwind.config.js
+//# sourceURL=file:///home/darthvader/test/AINativeStudio-IDE/ainative-studio/src/vs/workbench/contrib/void/browser/react/tailwind.config.js
