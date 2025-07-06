@@ -1,11 +1,11 @@
-# AINative
+# AINative Studio
 
 <div align="center">
-  <h1>AINative</h1>
+  <h1>AINative Studio</h1>
   <p>AI-Native Development Environment</p>
 </div>
 
-AINative is a powerful, open-source development environment with built-in AI capabilities, forked from Void Editor and VS Code.
+AINative Studio is a powerful, open-source AI-Native development environment with built-in AI capabilities, forked from Void Editor and VS Code.
 
 ## ✨ Features
 
@@ -106,14 +106,14 @@ Contributions are welcome! Please read our [Contributing Guide](ainative-studio/
 
 ## 📄 Documentation
 
-For detailed documentation, please visit our [documentation site](https://docs.ainative.studio).
+For detailed documentation, please visit our [documentation site](https://docs.ainativestudio.com).
 
 ## 📬 Contact
 
-For support or questions, please open an issue in our [issue tracker](https://github.com/ainative/ainative/issues).
+For support or questions, please open an issue in our [issue tracker](https://github.com/AINative-Studio/AINativeStudio-IDE/issues).
 
 ---
 
 <p align="center">
-  Made with ❤️ by AINative
+  Made with ❤️ by AINative Studio
 </p>
