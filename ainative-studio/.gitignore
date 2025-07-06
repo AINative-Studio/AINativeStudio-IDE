@@ -10,4 +10,3 @@ test-results.xml
 *.snap.actual
 .vscode-test
 .build/
-out/
