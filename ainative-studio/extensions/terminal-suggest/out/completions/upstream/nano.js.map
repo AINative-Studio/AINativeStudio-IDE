@@ -1,0 +1,1 @@
+{"version":3,"sources":["completions/upstream/nano.ts"],"names":[],"mappings":";;AAAA,MAAM,cAAc,GAAa;IAChC,IAAI,EAAE,MAAM;IACZ,WAAW,EAAE,oDAAoD;IACjE,IAAI,EAAE;QACL,QAAQ,EAAE,WAAW;KACrB;CACD,CAAC;AAEF,kBAAe,cAAc,CAAC","file":"nano.js","sourceRoot":"../../../src/"}

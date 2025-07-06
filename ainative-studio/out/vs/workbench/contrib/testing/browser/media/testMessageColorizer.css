@@ -1,0 +1,84 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.test-output-peek-message-container .tstm-ansidec-1 {
+		font-weight: bold;
+	}
+
+.test-output-peek-message-container .tstm-ansidec-2 {
+		opacity: 0.7
+	}
+
+.test-output-peek-message-container .tstm-ansidec-3 {
+		font-style: italic;
+	}
+
+.test-output-peek-message-container .tstm-ansidec-4 {
+		text-decoration: underline;
+	}
+
+.test-output-peek-message-container .tstm-ansidec-fg30 { color: var(--vscode-terminal-ansiBlack); }
+
+.test-output-peek-message-container .tstm-ansidec-fg31 { color: var(--vscode-terminal-ansiRed); }
+
+.test-output-peek-message-container .tstm-ansidec-fg32 { color: var(--vscode-terminal-ansiGreen); }
+
+.test-output-peek-message-container .tstm-ansidec-fg33 { color: var(--vscode-terminal-ansiYellow); }
+
+.test-output-peek-message-container .tstm-ansidec-fg34 { color: var(--vscode-terminal-ansiBlue); }
+
+.test-output-peek-message-container .tstm-ansidec-fg35 { color: var(--vscode-terminal-ansiMagenta); }
+
+.test-output-peek-message-container .tstm-ansidec-fg36 { color: var(--vscode-terminal-ansiCyan); }
+
+.test-output-peek-message-container .tstm-ansidec-fg37 { color: var(--vscode-terminal-ansiWhite); }
+
+.test-output-peek-message-container .tstm-ansidec-fg90 { color: var(--vscode-terminal-ansiBrightBlack); }
+
+.test-output-peek-message-container .tstm-ansidec-fg91 { color: var(--vscode-terminal-ansiBrightRed); }
+
+.test-output-peek-message-container .tstm-ansidec-fg92 { color: var(--vscode-terminal-ansiBrightGreen); }
+
+.test-output-peek-message-container .tstm-ansidec-fg93 { color: var(--vscode-terminal-ansiBrightYellow); }
+
+.test-output-peek-message-container .tstm-ansidec-fg94 { color: var(--vscode-terminal-ansiBrightBlue); }
+
+.test-output-peek-message-container .tstm-ansidec-fg95 { color: var(--vscode-terminal-ansiBrightMagenta); }
+
+.test-output-peek-message-container .tstm-ansidec-fg96 { color: var(--vscode-terminal-ansiBrightCyan); }
+
+.test-output-peek-message-container .tstm-ansidec-fg97 { color: var(--vscode-terminal-ansiBrightWhite); }
+
+.test-output-peek-message-container .tstm-ansidec-bg30 { background-color: var(--vscode-terminal-ansiBlack); }
+
+.test-output-peek-message-container .tstm-ansidec-bg31 { background-color: var(--vscode-terminal-ansiRed); }
+
+.test-output-peek-message-container .tstm-ansidec-bg32 { background-color: var(--vscode-terminal-ansiGreen); }
+
+.test-output-peek-message-container .tstm-ansidec-bg33 { background-color: var(--vscode-terminal-ansiYellow); }
+
+.test-output-peek-message-container .tstm-ansidec-bg34 { background-color: var(--vscode-terminal-ansiBlue); }
+
+.test-output-peek-message-container .tstm-ansidec-bg35 { background-color: var(--vscode-terminal-ansiMagenta); }
+
+.test-output-peek-message-container .tstm-ansidec-bg36 { background-color: var(--vscode-terminal-ansiCyan); }
+
+.test-output-peek-message-container .tstm-ansidec-bg37 { background-color: var(--vscode-terminal-ansiWhite); }
+
+.test-output-peek-message-container .tstm-ansidec-bg100 { background-color: var(--vscode-terminal-ansiBrightBlack); }
+
+.test-output-peek-message-container .tstm-ansidec-bg101 { background-color: var(--vscode-terminal-ansiBrightRed); }
+
+.test-output-peek-message-container .tstm-ansidec-bg102 { background-color: var(--vscode-terminal-ansiBrightGreen); }
+
+.test-output-peek-message-container .tstm-ansidec-bg103 { background-color: var(--vscode-terminal-ansiBrightYellow); }
+
+.test-output-peek-message-container .tstm-ansidec-bg104 { background-color: var(--vscode-terminal-ansiBrightBlue); }
+
+.test-output-peek-message-container .tstm-ansidec-bg105 { background-color: var(--vscode-terminal-ansiBrightMagenta); }
+
+.test-output-peek-message-container .tstm-ansidec-bg106 { background-color: var(--vscode-terminal-ansiBrightCyan); }
+
+.test-output-peek-message-container .tstm-ansidec-bg107 { background-color: var(--vscode-terminal-ansiBrightWhite); }

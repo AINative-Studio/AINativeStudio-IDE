@@ -1,0 +1,1 @@
+{"version":3,"sources":["preview-src/events.ts","../events.ts"],"names":[],"mappings":";AAAA;;;gGAGgG;;AAEhG,gDAMC;AAND,SAAgB,kBAAkB,CAAC,CAAa;IAC/C,IAAI,QAAQ,CAAC,UAAU,KAAK,SAAS,IAAI,QAAQ,CAAC,UAAoB,KAAK,eAAe,EAAE,CAAC;QAC5F,QAAQ,CAAC,gBAAgB,CAAC,kBAAkB,EAAE,CAAC,CAAC,CAAC;IAClD,CAAC;SAAM,CAAC;QACP,CAAC,EAAE,CAAC;IACL,CAAC;AACF,CAAC","file":"events.js","sourceRoot":"../../src/"}

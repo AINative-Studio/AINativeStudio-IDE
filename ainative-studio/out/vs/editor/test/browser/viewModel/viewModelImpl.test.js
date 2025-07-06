@@ -1,0 +1,264 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+import assert from 'assert';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../base/test/common/utils.js';
+import { Position } from '../../../common/core/position.js';
+import { Range } from '../../../common/core/range.js';
+import { ViewEventHandler } from '../../../common/viewEventHandler.js';
+import { testViewModel } from './testViewModel.js';
+suite('ViewModel', () => {
+    ensureNoDisposablesAreLeakedInTestSuite();
+    test('issue #21073: SplitLinesCollection: attempt to access a \'newer\' model', () => {
+        const text = [''];
+        const opts = {
+            lineNumbersMinChars: 1
+        };
+        testViewModel(text, opts, (viewModel, model) => {
+            assert.strictEqual(viewModel.getLineCount(), 1);
+            viewModel.setViewport(1, 1, 1);
+            model.applyEdits([{
+                    range: new Range(1, 1, 1, 1),
+                    text: [
+                        'line01',
+                        'line02',
+                        'line03',
+                        'line04',
+                        'line05',
+                        'line06',
+                        'line07',
+                        'line08',
+                        'line09',
+                        'line10',
+                    ].join('\n')
+                }]);
+            assert.strictEqual(viewModel.getLineCount(), 10);
+        });
+    });
+    test('issue #44805: SplitLinesCollection: attempt to access a \'newer\' model', () => {
+        const text = [''];
+        testViewModel(text, {}, (viewModel, model) => {
+            assert.strictEqual(viewModel.getLineCount(), 1);
+            model.pushEditOperations([], [{
+                    range: new Range(1, 1, 1, 1),
+                    text: '\ninsert1'
+                }], () => ([]));
+            model.pushEditOperations([], [{
+                    range: new Range(1, 1, 1, 1),
+                    text: '\ninsert2'
+                }], () => ([]));
+            model.pushEditOperations([], [{
+                    range: new Range(1, 1, 1, 1),
+                    text: '\ninsert3'
+                }], () => ([]));
+            const viewLineCount = [];
+            viewLineCount.push(viewModel.getLineCount());
+            const eventHandler = new class extends ViewEventHandler {
+                handleEvents(events) {
+                    // Access the view model
+                    viewLineCount.push(viewModel.getLineCount());
+                }
+            };
+            viewModel.addViewEventHandler(eventHandler);
+            model.undo();
+            viewLineCount.push(viewModel.getLineCount());
+            assert.deepStrictEqual(viewLineCount, [4, 1, 1, 1, 1]);
+            viewModel.removeViewEventHandler(eventHandler);
+            eventHandler.dispose();
+        });
+    });
+    test('issue #44805: No visible lines via API call', () => {
+        const text = [
+            'line1',
+            'line2',
+            'line3'
+        ];
+        testViewModel(text, {}, (viewModel, model) => {
+            assert.strictEqual(viewModel.getLineCount(), 3);
+            viewModel.setHiddenAreas([new Range(1, 1, 3, 1)]);
+            assert.ok(viewModel.getVisibleRanges() !== null);
+        });
+    });
+    test('issue #44805: No visible lines via undoing', () => {
+        const text = [
+            ''
+        ];
+        testViewModel(text, {}, (viewModel, model) => {
+            assert.strictEqual(viewModel.getLineCount(), 1);
+            model.pushEditOperations([], [{
+                    range: new Range(1, 1, 1, 1),
+                    text: 'line1\nline2\nline3'
+                }], () => ([]));
+            viewModel.setHiddenAreas([new Range(1, 1, 1, 1)]);
+            assert.strictEqual(viewModel.getLineCount(), 2);
+            model.undo();
+            assert.ok(viewModel.getVisibleRanges() !== null);
+        });
+    });
+    function assertGetPlainTextToCopy(text, ranges, emptySelectionClipboard, expected) {
+        testViewModel(text, {}, (viewModel, model) => {
+            const actual = viewModel.getPlainTextToCopy(ranges, emptySelectionClipboard, false);
+            assert.deepStrictEqual(actual, expected);
+        });
+    }
+    const USUAL_TEXT = [
+        '',
+        'line2',
+        'line3',
+        'line4',
+        ''
+    ];
+    test('getPlainTextToCopy 0/1', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 2)
+        ], false, '');
+    });
+    test('getPlainTextToCopy 0/1 - emptySelectionClipboard', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 2)
+        ], true, 'line2\n');
+    });
+    test('getPlainTextToCopy 1/1', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 6)
+        ], false, 'ine2');
+    });
+    test('getPlainTextToCopy 1/1 - emptySelectionClipboard', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 6)
+        ], true, 'ine2');
+    });
+    test('getPlainTextToCopy 0/2', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 2),
+            new Range(3, 2, 3, 2),
+        ], false, '');
+    });
+    test('getPlainTextToCopy 0/2 - emptySelectionClipboard', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 2),
+            new Range(3, 2, 3, 2),
+        ], true, 'line2\nline3\n');
+    });
+    test('getPlainTextToCopy 1/2', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 6),
+            new Range(3, 2, 3, 2),
+        ], false, 'ine2');
+    });
+    test('getPlainTextToCopy 1/2 - emptySelectionClipboard', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 6),
+            new Range(3, 2, 3, 2),
+        ], true, ['ine2', 'line3']);
+    });
+    test('getPlainTextToCopy 2/2', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 6),
+            new Range(3, 2, 3, 6),
+        ], false, ['ine2', 'ine3']);
+    });
+    test('getPlainTextToCopy 2/2 reversed', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(3, 2, 3, 6),
+            new Range(2, 2, 2, 6),
+        ], false, ['ine2', 'ine3']);
+    });
+    test('getPlainTextToCopy 0/3 - emptySelectionClipboard', () => {
+        assertGetPlainTextToCopy(USUAL_TEXT, [
+            new Range(2, 2, 2, 2),
+            new Range(2, 3, 2, 3),
+            new Range(3, 2, 3, 2),
+        ], true, 'line2\nline3\n');
+    });
+    test('issue #22688 - always use CRLF for clipboard on Windows', () => {
+        testViewModel(USUAL_TEXT, {}, (viewModel, model) => {
+            model.setEOL(0 /* EndOfLineSequence.LF */);
+            const actual = viewModel.getPlainTextToCopy([new Range(2, 1, 5, 1)], true, true);
+            assert.deepStrictEqual(actual, 'line2\r\nline3\r\nline4\r\n');
+        });
+    });
+    test('issue #40926: Incorrect spacing when inserting new line after multiple folded blocks of code', () => {
+        testViewModel([
+            'foo = {',
+            '    foobar: function() {',
+            '        this.foobar();',
+            '    },',
+            '    foobar: function() {',
+            '        this.foobar();',
+            '    },',
+            '    foobar: function() {',
+            '        this.foobar();',
+            '    },',
+            '}',
+        ], {}, (viewModel, model) => {
+            viewModel.setHiddenAreas([
+                new Range(3, 1, 3, 1),
+                new Range(6, 1, 6, 1),
+                new Range(9, 1, 9, 1),
+            ]);
+            model.applyEdits([
+                { range: new Range(4, 7, 4, 7), text: '\n    ' },
+                { range: new Range(7, 7, 7, 7), text: '\n    ' },
+                { range: new Range(10, 7, 10, 7), text: '\n    ' }
+            ]);
+            assert.strictEqual(viewModel.getLineCount(), 11);
+        });
+    });
+    test('normalizePosition with multiple touching injected text', () => {
+        testViewModel([
+            'just some text'
+        ], {}, (viewModel, model) => {
+            model.deltaDecorations([], [
+                {
+                    range: new Range(1, 8, 1, 8),
+                    options: {
+                        description: 'test',
+                        before: {
+                            content: 'bar'
+                        },
+                        showIfCollapsed: true
+                    }
+                },
+                {
+                    range: new Range(1, 8, 1, 8),
+                    options: {
+                        description: 'test',
+                        before: {
+                            content: 'bz'
+                        },
+                        showIfCollapsed: true
+                    }
+                },
+            ]);
+            // just sobarbzme text
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 8), 2 /* PositionAffinity.None */), new Position(1, 8));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 9), 2 /* PositionAffinity.None */), new Position(1, 8));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 11), 2 /* PositionAffinity.None */), new Position(1, 11));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 12), 2 /* PositionAffinity.None */), new Position(1, 11));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 13), 2 /* PositionAffinity.None */), new Position(1, 13));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 8), 0 /* PositionAffinity.Left */), new Position(1, 8));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 9), 0 /* PositionAffinity.Left */), new Position(1, 8));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 11), 0 /* PositionAffinity.Left */), new Position(1, 8));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 12), 0 /* PositionAffinity.Left */), new Position(1, 8));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 13), 0 /* PositionAffinity.Left */), new Position(1, 8));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 8), 1 /* PositionAffinity.Right */), new Position(1, 13));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 9), 1 /* PositionAffinity.Right */), new Position(1, 13));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 11), 1 /* PositionAffinity.Right */), new Position(1, 13));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 12), 1 /* PositionAffinity.Right */), new Position(1, 13));
+            assert.deepStrictEqual(viewModel.normalizePosition(new Position(1, 13), 1 /* PositionAffinity.Right */), new Position(1, 13));
+        });
+    });
+    test('issue #193262: Incorrect implementation of modifyPosition', () => {
+        testViewModel([
+            'just some text'
+        ], {
+            wordWrap: 'wordWrapColumn',
+            wordWrapColumn: 5
+        }, (viewModel, model) => {
+            assert.deepStrictEqual(new Position(3, 1), viewModel.modifyPosition(new Position(3, 2), -1));
+        });
+    });
+});
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidmlld01vZGVsSW1wbC50ZXN0LmpzIiwic291cmNlUm9vdCI6ImZpbGU6Ly8vaG9tZS9kYXJ0aHZhZGVyL0FJTmF0aXZlU3R1ZGlvLUlERS9haW5hdGl2ZS1zdHVkaW8vc3JjLyIsInNvdXJjZXMiOlsidnMvZWRpdG9yL3Rlc3QvYnJvd3Nlci92aWV3TW9kZWwvdmlld01vZGVsSW1wbC50ZXN0LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBOzs7Z0dBR2dHO0FBRWhHLE9BQU8sTUFBTSxNQUFNLFFBQVEsQ0FBQztBQUM1QixPQUFPLEVBQUUsdUNBQXVDLEVBQUUsTUFBTSx1Q0FBdUMsQ0FBQztBQUNoRyxPQUFPLEVBQUUsUUFBUSxFQUFFLE1BQU0sa0NBQWtDLENBQUM7QUFDNUQsT0FBTyxFQUFFLEtBQUssRUFBRSxNQUFNLCtCQUErQixDQUFDO0FBRXRELE9BQU8sRUFBRSxnQkFBZ0IsRUFBRSxNQUFNLHFDQUFxQyxDQUFDO0FBRXZFLE9BQU8sRUFBRSxhQUFhLEVBQUUsTUFBTSxvQkFBb0IsQ0FBQztBQUVuRCxLQUFLLENBQUMsV0FBVyxFQUFFLEdBQUcsRUFBRTtJQUV2Qix1Q0FBdUMsRUFBRSxDQUFDO0lBRTFDLElBQUksQ0FBQyx5RUFBeUUsRUFBRSxHQUFHLEVBQUU7UUFDcEYsTUFBTSxJQUFJLEdBQUcsQ0FBQyxFQUFFLENBQUMsQ0FBQztRQUNsQixNQUFNLElBQUksR0FBRztZQUNaLG1CQUFtQixFQUFFLENBQUM7U0FDdEIsQ0FBQztRQUNGLGFBQWEsQ0FBQyxJQUFJLEVBQUUsSUFBSSxFQUFFLENBQUMsU0FBUyxFQUFFLEtBQUssRUFBRSxFQUFFO1lBQzlDLE1BQU0sQ0FBQyxXQUFXLENBQUMsU0FBUyxDQUFDLFlBQVksRUFBRSxFQUFFLENBQUMsQ0FBQyxDQUFDO1lBRWhELFNBQVMsQ0FBQyxXQUFXLENBQUMsQ0FBQyxFQUFFLENBQUMsRUFBRSxDQUFDLENBQUMsQ0FBQztZQUUvQixLQUFLLENBQUMsVUFBVSxDQUFDLENBQUM7b0JBQ2pC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

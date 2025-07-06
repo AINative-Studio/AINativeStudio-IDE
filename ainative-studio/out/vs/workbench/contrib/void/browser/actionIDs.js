@@ -1,0 +1,15 @@
+// Normally you'd want to put these exports in the files that register them, but if you do that you'll get an import order error if you import them in certain cases.
+// (importing them runs the whole file to get the ID, causing an import error). I guess it's best practice to separate out IDs, pretty annoying...
+export const VOID_CTRL_L_ACTION_ID = 'void.ctrlLAction';
+export const VOID_CTRL_K_ACTION_ID = 'void.ctrlKAction';
+export const VOID_ACCEPT_DIFF_ACTION_ID = 'void.acceptDiff';
+export const VOID_REJECT_DIFF_ACTION_ID = 'void.rejectDiff';
+export const VOID_GOTO_NEXT_DIFF_ACTION_ID = 'void.goToNextDiff';
+export const VOID_GOTO_PREV_DIFF_ACTION_ID = 'void.goToPrevDiff';
+export const VOID_GOTO_NEXT_URI_ACTION_ID = 'void.goToNextUri';
+export const VOID_GOTO_PREV_URI_ACTION_ID = 'void.goToPrevUri';
+export const VOID_ACCEPT_FILE_ACTION_ID = 'void.acceptFile';
+export const VOID_REJECT_FILE_ACTION_ID = 'void.rejectFile';
+export const VOID_ACCEPT_ALL_DIFFS_ACTION_ID = 'void.acceptAllDiffs';
+export const VOID_REJECT_ALL_DIFFS_ACTION_ID = 'void.rejectAllDiffs';
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYWN0aW9uSURzLmpzIiwic291cmNlUm9vdCI6ImZpbGU6Ly8vaG9tZS9kYXJ0aHZhZGVyL0FJTmF0aXZlU3R1ZGlvLUlERS9haW5hdGl2ZS1zdHVkaW8vc3JjLyIsInNvdXJjZXMiOlsidnMvd29ya2JlbmNoL2NvbnRyaWIvdm9pZC9icm93c2VyL2FjdGlvbklEcy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiQUFBQSxxS0FBcUs7QUFDckssa0pBQWtKO0FBRWxKLE1BQU0sQ0FBQyxNQUFNLHFCQUFxQixHQUFHLGtCQUFrQixDQUFBO0FBRXZELE1BQU0sQ0FBQyxNQUFNLHFCQUFxQixHQUFHLGtCQUFrQixDQUFBO0FBRXZELE1BQU0sQ0FBQyxNQUFNLDBCQUEwQixHQUFHLGlCQUFpQixDQUFBO0FBRTNELE1BQU0sQ0FBQyxNQUFNLDBCQUEwQixHQUFHLGlCQUFpQixDQUFBO0FBRTNELE1BQU0sQ0FBQyxNQUFNLDZCQUE2QixHQUFHLG1CQUFtQixDQUFBO0FBRWhFLE1BQU0sQ0FBQyxNQUFNLDZCQUE2QixHQUFHLG1CQUFtQixDQUFBO0FBRWhFLE1BQU0sQ0FBQyxNQUFNLDRCQUE0QixHQUFHLGtCQUFrQixDQUFBO0FBRTlELE1BQU0sQ0FBQyxNQUFNLDRCQUE0QixHQUFHLGtCQUFrQixDQUFBO0FBRTlELE1BQU0sQ0FBQyxNQUFNLDBCQUEwQixHQUFHLGlCQUFpQixDQUFBO0FBRTNELE1BQU0sQ0FBQyxNQUFNLDBCQUEwQixHQUFHLGlCQUFpQixDQUFBO0FBRTNELE1BQU0sQ0FBQyxNQUFNLCtCQUErQixHQUFHLHFCQUFxQixDQUFBO0FBRXBFLE1BQU0sQ0FBQyxNQUFNLCtCQUErQixHQUFHLHFCQUFxQixDQUFBIn0=

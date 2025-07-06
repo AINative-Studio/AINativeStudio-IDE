@@ -1,0 +1,140 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.monaco-component.multiDiffEditor {
+	background: var(--vscode-multiDiffEditor-background);
+
+	position: relative;
+
+	height: 100%;
+	width: 100%;
+
+	overflow-y: hidden;
+}
+
+.monaco-component.multiDiffEditor > div {
+		position: absolute;
+		top: 0px;
+		left: 0px;
+
+		height: 100%;
+		width: 100%;
+	}
+
+.monaco-component.multiDiffEditor > div.placeholder {
+			visibility: hidden;
+
+			display: grid;
+			place-items: center;
+			place-content: center;
+		}
+
+.monaco-component.multiDiffEditor > div.placeholder.visible {
+				visibility: visible;
+			}
+
+.monaco-component.multiDiffEditor .active {
+		--vscode-multiDiffEditor-border: var(--vscode-focusBorder);
+	}
+
+.monaco-component.multiDiffEditor .multiDiffEntry {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		overflow: hidden;
+	}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .collapse-button {
+			margin: 0 5px;
+			cursor: pointer;
+		}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .collapse-button a {
+				display: block;
+			}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .header {
+			z-index: 1000;
+			background: var(--vscode-editor-background);
+
+
+		}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .header:not(.collapsed) .header-content {
+				border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border);
+			}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .header .header-content {
+				margin: 8px 0px 0px 0px;
+				padding: 4px 5px;
+
+				border-top: 1px solid var(--vscode-multiDiffEditor-border);
+
+				display: flex;
+				align-items: center;
+
+				color: var(--vscode-foreground);
+				background: var(--vscode-multiDiffEditor-headerBackground);
+			}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .header .header-content.shadow {
+					box-shadow: var(--vscode-scrollbar-shadow) 0px 6px 6px -6px;
+				}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .header .header-content .file-path {
+					display: flex;
+					flex: 1;
+					min-width: 0;
+				}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .header .header-content .file-path .title {
+						font-size: 14px;
+						line-height: 22px;
+					}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .header .header-content .file-path .title.original {
+							flex: 1;
+							min-width: 0;
+							text-overflow: ellipsis;
+						}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .header .header-content .file-path .status {
+						font-weight: 600;
+						opacity: 0.75;
+						margin: 0px 10px;
+						line-height: 22px;
+
+						/*
+							TODO@hediet: move colors from git extension to core!
+						&.renamed {
+							color: v ar(--vscode-gitDecoration-renamedResourceForeground);
+						}
+
+						&.deleted {
+							color: v ar(--vscode-gitDecoration-deletedResourceForeground);
+						}
+
+						&.added {
+							color: v ar(--vscode-gitDecoration-addedResourceForeground);
+						}
+						*/
+					}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .header .header-content .actions {
+					padding: 0 8px;
+				}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .editorParent {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+
+			border-bottom: 1px solid var(--vscode-multiDiffEditor-border);
+			overflow: hidden;
+		}
+
+.monaco-component.multiDiffEditor .multiDiffEntry .editorContainer {
+			flex: 1;
+		}
