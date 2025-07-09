@@ -487,4 +487,4 @@ async function getWorkerClientForId(clientId) {
 	});
 }
 
-//# sourceURL=file:///home/darthvader/test/AINativeStudio-IDE/ainative-studio/src/vs/workbench/contrib/webview/browser/pre/service-worker.js
+//# sourceURL=file:///home/opez_amily_/AINativeStudio-IDE/ainative-studio/src/vs/workbench/contrib/webview/browser/pre/service-worker.js

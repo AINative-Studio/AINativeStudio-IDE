@@ -42,4 +42,4 @@ export default defineConfig({
 	}
 })
 
-//# sourceURL=file:///home/darthvader/test/AINativeStudio-IDE/ainative-studio/src/vs/workbench/contrib/void/browser/react/tsup.config.js
+//# sourceURL=file:///home/opez_amily_/AINativeStudio-IDE/ainative-studio/src/vs/workbench/contrib/void/browser/react/tsup.config.js

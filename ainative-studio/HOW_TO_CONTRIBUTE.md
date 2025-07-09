@@ -1,6 +1,6 @@
-# Contributing to Void
+# Contributing to AINative Studio
 ### Welcome! 👋
-This is the official guide on how to contribute to Void. We want to make it as easy as possible to contribute, so if you have any questions or comments, reach out via email or discord!
+This is the official guide on how to contribute to AINative Studio. We want to make it as easy as possible to contribute, so if you have any questions or comments, reach out via email or discord!
 
 There are a few ways to contribute:
 
@@ -12,16 +12,16 @@ There are a few ways to contribute:
 
 ### Codebase Guide
 
-We [highly recommend reading this](https://github.com/voideditor/void/blob/main/VOID_CODEBASE_GUIDE.md) guide that we put together on Void's sourcecode if you'd like to add new features.
+We [highly recommend reading this](https://github.com/voideditor/void/blob/main/VOID_CODEBASE_GUIDE.md) guide that we put together on AINative Studio's sourcecode if you'd like to add new features.
 
 The repo is not as intimidating as it first seems if you read the guide!
 
-Most of Void's code lives in the folder `src/vs/workbench/contrib/void/`.
+Most of AINative Studio's code lives in the folder `src/vs/workbench/contrib/void/`.
 
 
 
 
-## Building Void
+## Building AINative Studio
 
 ### a. Mac - Build Prerequisites
 
@@ -51,16 +51,16 @@ First, run `npm install -g node-gyp`. Then:
 - SUSE (openSUSE, etc): `sudo zypper install patterns-devel-C-C++-devel_C_C++  krb5-devel libsecret-devel libxkbfile-devel libX11-devel`.
 - Others: see [How to Contribute](https://github.com/microsoft/vscode/wiki/How-to-Contribute).
 
-### d. Building Void from inside VSCode
+### d. Building AINative Studio from inside VSCode
 
 1. `git clone https://github.com/voideditor/void` to clone the repo.
 2. `npm install` to install all dependencies.
-3. To build Void, open VSCode. Then:
+3. To build AINative Studio, open VSCode. Then:
    - Windows: Press <kbd>Ctrl+Shift+B</kbd>.
    - Mac: Press <kbd>Cmd+Shift+B</kbd>.
    - Linux: Press <kbd>Ctrl+Shift+B</kbd>.
    - This step can take ~5 min. The build is done when you see two check marks (one of the items will continue spinning indefinitely - it compiles our React code).
-4. To run Void:
+4. To run AINative Studio:
    - Windows: `./scripts/code.bat`.
    - Mac: `./scripts/code.sh`.
    - Linux: `./scripts/code.sh`.
@@ -71,9 +71,9 @@ First, run `npm install -g node-gyp`. Then:
 
 If you get any errors, scroll down for common fixes.
 
-#### Building Void from Terminal
+#### Building AINative Studio from Terminal
 
-To build Void from the terminal instead of from inside VSCode, follow the steps above, but instead of pressing <kbd>Cmd+Shift+B</kbd>, run `npm run watch`. The build is done when you see something like this:
+To build AINative Studio from the terminal instead of from inside VSCode, follow the steps above, but instead of pressing <kbd>Cmd+Shift+B</kbd>, run `npm run watch`. The build is done when you see something like this:
 
 ```
 [watch-extensions] [00:37:39] Finished compilation extensions with 0 errors after 19303 ms
@@ -88,7 +88,7 @@ To build Void from the terminal instead of from inside VSCode, follow the steps 
 - Make sure you followed the prerequisite steps above.
 - Make sure you have Node version `20.18.2` (the version in `.nvmrc`)!
     - You can do this easily without touching your base installation with [nvm](https://github.com/nvm-sh/nvm). Simply run `nvm install`, followed by `nvm use` and it will automatically install and use the version specified in `nvmrc`.
-- Make sure that the path to your Void folder does not have any spaces in it.
+- Make sure that the path to your AINative Studio folder does not have any spaces in it.
 - If you get `"TypeError: Failed to fetch dynamically imported module"`, make sure all imports end with `.js`.
 - If you get an error with React, try running `NODE_OPTIONS="--max-old-space-size=8192" npm run buildreact`.
 - If you see missing styles, wait a few seconds and then reload.
