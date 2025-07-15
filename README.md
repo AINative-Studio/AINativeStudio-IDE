@@ -7,7 +7,6 @@
     width="200"
     height="200"
   />
-  <h1>AINative Studio</h1>
   <p>AI-Native Development Environment</p>
 </div>
 
