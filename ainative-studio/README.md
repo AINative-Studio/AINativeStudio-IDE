@@ -2,7 +2,7 @@
 
 <div align="center">
 	<img
-		src="./src/vs/workbench/browser/parts/editor/media/slice_of_void.png"
+		src="./ai_native_studio_icons/ai_native_studio_512x512.png"
 	 	alt="AINative Studio Welcome"
 		width="300"
 	 	height="300"

@@ -1,6 +1,12 @@
 # AINative Studio
 
 <div align="center">
+  <img
+    src="./ainative-studio/ai_native_studio_icons/ai_native_studio_512x512.png"
+    alt="AINative Studio Logo"
+    width="200"
+    height="200"
+  />
   <h1>AINative Studio</h1>
   <p>AI-Native Development Environment</p>
 </div>
