@@ -12,6 +12,23 @@
 
 AINative Studio is a powerful, open-source AI-Native development environment with built-in AI capabilities, forked from Void Editor and VS Code.
 
+## 🛠️ Development Scripts
+
+For developers working on AINative Studio, use these convenient scripts in the `ainative-studio/` directory:
+
+```bash
+cd ainative-studio
+
+# Full development setup (first time or when dependencies change)
+./dev-start.sh      # Installs dependencies, builds, and runs with watch mode
+
+# Quick start (when already built)
+./dev-quick.sh      # Just starts the application (faster)
+
+# Stop all development processes
+./dev-stop.sh       # Stops watch processes and application
+```
+
 ## ✨ Features
 
 - AI-powered code completion and generation

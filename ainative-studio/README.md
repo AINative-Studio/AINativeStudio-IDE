@@ -15,6 +15,26 @@ Use AI agents on your codebase, checkpoint and visualize changes, and bring any 
 
 This repo contains the full sourcecode for AINative Studio. If you're new, welcome!
 
+## 🚀 Quick Development Setup
+
+Use these convenient development scripts for easy setup and management:
+
+```bash
+# Full development setup (first time or when dependencies change)
+./dev-start.sh      # Installs dependencies, builds, and runs with watch mode
+
+# Quick start (when already built)
+./dev-quick.sh      # Just starts the application (faster)
+
+# Stop all development processes
+./dev-stop.sh       # Stops watch processes and application
+```
+
+**What each script does:**
+- `dev-start.sh`: Complete setup including dependency installation, React component building, TypeScript compilation with watch mode, and application launch
+- `dev-quick.sh`: Quick application start (assumes project is already built)
+- `dev-stop.sh`: Cleanly stops all development processes (watch builds and application)
+
 - 🧭 [Website](https://voideditor.com)
 
 - 👋 [Discord](https://discord.gg/RSNjgaugJs)
