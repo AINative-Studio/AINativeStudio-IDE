@@ -10,3 +10,7 @@ test-results/
 .vscode-test
 .build/
 ainative-studio/.build/
+# Build artifacts and executables
+executables/
+ainative-studio/out-build/
+ainative-studio/out-vscode/
