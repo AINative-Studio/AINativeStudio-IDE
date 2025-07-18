@@ -14,3 +14,5 @@ ainative-studio/.build/
 executables/
 ainative-studio/out-build/
 ainative-studio/out-vscode/
+VSCode-darwin-arm64/
+VSCode-linux-x64/
