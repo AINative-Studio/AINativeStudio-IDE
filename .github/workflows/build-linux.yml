@@ -1,0 +1,87 @@
+name: Build Linux
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'ainative-studio/package-lock.json'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          pkg-config \
+          libx11-dev \
+          libxkbfile-dev \
+          libsecret-1-dev \
+          libnotify-dev \
+          libasound2-dev \
+          libxtst6 \
+          xvfb \
+          rpm
+    
+    - name: Install Node.js dependencies
+      working-directory: ainative-studio
+      run: npm ci
+    
+    - name: Build React components
+      working-directory: ainative-studio
+      run: npm run buildreact
+    
+    - name: Compile TypeScript
+      working-directory: ainative-studio
+      run: npm run compile
+    
+    - name: Run tests
+      working-directory: ainative-studio
+      run: |
+        xvfb-run -a npm run test-node
+        xvfb-run -a npm run test-browser
+    
+    - name: Build Linux x64 package
+      working-directory: ainative-studio
+      run: npm run gulp vscode-linux-x64
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Create tarball
+      run: |
+        cd ../VSCode-linux-x64
+        tar -czf ../ainative-studio-linux-x64.tar.gz *
+    
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ainative-studio-linux-x64
+        path: ../ainative-studio-linux-x64.tar.gz
+        retention-days: 30
+    
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ../ainative-studio-linux-x64.tar.gz
+        draft: false
+        prerelease: contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

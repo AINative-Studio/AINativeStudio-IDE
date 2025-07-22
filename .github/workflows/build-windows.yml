@@ -1,0 +1,78 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'ainative-studio/package-lock.json'
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install Node.js dependencies
+      working-directory: ainative-studio
+      run: npm ci
+    
+    - name: Build React components
+      working-directory: ainative-studio
+      run: npm run buildreact
+    
+    - name: Compile TypeScript
+      working-directory: ainative-studio
+      run: npm run compile
+    
+    - name: Run tests
+      working-directory: ainative-studio
+      run: |
+        npm run test-node
+        npm run test-browser
+    
+    - name: Build Windows x64 package
+      working-directory: ainative-studio
+      run: npm run gulp vscode-win32-x64
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Create ZIP archive
+      run: |
+        cd ../VSCode-win32-x64
+        Compress-Archive -Path * -DestinationPath ../ainative-studio-win32-x64.zip
+      shell: powershell
+    
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ainative-studio-win32-x64
+        path: ../ainative-studio-win32-x64.zip
+        retention-days: 30
+    
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ../ainative-studio-win32-x64.zip
+        draft: false
+        prerelease: contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
