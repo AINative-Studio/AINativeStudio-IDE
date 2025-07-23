@@ -71,6 +71,28 @@ jobs:
           libkrb5-dev \
           libgssapi-krb5-2
     
+    - name: Cache Node modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ainative-studio/node_modules
+          ~/.npm
+        key: ${{ runner.os }}-${{ matrix.arch }}-node-${{ hashFiles('ainative-studio/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.arch }}-node-
+          ${{ runner.os }}-node-
+    
+    - name: Cache TypeScript build
+      uses: actions/cache@v4
+      with:
+        path: |
+          ainative-studio/out
+          ainative-studio/out-build
+        key: ${{ runner.os }}-${{ matrix.arch }}-typescript-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.arch }}-typescript-
+          ${{ runner.os }}-typescript-
+    
     - name: Install Node.js dependencies
       working-directory: ainative-studio
       run: npm ci

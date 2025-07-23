@@ -199,3 +199,7 @@ cache-dependency-path: 'ainative-studio/package-lock.json'
 2. GitHub Actions automatically builds all platforms
 3. Creates GitHub release with downloadable artifacts
 4. Supports prerelease detection (alpha/beta/rc in tag name)
+
+### Memory Requirements
+- TypeScript compilation requires Node.js heap limit of 8192MB
+- All build scripts include `--max-old-space-size=8192` for large codebase compilation
