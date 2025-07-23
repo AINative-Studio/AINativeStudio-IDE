@@ -4,13 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AINative Studio IDE is a rebranded fork of Void Editor (which itself is forked from VS Code), focused on AI-powered development. The codebase is primarily in the `void/` directory and uses Electron + TypeScript with React components for AI features.
+AINative Studio IDE is a rebranded fork of Void Editor (which itself is forked from VS Code), focused on AI-powered development. 
+
+### Repository Structure
+- **Root Directory**: `/AINativeStudio-IDE/` - Contains documentation and CI configuration
+- **Main Codebase**: `/AINativeStudio-IDE/ainative-studio/` - The actual IDE source code (was previously called "void")
+- **Working Directory**: All development commands should be run from `ainative-studio/` directory
+- **Package Location**: `ainative-studio/package.json` and `ainative-studio/package-lock.json`
+
+**IMPORTANT**: The codebase uses Electron + TypeScript with React components for AI features.
 
 ## Essential Commands
 
 ### Development Setup
 ```bash
-cd void
+cd ainative-studio
 npm install
 npm run watch          # Start development build (watch mode)
 ./scripts/code.sh      # Run the application (Linux/macOS)
@@ -37,11 +45,11 @@ npm run gulp vscode-linux-x64       # Linux x64
 ## Architecture Overview
 
 ### Core Structure
-- **Main Process** (`void/src/vs/main/`): Electron main process with Node.js access
-- **Renderer Process** (`void/src/vs/workbench/`): UI process, sandboxed from Node.js
-- **AI Features** (`void/src/vs/workbench/contrib/void/`): All Void/AINative-specific functionality
-- **React Components** (`void/src/vs/workbench/contrib/void/browser/react/`): AI UI components
-- **CLI** (`void/cli/`): Rust-based command-line interface
+- **Main Process** (`ainative-studio/src/vs/main/`): Electron main process with Node.js access
+- **Renderer Process** (`ainative-studio/src/vs/workbench/`): UI process, sandboxed from Node.js
+- **AI Features** (`ainative-studio/src/vs/workbench/contrib/void/`): All Void/AINative-specific functionality
+- **React Components** (`ainative-studio/src/vs/workbench/contrib/void/browser/react/`): AI UI components
+- **CLI** (`ainative-studio/cli/`): Rust-based command-line interface
 
 ### File Organization Patterns
 ```
@@ -52,7 +60,7 @@ node/          # Node.js specific implementations
 ```
 
 ### AI Service Architecture
-Key services in `void/src/vs/workbench/contrib/void/browser/`:
+Key services in `ainative-studio/src/vs/workbench/contrib/void/browser/`:
 - `sendLLMMessageService`: Core LLM communication
 - `chatThreadService`: Chat thread management
 - `autocompleteService`: AI code completion
@@ -63,7 +71,7 @@ Key services in `void/src/vs/workbench/contrib/void/browser/`:
 ### React Build System
 React components require separate building:
 ```bash
-cd void/src/vs/workbench/contrib/void/browser/react/
+cd ainative-studio/src/vs/workbench/contrib/void/browser/react/
 node build.js --watch    # Watch mode for React development
 ```
 
@@ -99,7 +107,7 @@ Per `.cursor/rules/ainative-branding.mdc`:
 - No breaking changes to core functionality
 
 ### Adding New AI Features
-1. Create services in `void/src/vs/workbench/contrib/void/browser/`
+1. Create services in `ainative-studio/src/vs/workbench/contrib/void/browser/`
 2. Add React components in the dedicated React folder
 3. Register services with dependency injection
 4. Use IPC channels for main/renderer communication
@@ -109,10 +117,10 @@ Per `.cursor/rules/ainative-branding.mdc`:
 
 ### Test Locations
 ```
-void/test/automation/    # Automated UI tests
-void/test/integration/   # Integration tests
-void/test/smoke/        # Critical workflow tests
-void/test/unit/         # Unit tests
+ainative-studio/test/automation/    # Automated UI tests
+ainative-studio/test/integration/   # Integration tests
+ainative-studio/test/smoke/        # Critical workflow tests
+ainative-studio/test/unit/         # Unit tests
 ```
 
 ### Running Tests
@@ -126,9 +134,9 @@ npx playwright install  # Install test browsers (if needed)
 ## Configuration Files
 
 ### Product Configuration
-- `void/product.json`: Product metadata and branding
-- `void/package.json`: Dependencies and build scripts
-- `void/src/vs/workbench/contrib/void/browser/react/package.json`: React dependencies
+- `ainative-studio/product.json`: Product metadata and branding
+- `ainative-studio/package.json`: Dependencies and build scripts
+- `ainative-studio/src/vs/workbench/contrib/void/browser/react/package.json`: React dependencies
 
 ### Key Dependencies
 - Electron 34.3.2, TypeScript, React 19.1.0
@@ -163,3 +171,31 @@ npx playwright install  # Install test browsers (if needed)
 - Renderer process is sandboxed and communicates via secure IPC channels  
 - AI provider keys stored securely in main process only
 - No direct API calls from renderer for security isolation
+
+## GitHub Actions & CI/CD
+
+### Automated Build Workflows
+Located in `.github/workflows/`:
+- `build-linux.yml`: Ubuntu builds for Linux x64
+- `build-macos.yml`: macOS builds for both Intel and Apple Silicon
+- `build-windows.yml`: Windows builds for x64
+- `release.yml`: Multi-platform release workflow
+
+### CI/CD Configuration
+**CRITICAL**: All GitHub Actions workflows must use `ainative-studio/` as the working directory:
+```yaml
+working-directory: ainative-studio
+cache-dependency-path: 'ainative-studio/package-lock.json'
+```
+
+### Build Triggers
+- Push to `main` branch: Builds all platforms but no release
+- Tags starting with `v*`: Builds all platforms AND creates GitHub release
+- Pull requests: Builds for testing
+- Manual dispatch: Can be triggered via GitHub Actions UI
+
+### Release Process
+1. Create version tag: `git tag v1.0.0 && git push origin v1.0.0`
+2. GitHub Actions automatically builds all platforms
+3. Creates GitHub release with downloadable artifacts
+4. Supports prerelease detection (alpha/beta/rc in tag name)

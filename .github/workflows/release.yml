@@ -44,7 +44,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
         cache-dependency-path: 'ainative-studio/package-lock.json'
     
@@ -67,7 +67,9 @@ jobs:
           libasound2-dev \
           libxtst6 \
           xvfb \
-          rpm
+          rpm \
+          libkrb5-dev \
+          libgssapi-krb5-2
     
     - name: Install Node.js dependencies
       working-directory: ainative-studio
