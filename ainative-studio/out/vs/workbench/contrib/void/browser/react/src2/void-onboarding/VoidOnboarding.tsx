@@ -547,7 +547,7 @@ const VoidOnboardingContent = () => {
           voidMetricsService.capture('Completed Onboarding', { selectedProviderName, wantToUseOption });
         }}
         ringSize={voidSettingsState.globalSettings.isOnboardingComplete ? 'screen' : undefined}>
-        Enter the Void</PrimaryActionButton>
+        Enter AINative Studio</PrimaryActionButton>
 		</div>
 	</div>;
 
@@ -596,7 +596,7 @@ const VoidOnboardingContent = () => {
     0: <OnboardingPageShell
       content={
       <div className="void-flex void-flex-col void-items-center void-gap-8">
-					<div className="void-text-5xl void-font-light void-text-center">Welcome to Void</div>
+					<div className="void-text-5xl void-font-light void-text-center">Welcome to AINative Studio</div>
 
 					{/* Slice of Void image */}
 					<div className="void-max-w-md void-w-full void-h-[30vh] void-mx-auto void-flex void-items-center void-justify-center">
