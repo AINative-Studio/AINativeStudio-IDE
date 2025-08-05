@@ -11,6 +11,8 @@ on:
 jobs:
   build-windows:
     runs-on: self-hosted
+    env:
+      VSCODE_SKIP_NODE_VERSION_CHECK: "1"
     
     steps:
     - name: Checkout repository
@@ -70,14 +72,17 @@ jobs:
         # Clear npm cache and remove node_modules if it exists to avoid file locking issues
         npm cache clean --force
         if (Test-Path "node_modules") { Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue }
+        
         # Retry npm ci up to 3 times to handle Windows file locking
         $attempt = 1
         $maxAttempts = 3
         do {
           Write-Output "Attempt $attempt of $maxAttempts"
           try {
-            npm ci --no-optional --ignore-scripts
-            npm rebuild
+            # Install dependencies while ignoring the preinstall script
+            npm ci --ignore-scripts
+            # Only rebuild packages that actually need native compilation
+            npm run postinstall --if-present
             break
           }
           catch {
