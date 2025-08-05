@@ -73,59 +73,21 @@ jobs:
         npm cache clean --force
         if (Test-Path "node_modules") { Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue }
         
-        # Retry npm ci up to 3 times to handle Windows file locking
+        # Retry npm install up to 3 times to handle Windows file locking
         $attempt = 1
         $maxAttempts = 3
         do {
           Write-Output "Attempt $attempt of $maxAttempts"
           try {
-            # Install dependencies while ignoring the preinstall script
-            npm ci --ignore-scripts
-            
-            # Install build dependencies first
-            cd build
-            npm ci --silent
-            cd ..
-            
-            # Install extension dependencies manually to avoid git config issues
-            cd extensions
-            npm ci --silent
-            cd ..
-            
-            # Install dependencies for all extensions that have package.json files (based on dirs.js)
-            $extensionDirs = @(
-              "configuration-editing", "css-language-features", "css-language-features/server", 
-              "debug-auto-launch", "debug-server-ready", "emmet", "extension-editing", 
-              "git", "git-base", "github", "github-authentication", "grunt", "gulp", 
-              "html-language-features", "html-language-features/server", "ipynb", "jake", 
-              "json-language-features", "json-language-features/server", "markdown-language-features", 
-              "markdown-math", "media-preview", "merge-conflict", "microsoft-authentication", 
-              "notebook-renderers", "npm", "php-language-features", "references-view", 
-              "search-result", "simple-browser", "tunnel-forwarding", "typescript-language-features", 
-              "vscode-api-tests", "vscode-colorize-tests", "vscode-colorize-perf-tests", 
-              "vscode-test-resolver", "open-remote-ssh", "open-remote-wsl"
-            )
-            
-            foreach ($ext in $extensionDirs) {
-              if (Test-Path "extensions/$ext/package.json") {
-                Write-Output "Installing dependencies for $ext..."
-                cd "extensions/$ext"
-                try {
-                  npm install --silent --no-audit 2>$null
-                }
-                catch {
-                  Write-Output "$ext install failed, continuing..."
-                }
-                cd ../..
-              }
-            }
+            # Run the full postinstall process which handles all dependencies
+            npm install
             break
           }
           catch {
             if ($attempt -eq $maxAttempts) {
-              throw "npm ci failed after $maxAttempts attempts"
+              throw "npm install failed after $maxAttempts attempts"
             }
-            Write-Output "npm ci failed, retrying in 10 seconds..."
+            Write-Output "npm install failed, retrying in 10 seconds..."
             Start-Sleep -Seconds 10
             $attempt++
           }
