@@ -45,6 +45,11 @@ jobs:
         # Set npm to use shorter paths to avoid Windows path length limits
         npm config set cache "C:\npm-cache" --global
         npm config set prefix "C:\npm-prefix" --global
+        
+        # Configure git for postinstall script
+        git config --global user.email "action@github.com"
+        git config --global user.name "GitHub Action"
+        git config --global init.defaultBranch main
       shell: powershell
     
     - name: Cache Node modules
@@ -73,21 +78,31 @@ jobs:
         npm cache clean --force
         if (Test-Path "node_modules") { Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue }
         
+        # Try running npm install with verbose output to see what's failing
+        Write-Output "Node version: $(node --version)"
+        Write-Output "NPM version: $(npm --version)"
+        Write-Output "Current directory: $(Get-Location)"
+        Write-Output "Files in current directory:"
+        Get-ChildItem | Select-Object Name, Length | Format-Table
+        
         # Retry npm install up to 3 times to handle Windows file locking
         $attempt = 1
         $maxAttempts = 3
         do {
           Write-Output "Attempt $attempt of $maxAttempts"
           try {
-            # Run the full postinstall process which handles all dependencies
-            npm install
+            # Run npm install with detailed output to diagnose issues
+            Write-Output "Running npm install..."
+            npm install --verbose
+            Write-Output "npm install completed successfully"
             break
           }
           catch {
+            Write-Output "npm install failed with error: $_"
             if ($attempt -eq $maxAttempts) {
-              throw "npm install failed after $maxAttempts attempts"
+              throw "npm install failed after $maxAttempts attempts: $_"
             }
-            Write-Output "npm install failed, retrying in 10 seconds..."
+            Write-Output "Retrying npm install in 10 seconds..."
             Start-Sleep -Seconds 10
             $attempt++
           }
