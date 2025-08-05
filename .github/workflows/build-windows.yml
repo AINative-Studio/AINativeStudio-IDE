@@ -93,7 +93,7 @@ jobs:
             cd ..
             
             # Install critical extension dependencies individually
-            $criticalExtensions = @("markdown-math", "markdown-language-features", "typescript-language-features", "html-language-features", "json-language-features")
+            $criticalExtensions = @("markdown-math", "markdown-language-features", "simple-browser", "typescript-language-features", "html-language-features", "json-language-features")
             foreach ($ext in $criticalExtensions) {
               if (Test-Path "extensions/$ext/package.json") {
                 Write-Output "Installing dependencies for $ext..."
