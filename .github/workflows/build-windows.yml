@@ -30,11 +30,25 @@ jobs:
       with:
         python-version: '3.11'
     
+    - name: Configure Windows for build
+      run: |
+        # Add exclusion for build directory to Windows Defender
+        try {
+          Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE" -ErrorAction SilentlyContinue
+          Write-Output "Added Windows Defender exclusion for workspace"
+        }
+        catch {
+          Write-Output "Could not add Windows Defender exclusion (may require admin rights)"
+        }
+        # Set npm to use shorter paths to avoid Windows path length limits
+        npm config set cache "C:\npm-cache" --global
+        npm config set prefix "C:\npm-prefix" --global
+      shell: powershell
+    
     - name: Cache Node modules
       uses: actions/cache@v4
       with:
         path: |
-          ainative-studio/node_modules
           ~/.npm
         key: ${{ runner.os }}-node-${{ hashFiles('ainative-studio/package-lock.json') }}
         restore-keys: |
@@ -52,27 +66,64 @@ jobs:
     
     - name: Install Node.js dependencies
       working-directory: ainative-studio
-      run: npm ci
+      run: |
+        # Clear npm cache and remove node_modules if it exists to avoid file locking issues
+        npm cache clean --force
+        if (Test-Path "node_modules") { Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue }
+        # Retry npm ci up to 3 times to handle Windows file locking
+        $attempt = 1
+        $maxAttempts = 3
+        do {
+          Write-Output "Attempt $attempt of $maxAttempts"
+          try {
+            npm ci --no-optional --ignore-scripts
+            npm rebuild
+            break
+          }
+          catch {
+            if ($attempt -eq $maxAttempts) {
+              throw "npm ci failed after $maxAttempts attempts"
+            }
+            Write-Output "npm ci failed, retrying in 10 seconds..."
+            Start-Sleep -Seconds 10
+            $attempt++
+          }
+        } while ($attempt -le $maxAttempts)
+      shell: powershell
     
     - name: Build React components
       working-directory: ainative-studio
-      run: npm run buildreact
+      run: |
+        npm run buildreact
+      shell: powershell
     
     - name: Compile TypeScript
       working-directory: ainative-studio
-      run: npm run compile
+      run: |
+        # Use increased memory for TypeScript compilation
+        $env:NODE_OPTIONS = "--max-old-space-size=16384"
+        npm run compile
+      shell: powershell
     
     - name: Run tests
       working-directory: ainative-studio
       run: |
+        # Run Node tests with increased memory
+        $env:NODE_OPTIONS = "--max-old-space-size=8192"
         npm run test-node
+        # Run browser tests
         npm run test-browser
+      shell: powershell
     
     - name: Build Windows x64 package
       working-directory: ainative-studio
-      run: npm run gulp vscode-win32-x64
+      run: |
+        # Build with maximum memory allocation
+        $env:NODE_OPTIONS = "--max-old-space-size=16384"
+        npm run gulp vscode-win32-x64
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: powershell
     
     - name: Create ZIP archive
       run: |
