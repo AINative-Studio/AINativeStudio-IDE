@@ -92,9 +92,21 @@ jobs:
             npm ci --silent
             cd ..
             
-            # Install critical extension dependencies individually
-            $criticalExtensions = @("markdown-math", "markdown-language-features", "simple-browser", "vscode-colorize-tests", "extension-editing", "merge-conflict", "configuration-editing", "css-language-features", "css-language-features/server", "git-base", "typescript-language-features", "html-language-features", "html-language-features/server", "json-language-features", "json-language-features/server", "emmet", "github-authentication", "git", "npm")
-            foreach ($ext in $criticalExtensions) {
+            # Install dependencies for all extensions that have package.json files (based on dirs.js)
+            $extensionDirs = @(
+              "configuration-editing", "css-language-features", "css-language-features/server", 
+              "debug-auto-launch", "debug-server-ready", "emmet", "extension-editing", 
+              "git", "git-base", "github", "github-authentication", "grunt", "gulp", 
+              "html-language-features", "html-language-features/server", "ipynb", "jake", 
+              "json-language-features", "json-language-features/server", "markdown-language-features", 
+              "markdown-math", "media-preview", "merge-conflict", "microsoft-authentication", 
+              "notebook-renderers", "npm", "php-language-features", "references-view", 
+              "search-result", "simple-browser", "tunnel-forwarding", "typescript-language-features", 
+              "vscode-api-tests", "vscode-colorize-tests", "vscode-colorize-perf-tests", 
+              "vscode-test-resolver", "open-remote-ssh", "open-remote-wsl"
+            )
+            
+            foreach ($ext in $extensionDirs) {
               if (Test-Path "extensions/$ext/package.json") {
                 Write-Output "Installing dependencies for $ext..."
                 cd "extensions/$ext"
