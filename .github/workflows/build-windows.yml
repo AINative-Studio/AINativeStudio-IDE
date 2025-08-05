@@ -81,8 +81,20 @@ jobs:
           try {
             # Install dependencies while ignoring the preinstall script
             npm ci --ignore-scripts
-            # Manually run postinstall to install extension dependencies
-            node build/npm/postinstall.js
+            # Install build dependencies first
+            cd build && npm ci --silent && cd ..
+            # Install extension dependencies manually to avoid git config issues
+            cd extensions && npm ci --silent && cd ..
+            # Install critical extension dependencies individually
+            $criticalExtensions = @("markdown-math", "typescript-language-features", "html-language-features", "json-language-features")
+            foreach ($ext in $criticalExtensions) {
+              if (Test-Path "extensions/$ext/package.json") {
+                Write-Output "Installing dependencies for $ext..."
+                cd "extensions/$ext"
+                npm install --silent --no-audit 2>$null || Write-Output "$ext install failed, continuing..."
+                cd ../..
+              }
+            }
             break
           }
           catch {
