@@ -81,12 +81,8 @@ jobs:
           try {
             # Install dependencies while ignoring the preinstall script
             npm ci --ignore-scripts
-            # Install build dependencies
-            cd build
-            npm ci
-            cd ..
-            # Only rebuild packages that actually need native compilation
-            npm run postinstall --if-present
+            # Manually run postinstall to install extension dependencies
+            node build/npm/postinstall.js
             break
           }
           catch {
