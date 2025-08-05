@@ -78,23 +78,26 @@ jobs:
         npm cache clean --force
         if (Test-Path "node_modules") { Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue }
         
-        # Try running npm install with verbose output to see what's failing
+        # Try running npm ci without scripts, then manually run postinstall
         Write-Output "Node version: $(node --version)"
         Write-Output "NPM version: $(npm --version)"
         Write-Output "Current directory: $(Get-Location)"
-        Write-Output "Files in current directory:"
-        Get-ChildItem | Select-Object Name, Length | Format-Table
         
-        # Retry npm install up to 3 times to handle Windows file locking
+        # Retry npm ci up to 3 times to handle Windows file locking
         $attempt = 1
         $maxAttempts = 3
         do {
           Write-Output "Attempt $attempt of $maxAttempts"
           try {
-            # Run npm install with detailed output to diagnose issues
-            Write-Output "Running npm install..."
-            npm install --verbose
-            Write-Output "npm install completed successfully"
+            # Install main dependencies without running scripts
+            Write-Output "Running npm ci --ignore-scripts..."
+            npm ci --ignore-scripts
+            
+            # Manually run postinstall script
+            Write-Output "Running postinstall script manually..."
+            node build/npm/postinstall.js
+            
+            Write-Output "Dependencies installed successfully"
             break
           }
           catch {
@@ -102,7 +105,7 @@ jobs:
             if ($attempt -eq $maxAttempts) {
               throw "npm install failed after $maxAttempts attempts: $_"
             }
-            Write-Output "Retrying npm install in 10 seconds..."
+            Write-Output "Retrying in 10 seconds..."
             Start-Sleep -Seconds 10
             $attempt++
           }
