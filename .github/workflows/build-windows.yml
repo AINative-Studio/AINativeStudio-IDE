@@ -11,8 +11,6 @@ on:
 jobs:
   build-windows:
     runs-on: self-hosted
-    env:
-      VSCODE_SKIP_NODE_VERSION_CHECK: "1"
     
     steps:
     - name: Checkout repository
@@ -31,6 +29,14 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
+    
+    - name: Install Windows build tools
+      run: |
+        # Install Visual Studio Build Tools and other dependencies
+        Write-Output "Installing build tools..."
+        npm install -g windows-build-tools --vs2015
+        Write-Output "Build tools installation completed"
+      shell: powershell
     
     - name: Configure Windows for build
       run: |
@@ -78,10 +84,15 @@ jobs:
         npm cache clean --force
         if (Test-Path "node_modules") { Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue }
         
-        # Try running npm ci without scripts, then manually run postinstall
+        # Install dependencies with proper build tools
         Write-Output "Node version: $(node --version)"
         Write-Output "NPM version: $(npm --version)"
+        Write-Output "Python version: $(python --version)"
         Write-Output "Current directory: $(Get-Location)"
+        
+        # Set environment variables for Windows build
+        $env:npm_config_msvs_version = "2015"
+        $env:npm_config_python = "python"
         
         # Retry npm ci up to 3 times to handle Windows file locking
         $attempt = 1
@@ -89,21 +100,17 @@ jobs:
         do {
           Write-Output "Attempt $attempt of $maxAttempts"
           try {
-            # Install main dependencies without running scripts
-            Write-Output "Running npm ci --ignore-scripts..."
-            npm ci --ignore-scripts
-            
-            # Manually run postinstall script
-            Write-Output "Running postinstall script manually..."
-            node build/npm/postinstall.js
+            # Standard npm ci should work now with build tools installed
+            Write-Output "Running npm ci..."
+            npm ci
             
             Write-Output "Dependencies installed successfully"
             break
           }
           catch {
-            Write-Output "npm install failed with error: $_"
+            Write-Output "npm ci failed with error: $_"
             if ($attempt -eq $maxAttempts) {
-              throw "npm install failed after $maxAttempts attempts: $_"
+              throw "npm ci failed after $maxAttempts attempts: $_"
             }
             Write-Output "Retrying in 10 seconds..."
             Start-Sleep -Seconds 10
