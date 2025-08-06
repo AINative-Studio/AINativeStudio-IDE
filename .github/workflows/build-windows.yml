@@ -10,7 +10,10 @@ on:
 
 jobs:
   build-windows:
-    runs-on: self-hosted
+    strategy:
+      matrix:
+        runner: [self-hosted, windows-latest]
+    runs-on: ${{ matrix.runner }}
     env:
       VSCODE_SKIP_NODE_VERSION_CHECK: "1"
     
