@@ -80,15 +80,23 @@ jobs:
     - name: Install Node.js dependencies
       working-directory: ainative-studio
       run: |
-        Write-Output "Environment check:"
-        Write-Output "Node: $(node --version)"
-        Write-Output "NPM: $(npm --version)"
-        Write-Output "Python: $(python --version)"
+        Write-Host "=== Environment Check ===" -ForegroundColor Green
+        Write-Host "Node: $(node --version)" -ForegroundColor Yellow
+        Write-Host "NPM: $(npm --version)" -ForegroundColor Yellow
+        Write-Host "Python: $(python --version)" -ForegroundColor Yellow
+        Write-Host "Working Directory: $(Get-Location)" -ForegroundColor Yellow
         
-        Write-Output "Installing dependencies with full npm install..."
-        npm install --no-audit
+        Write-Host "=== Installing Dependencies ===" -ForegroundColor Green
+        Write-Host "Running: npm install --no-audit --verbose" -ForegroundColor Yellow
         
-        Write-Output "Dependencies installed successfully"
+        npm install --no-audit --verbose
+        
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "=== Dependencies Installed Successfully ===" -ForegroundColor Green
+        } else {
+          Write-Host "=== NPM Install Failed with exit code: $LASTEXITCODE ===" -ForegroundColor Red
+          exit $LASTEXITCODE
+        }
       shell: powershell
     
     - name: Build React components
