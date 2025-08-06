@@ -1,11 +1,12 @@
 name: Build Linux
 
 on:
-  push:
-    branches: [ main ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main ]
+  # Disabled to prevent GitHub-hosted runners from being triggered
+  # push:
+  #   branches: [ main ]
+  #   tags: [ 'v*' ]
+  # pull_request:
+  #   branches: [ main ]
   workflow_dispatch:
 
 jobs:

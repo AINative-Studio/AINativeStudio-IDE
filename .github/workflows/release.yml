@@ -1,8 +1,9 @@
 name: Release
 
 on:
-  push:
-    tags: [ 'v*' ]
+  # Disabled to prevent GitHub-hosted runners from being triggered
+  # push:
+  #   tags: [ 'v*' ]
   workflow_dispatch:
     inputs:
       tag:

@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-windows:
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows]
     env:
       VSCODE_SKIP_NODE_VERSION_CHECK: "1"
     
@@ -80,44 +80,25 @@ jobs:
     - name: Install Node.js dependencies
       working-directory: ainative-studio
       run: |
-        # Clear npm cache and remove node_modules if it exists to avoid file locking issues
-        npm cache clean --force
-        if (Test-Path "node_modules") { Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue }
+        Write-Output "Environment check:"
+        Write-Output "Node: $(node --version)"
+        Write-Output "NPM: $(npm --version)"
+        Write-Output "Python: $(python --version)"
         
-        # Check build environment
-        Write-Output "Node version: $(node --version)"
-        Write-Output "NPM version: $(npm --version)"
-        Write-Output "Python version: $(python --version)"
-        Write-Output "MSBuild available: $(if (Get-Command msbuild -ErrorAction SilentlyContinue) { 'Yes' } else { 'No' })"
-        Write-Output "Current directory: $(Get-Location)"
+        Write-Output "Installing dependencies..."
+        npm ci --ignore-scripts --no-audit --prefer-offline
         
-        # Retry npm ci up to 3 times to handle Windows file locking
-        $attempt = 1
-        $maxAttempts = 3
-        do {
-          Write-Output "Attempt $attempt of $maxAttempts"
-          try {
-            # Use ignore-scripts to avoid preinstall/postinstall issues
-            Write-Output "Running npm ci --ignore-scripts..."
-            npm ci --ignore-scripts
-            
-            # Run postinstall manually if needed
-            Write-Output "Running postinstall script..."
-            node build/npm/postinstall.js
-            
-            Write-Output "Dependencies installed successfully"
-            break
-          }
-          catch {
-            Write-Output "npm ci failed with error: $_"
-            if ($attempt -eq $maxAttempts) {
-              throw "npm ci failed after $maxAttempts attempts: $_"
-            }
-            Write-Output "Retrying in 10 seconds..."
-            Start-Sleep -Seconds 10
-            $attempt++
-          }
-        } while ($attempt -le $maxAttempts)
+        Write-Output "Installing build dependencies..."
+        cd build
+        npm ci --silent --no-audit
+        cd ..
+        
+        Write-Output "Installing extension dependencies..."
+        cd extensions  
+        npm ci --silent --no-audit
+        cd ..
+        
+        Write-Output "Dependencies installed successfully"
       shell: powershell
     
     - name: Build React components
