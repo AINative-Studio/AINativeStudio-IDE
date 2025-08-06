@@ -85,18 +85,8 @@ jobs:
         Write-Output "NPM: $(npm --version)"
         Write-Output "Python: $(python --version)"
         
-        Write-Output "Installing dependencies..."
-        npm ci --ignore-scripts --no-audit --prefer-offline
-        
-        Write-Output "Installing build dependencies..."
-        cd build
-        npm ci --silent --no-audit
-        cd ..
-        
-        Write-Output "Installing extension dependencies..."
-        cd extensions  
-        npm ci --silent --no-audit
-        cd ..
+        Write-Output "Installing dependencies with full npm install..."
+        npm install --no-audit
         
         Write-Output "Dependencies installed successfully"
       shell: powershell
