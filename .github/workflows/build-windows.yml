@@ -11,6 +11,7 @@ on:
 jobs:
   build-windows:
     strategy:
+      fail-fast: false  # Don't cancel other jobs if one fails
       matrix:
         runner: [self-hosted, windows-latest]
     runs-on: ${{ matrix.runner }}
