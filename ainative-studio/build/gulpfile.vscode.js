@@ -486,9 +486,10 @@ BUILD_TARGETS.forEach(buildTarget => {
 	const arch = buildTarget.arch;
 	const opts = buildTarget.opts;
 
-	const [vscode, vscodeMin] = ['', 'min'].map(minified => {
-		const sourceFolderName = `out-vscode${dashed(minified)}`;
-		const destinationFolderName = `VSCode${dashed(platform)}${dashed(arch)}`;
+        const [vscode, vscodeMin] = ['', 'min'].map(minified => {
+                const defaultSourceFolderName = `out-vscode${dashed(minified)}`;
+                const sourceFolderName = fs.existsSync(defaultSourceFolderName) ? defaultSourceFolderName : 'out';
+                const destinationFolderName = `VSCode${dashed(platform)}${dashed(arch)}`;
 
 		const tasks = [
 			compileNativeExtensionsBuildTask,
