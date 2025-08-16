@@ -54,20 +54,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify build output
+        working-directory: ainative-studio
         shell: pwsh
         run: |
           if (-not (Test-Path VSCode-win32-x64)) {
             Write-Error "Build output directory not found!"
             exit 1
           }
-        working-directory: .
       - name: Create archive
-        working-directory: VSCode-win32-x64
+        working-directory: ainative-studio/VSCode-win32-x64
         run: 7z a -tzip ../ainative-studio-win32-x64.zip .
         shell: cmd
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-win32-x64
-          path: ainative-studio-win32-x64.zip
+          path: ainative-studio/ainative-studio-win32-x64.zip
           retention-days: 7
