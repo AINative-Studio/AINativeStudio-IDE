@@ -23,6 +23,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'ainative-studio/package-lock.json'
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libkrb5-dev
       - name: Install build dependencies
         working-directory: ainative-studio/build
         run: |
