@@ -1,0 +1,73 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'ainative-studio/package-lock.json'
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
+        run: |
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci in build/ failed too many times"
+          exit /b 1
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci failed too many times"
+          exit /b 1
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build
+        working-directory: ainative-studio
+        run: |
+          npm run buildreact
+          npm run gulp vscode-win32-x64-min-ci
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path VSCode-win32-x64)) {
+            Write-Error "Build output directory not found!"
+            exit 1
+          }
+        working-directory: ainative-studio
+      - name: Create archive
+        working-directory: ainative-studio/VSCode-win32-x64
+        run: 7z a -tzip ../../ainative-studio-win32-x64.zip .
+        shell: cmd
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-studio-win32-x64
+          path: ainative-studio/ainative-studio-win32-x64.zip
+          retention-days: 7
