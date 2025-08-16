@@ -45,6 +45,8 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Find gssapi.h for debugging
+        run: find /usr -name "gssapi.h"
       - name: Install dependencies
         working-directory: ainative-studio
         run: |
