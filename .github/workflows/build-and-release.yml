@@ -56,6 +56,8 @@ jobs:
         working-directory: ainative-studio
         run: npm ci
         timeout-minutes: 15
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build React components
         working-directory: ainative-studio
         run: npm run buildreact
@@ -127,6 +129,8 @@ jobs:
         working-directory: ainative-studio
         run: npm ci
         timeout-minutes: 20
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build React components
         working-directory: ainative-studio
         run: npm run buildreact
@@ -161,6 +165,7 @@ jobs:
 
   build-macos:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-14
@@ -190,8 +195,10 @@ jobs:
           python-version: '3.11'
       - name: Install Node.js dependencies
         working-directory: ainative-studio
-        run: npm install
+        run: npm ci
         timeout-minutes: 20
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build React components
         working-directory: ainative-studio
         run: npm run buildreact
