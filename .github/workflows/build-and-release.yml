@@ -71,6 +71,8 @@ jobs:
         run: npm run gulp vscode-linux-x64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: List workspace files for debugging
+        run: ls -R
       - name: Verify build output
         run: |
           if [ ! -d ../VSCode-linux-x64 ]; then
@@ -145,6 +147,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         timeout-minutes: 20
+      - name: List workspace files for debugging
+        run: Get-ChildItem -Recurse
       - name: Verify build output
         shell: pwsh
         run: |
@@ -212,6 +216,8 @@ jobs:
         run: npm run gulp vscode-darwin-${{ matrix.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: List workspace files for debugging
+        run: ls -R
       - name: Verify build output
         run: |
           if [ ! -d ../VSCode-darwin-${{ matrix.arch }} ]; then
