@@ -69,6 +69,12 @@ jobs:
         run: npm run gulp vscode-linux-x64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify build output
+        run: |
+          if [ ! -d ../VSCode-linux-x64 ]; then
+            echo "::error::Build output directory not found!"
+            exit 1
+          fi
       - name: Create archive
         run: |
           cd ../VSCode-linux-x64
@@ -135,6 +141,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         timeout-minutes: 20
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ../VSCode-win32-x64)) {
+            Write-Error "Build output directory not found!"
+            exit 1
+          }
       - name: Create archive
         run: 7z a -tzip ../ainative-studio-win32-x64.zip ./*
         working-directory: ../VSCode-win32-x64
@@ -177,7 +190,7 @@ jobs:
           python-version: '3.11'
       - name: Install Node.js dependencies
         working-directory: ainative-studio
-        run: npm ci
+        run: npm install
         timeout-minutes: 20
       - name: Build React components
         working-directory: ainative-studio
@@ -192,6 +205,12 @@ jobs:
         run: npm run gulp vscode-darwin-${{ matrix.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify build output
+        run: |
+          if [ ! -d ../VSCode-darwin-${{ matrix.arch }} ]; then
+            echo "::error::Build output directory not found!"
+            exit 1
+          fi
       - name: Create archive
         run: |
           cd ../VSCode-darwin-${{ matrix.arch }}
