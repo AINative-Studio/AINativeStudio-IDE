@@ -57,11 +57,16 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build
+      - name: Build and minify client
         working-directory: ainative-studio
         run: |
           npm run buildreact
-          npm run gulp vscode-darwin-${{ matrix.arch }}-min-ci
+          npm run gulp vscode-darwin-${{ matrix.arch }}-min
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Package
+        working-directory: ainative-studio
+        run: npm run gulp vscode-darwin-${{ matrix.arch }}-min-ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify build output
