@@ -197,6 +197,7 @@ steps:
   - ${{ if ne(parameters.VSCODE_QUALITY, 'oss') }}:
     - script: |
         set -e
+        npm run gulp compile
         npm run gulp vscode-linux-$(VSCODE_ARCH)-min-ci
         ARCHIVE_PATH=".build/linux/client/code-${{ parameters.VSCODE_QUALITY }}-$(VSCODE_ARCH)-$(date +%s).tar.gz"
         mkdir -p $(dirname $ARCHIVE_PATH)
