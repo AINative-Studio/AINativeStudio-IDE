@@ -1,0 +1,167 @@
+name: Release
+
+on:
+  # Disabled to prevent GitHub-hosted runners from being triggered
+  # push:
+  #   tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        type: string
+
+jobs:
+  build-all:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+            workflow: build-linux.yml
+          - os: windows-2022
+            platform: win32
+            arch: x64
+            workflow: build-windows.yml
+          - os: macos-14
+            platform: darwin
+            arch: arm64
+            workflow: build-macos.yml
+          - os: macos-13
+            platform: darwin
+            arch: x64
+            workflow: build-macos.yml
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: ${{ github.event.inputs.tag || github.ref }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'ainative-studio/package-lock.json'
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies (Linux)
+      if: matrix.platform == 'linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          pkg-config \
+          libx11-dev \
+          libxkbfile-dev \
+          libsecret-1-dev \
+          libnotify-dev \
+          libasound2-dev \
+          libxtst6 \
+          xvfb \
+          rpm \
+          libkrb5-dev \
+          libgssapi-krb5-2
+
+    - name: Cache Node modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ainative-studio/node_modules
+          ~/.npm
+        key: ${{ runner.os }}-${{ matrix.arch }}-node-${{ hashFiles('ainative-studio/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.arch }}-node-
+          ${{ runner.os }}-node-
+
+    - name: Cache TypeScript build
+      uses: actions/cache@v4
+      with:
+        path: |
+          ainative-studio/out
+          ainative-studio/out-build
+        key: ${{ runner.os }}-${{ matrix.arch }}-typescript-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.arch }}-typescript-
+          ${{ runner.os }}-typescript-
+
+    - name: Install Node.js dependencies
+      working-directory: ainative-studio
+      run: npm ci
+
+    - name: Build React components
+      working-directory: ainative-studio
+      run: npm run buildreact
+
+    - name: Compile TypeScript
+      working-directory: ainative-studio
+      run: npm run compile
+
+    - name: Build package
+      working-directory: ainative-studio
+      run: npm run gulp vscode-${{ matrix.platform }}-${{ matrix.arch }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create archive (Linux/macOS)
+      if: matrix.platform != 'win32'
+      run: |
+        cd ../VSCode-${{ matrix.platform }}-${{ matrix.arch }}
+        tar -czf ../ainative-studio-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz *
+
+    - name: Create archive (Windows)
+      if: matrix.platform == 'win32'
+      run: |
+        cd ../VSCode-${{ matrix.platform }}-${{ matrix.arch }}
+        Compress-Archive -Path * -DestinationPath ../ainative-studio-${{ matrix.platform }}-${{ matrix.arch }}.zip
+      shell: powershell
+
+    - name: Upload artifact (Linux/macOS)
+      if: matrix.platform != 'win32'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ainative-studio-${{ matrix.platform }}-${{ matrix.arch }}
+        path: ../ainative-studio-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
+        retention-days: 7
+
+    - name: Upload artifact (Windows)
+      if: matrix.platform == 'win32'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ainative-studio-${{ matrix.platform }}-${{ matrix.arch }}
+        path: ../ainative-studio-${{ matrix.platform }}-${{ matrix.arch }}.zip
+        retention-days: 7
+
+  create-release:
+    needs: build-all
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ./artifacts/ainative-studio-linux-x64/*.tar.gz
+          ./artifacts/ainative-studio-win32-x64/*.zip
+          ./artifacts/ainative-studio-darwin-arm64/*.tar.gz
+          ./artifacts/ainative-studio-darwin-x64/*.tar.gz
+        draft: false
+        prerelease: contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')
+        generate_release_notes: true
+        tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
