@@ -16,12 +16,12 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Configure Git
         run: |
           git config --global user.email "action@github.com"
@@ -32,72 +32,62 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'ainative-studio/package-lock.json'
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install system dependencies
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            pkg-config \
-            libx11-dev \
-            libxkbfile-dev \
-            libsecret-1-dev \
-            libnotify-dev \
-            libasound2-dev \
-            libxtst6 \
-            xvfb \
-            rpm \
-            libkrb5-dev \
-            libgssapi-krb5-2
-      - name: Install Node.js dependencies
-        working-directory: ainative-studio
-        run: npm ci
-        timeout-minutes: 15
+          for i in {1..5}; do # try 5 times
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci in build/ failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci in build/ failed $i, trying again..."
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build React components
+      - name: Install dependencies
         working-directory: ainative-studio
-        run: npm run buildreact
-      - name: Compile TypeScript
-        working-directory: ainative-studio
-        run: npm run compile
-      - name: Tests temporarily disabled
-        run: echo "Tests are temporarily disabled on all platforms due to hangs and event listener leaks."
-      - name: Build package
-        working-directory: ainative-studio
-        run: npm run gulp vscode-linux-x64
+        run: |
+          for i in {1..5}; do # try 5 times
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci failed $i, trying again..."
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: List workspace files for debugging
-        run: ls -R
+      - name: Build
+        working-directory: ainative-studio
+        run: npm run gulp vscode-linux-x64-min-ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify build output
         run: |
-          if [ ! -d ../VSCode-linux-x64 ]; then
+          if [ ! -d "VSCode-linux-x64" ]; then
             echo "::error::Build output directory not found!"
             exit 1
           fi
+        working-directory: ainative-studio
       - name: Create archive
-        run: |
-          cd ../VSCode-linux-x64
-          tar -czf ../ainative-studio-linux-x64.tar.gz *
+        working-directory: ainative-studio/VSCode-linux-x64
+        run: tar -czf ../../ainative-studio-linux-x64.tar.gz .
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-linux-x64
-          path: ../ainative-studio-linux-x64.tar.gz
+          path: ainative-studio/ainative-studio-linux-x64.tar.gz
           retention-days: 7
 
   build-windows:
     runs-on: windows-2022
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Configure Git
         run: |
           git config --global user.email "action@github.com"
@@ -108,63 +98,50 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'ainative-studio/package-lock.json'
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
-      - name: Setup Visual Studio environment
-        uses: ilammy/msvc-dev-cmd@v1
-      - name: Configure Windows for build
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
         run: |
-          try {
-            Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE" -ErrorAction SilentlyContinue
-          }
-          catch {
-            Write-Output "Could not add Windows Defender exclusion (may require admin rights)"
-          }
-          npm config set cache "C:\\npm-cache" --global
-          npm config set prefix "C:\\npm-prefix" --global
-        shell: powershell
-      - name: Install Node.js dependencies
-        working-directory: ainative-studio
-        run: npm ci
-        timeout-minutes: 20
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci in build/ failed too many times"
+          exit /b 1
+        shell: cmd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build React components
+      - name: Install dependencies
         working-directory: ainative-studio
-        run: npm run buildreact
-      - name: Compile TypeScript
-        working-directory: ainative-studio
-        run: npm run compile
-      - name: Tests temporarily disabled
-        run: echo "Tests are temporarily disabled on all platforms due to hangs and event listener leaks."
-      - name: Build package
-        working-directory: ainative-studio
-        run: npm run gulp vscode-win32-x64
+        run: |
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci failed too many times"
+          exit /b 1
+        shell: cmd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        timeout-minutes: 20
-      - name: List workspace files for debugging
-        run: Get-ChildItem -Recurse
+      - name: Build
+        working-directory: ainative-studio
+        run: npm run gulp vscode-win32-x64-min-ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify build output
         shell: pwsh
         run: |
-          if (-not (Test-Path ../VSCode-win32-x64)) {
+          if (-not (Test-Path VSCode-win32-x64)) {
             Write-Error "Build output directory not found!"
             exit 1
           }
+        working-directory: ainative-studio
       - name: Create archive
-        run: 7z a -tzip ../ainative-studio-win32-x64.zip ./*
-        working-directory: ../VSCode-win32-x64
+        working-directory: ainative-studio/VSCode-win32-x64
+        run: 7z a -tzip ../../ainative-studio-win32-x64.zip .
         shell: cmd
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-win32-x64
-          path: ../ainative-studio-win32-x64.zip
+          path: ainative-studio/ainative-studio-win32-x64.zip
           retention-days: 7
 
   build-macos:
@@ -177,12 +154,12 @@ jobs:
           - os: macos-13
             arch: x64
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Configure Git
         run: |
           git config --global user.email "action@github.com"
@@ -193,46 +170,52 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'ainative-studio/package-lock.json'
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install Node.js dependencies
-        working-directory: ainative-studio
-        run: npm ci
-        timeout-minutes: 20
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
+        run: |
+          for i in {1..5}; do # try 5 times
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci in build/ failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci in build/ failed $i, trying again..."
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build React components
+      - name: Install dependencies
         working-directory: ainative-studio
-        run: npm run buildreact
-      - name: Compile TypeScript
-        working-directory: ainative-studio
-        run: npm run compile
-      - name: Tests temporarily disabled
-        run: echo "Tests are temporarily disabled on all platforms due to hangs and event listener leaks."
-      - name: Build package
-        working-directory: ainative-studio
-        run: npm run gulp vscode-darwin-${{ matrix.arch }}
+        run: |
+          for i in {1..5}; do # try 5 times
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci failed $i, trying again..."
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: List workspace files for debugging
-        run: ls -R
+      - name: Build
+        working-directory: ainative-studio
+        run: npm run gulp vscode-darwin-${{ matrix.arch }}-min-ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify build output
         run: |
-          if [ ! -d ../VSCode-darwin-${{ matrix.arch }} ]; then
+          if [ ! -d "VSCode-darwin-${{ matrix.arch }}" ]; then
             echo "::error::Build output directory not found!"
             exit 1
           fi
+        working-directory: ainative-studio
       - name: Create archive
-        run: |
-          cd ../VSCode-darwin-${{ matrix.arch }}
-          tar -czf ../ainative-studio-darwin-${{ matrix.arch }}.tar.gz *
+        working-directory: ainative-studio/VSCode-darwin-${{ matrix.arch }}
+        run: tar -czf ../../ainative-studio-darwin-${{ matrix.arch }}.tar.gz .
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-darwin-${{ matrix.arch }}
-          path: ../ainative-studio-darwin-${{ matrix.arch }}.tar.gz
+          path: ainative-studio/ainative-studio-darwin-${{ matrix.arch }}.tar.gz
           retention-days: 7
 
   create-release:
@@ -244,8 +227,6 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: ./artifacts
-    - name: List downloaded artifacts
-      run: find ./artifacts -type f
     - name: Create Release
       id: create_release
       uses: softprops/action-gh-release@v1
