@@ -278,11 +278,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gulp-
       
-      - name: Minify and package
+      - name: Compile and build
         working-directory: ainative-studio
         run: |
+          npm run gulp compile-build-without-mangling
           npm run gulp minify-vscode
-          npm run gulp vscode-linux-x64-min-ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max-old-space-size=16384"
+          UV_THREADPOOL_SIZE: 128
+      
+      - name: Package
+        working-directory: ainative-studio
+        run: npm run gulp vscode-linux-x64-min-ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: "--max-old-space-size=16384"
