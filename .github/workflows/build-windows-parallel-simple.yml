@@ -90,7 +90,8 @@ jobs:
         shell: cmd
         run: |
           start /b npm run gulp compile-extension:configuration-editing
-          start /b npm run gulp compile-extension:css-language-features
+          start /b npm run gulp compile-extension:css-language-features-client
+          start /b npm run gulp compile-extension:css-language-features-server
           start /b npm run gulp compile-extension:typescript-language-features
           start /b npm run gulp compile-extension:git
           timeout /t 60 /nobreak >nul
@@ -127,8 +128,8 @@ jobs:
         run: |
           # Use PowerShell for better parallel execution control
           $extensions = @(
-            "gulp", "html-language-features", "ipynb", "jake",
-            "json-language-features", "markdown-language-features", "markdown-math", "media-preview",
+            "gulp", "html-language-features-client", "html-language-features-server", "ipynb", "jake",
+            "json-language-features-client", "json-language-features-server", "markdown-language-features", "markdown-math", "media-preview",
             "merge-conflict", "terminal-suggest", "microsoft-authentication", "notebook-renderers",
             "npm", "php-language-features", "references-view", "search-result",
             "simple-browser", "tunnel-forwarding"
