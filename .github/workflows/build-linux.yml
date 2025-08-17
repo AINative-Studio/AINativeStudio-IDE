@@ -66,7 +66,7 @@ jobs:
         working-directory: ainative-studio
         run: |
           npm run buildreact
-          npm run gulp compile-build-with-mangling
+          npm run gulp compile-build-without-mangling
           npm run gulp minify-vscode
           npm run gulp vscode-linux-x64-min-ci
         env:
