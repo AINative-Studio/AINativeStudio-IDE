@@ -168,13 +168,28 @@ jobs:
         run: |
           if [ ! -d "VSCode-linux-x64" ]; then
             echo "::error::Build output directory not found!"
+            echo "Contents of current directory:"
+            ls -la
+            echo "Contents of parent directory:"
+            ls -la ../
+            exit 1
+          fi
+      
+      - name: Create archive
+        run: |
+          if [ -d "VSCode-linux-x64" ]; then
+            cd VSCode-linux-x64
+            tar -czf ../ainative-studio-linux-x64.tar.gz .
+            cd ..
+          elif [ -d "../VSCode-linux-x64" ]; then
+            cd ../VSCode-linux-x64
+            tar -czf ainative-studio-linux-x64.tar.gz .
+            mv ainative-studio-linux-x64.tar.gz ../ainative-studio/
+          else
+            echo "::error::VSCode-linux-x64 directory not found in current or parent directory!"
             exit 1
           fi
         working-directory: ainative-studio
-      
-      - name: Create archive
-        working-directory: ainative-studio/VSCode-linux-x64
-        run: tar -czf ../../ainative-studio-linux-x64.tar.gz .
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4

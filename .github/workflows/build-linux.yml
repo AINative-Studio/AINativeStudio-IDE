@@ -82,14 +82,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify build output
         run: |
-          if [ ! -d "VSCode-linux-x64" ]; then
+          if [ ! -d "VSCode-linux-x64" ] && [ ! -d "../VSCode-linux-x64" ]; then
             echo "::error::Build output directory not found!"
+            echo "Contents of ainative-studio directory:"
+            ls -la
+            echo "Contents of parent directory:"
+            ls -la ../
             exit 1
           fi
         working-directory: ainative-studio
       - name: Create archive
-        working-directory: ainative-studio/VSCode-linux-x64
-        run: tar -czf ../../ainative-studio-linux-x64.tar.gz .
+        run: |
+          if [ -d "VSCode-linux-x64" ]; then
+            cd VSCode-linux-x64
+            tar -czf ../ainative-studio-linux-x64.tar.gz .
+          elif [ -d "../VSCode-linux-x64" ]; then
+            cd ../VSCode-linux-x64
+            tar -czf ainative-studio-linux-x64.tar.gz .
+            mv ainative-studio-linux-x64.tar.gz ainative-studio/
+          fi
+        working-directory: ainative-studio
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
