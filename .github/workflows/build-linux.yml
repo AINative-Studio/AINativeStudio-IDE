@@ -66,6 +66,8 @@ jobs:
         working-directory: ainative-studio
         run: |
           npm run buildreact
+          npm run compile
+          npm run gulp minify-vscode
           npm run gulp vscode-linux-x64-min-ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

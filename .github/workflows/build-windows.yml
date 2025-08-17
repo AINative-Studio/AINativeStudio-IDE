@@ -58,6 +58,8 @@ jobs:
         working-directory: ainative-studio
         run: |
           npm run buildreact
+          npm run compile
+          npm run gulp minify-vscode
           npm run gulp vscode-win32-x64-min-ci
         shell: cmd
         env:
