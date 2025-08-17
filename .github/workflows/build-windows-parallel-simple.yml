@@ -1,0 +1,186 @@
+name: Build Windows (Parallel Simple)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            ainative-studio/package-lock.json
+            ainative-studio/build/package-lock.json
+      
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
+        run: |
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci in build/ failed too many times"
+          exit /b 1
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci failed too many times"
+          exit /b 1
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Cache node build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ainative-studio/node_modules/.cache
+            ainative-studio/extensions/*/node_modules/.cache
+          key: node-cache-${{ runner.os }}-${{ hashFiles('ainative-studio/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-
+      
+      - name: Cache gulp cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.gulp-cache
+          key: ${{ runner.os }}-gulp-${{ hashFiles('ainative-studio/package-lock.json', 'ainative-studio/build/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gulp-
+      
+      - name: Build React components
+        working-directory: ainative-studio
+        run: npm run buildreact
+        shell: cmd
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+      
+      - name: Compile TypeScript
+        working-directory: ainative-studio
+        run: npm run gulp compile-build-without-mangling
+        shell: cmd
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+          UV_THREADPOOL_SIZE: 64
+      
+      - name: Build extensions in parallel (batch 1)
+        working-directory: ainative-studio
+        shell: cmd
+        run: |
+          start /b npm run gulp compile-extension:configuration-editing
+          start /b npm run gulp compile-extension:css-language-features
+          start /b npm run gulp compile-extension:typescript-language-features
+          start /b npm run gulp compile-extension:git
+          timeout /t 60 /nobreak >nul
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
+      
+      - name: Build extensions in parallel (batch 2)
+        working-directory: ainative-studio
+        shell: cmd
+        run: |
+          start /b npm run gulp compile-extension:debug-auto-launch
+          start /b npm run gulp compile-extension:debug-server-ready
+          start /b npm run gulp compile-extension:emmet
+          start /b npm run gulp compile-extension:extension-editing
+          timeout /t 60 /nobreak >nul
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
+      
+      - name: Build extensions in parallel (batch 3)
+        working-directory: ainative-studio
+        shell: cmd
+        run: |
+          start /b npm run gulp compile-extension:git-base
+          start /b npm run gulp compile-extension:github
+          start /b npm run gulp compile-extension:github-authentication
+          start /b npm run gulp compile-extension:grunt
+          timeout /t 60 /nobreak >nul
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
+      
+      - name: Build remaining extensions
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          # Use PowerShell for better parallel execution control
+          $extensions = @(
+            "gulp", "html-language-features", "ipynb", "jake",
+            "json-language-features", "markdown-language-features", "markdown-math", "media-preview",
+            "merge-conflict", "terminal-suggest", "microsoft-authentication", "notebook-renderers",
+            "npm", "php-language-features", "references-view", "search-result",
+            "simple-browser", "tunnel-forwarding"
+          )
+          
+          foreach ($ext in $extensions) {
+            Write-Host "Building extension: $ext"
+            npm run gulp "compile-extension:$ext"
+          }
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
+      
+      - name: Minify and package
+        working-directory: ainative-studio
+        run: |
+          npm run gulp minify-vscode
+          npm run gulp vscode-win32-x64-min-ci
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max-old-space-size=8192"
+          UV_THREADPOOL_SIZE: 64
+      
+      - name: Verify build output
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          if (-not (Test-Path VSCode-win32-x64) -and -not (Test-Path ../VSCode-win32-x64)) {
+            Write-Error "Build output directory not found!"
+            Write-Host "Contents of ainative-studio directory:"
+            Get-ChildItem -Force
+            Write-Host "Contents of parent directory:"
+            Get-ChildItem -Path ../ -Force
+            exit 1
+          }
+      
+      - name: Create archive
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          if (Test-Path VSCode-win32-x64) {
+            Set-Location VSCode-win32-x64
+            7z a -tzip ../ainative-studio-win32-x64.zip .
+          } elseif (Test-Path ../VSCode-win32-x64) {
+            Set-Location ../VSCode-win32-x64
+            7z a -tzip ainative-studio-win32-x64.zip .
+            Move-Item ainative-studio-win32-x64.zip ../ainative-studio/
+          }
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-studio-win32-x64
+          path: ainative-studio/ainative-studio-win32-x64.zip
+          retention-days: 7
