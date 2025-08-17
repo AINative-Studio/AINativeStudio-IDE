@@ -1,0 +1,304 @@
+name: Build Windows (Parallel)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  # Shared dependency installation
+  setup:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+      
+      - name: Generate cache key
+        id: cache-key
+        shell: pwsh
+        run: |
+          $key = "deps-${{ runner.os }}-${{ hashFiles('ainative-studio/package-lock.json', 'ainative-studio/build/package-lock.json') }}"
+          echo "key=$key" >> $env:GITHUB_OUTPUT
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            ainative-studio/package-lock.json
+            ainative-studio/build/package-lock.json
+      
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
+        run: |
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci in build/ failed too many times"
+          exit /b 1
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci failed too many times"
+          exit /b 1
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload node_modules
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-modules-windows
+          path: |
+            ainative-studio/node_modules
+            ainative-studio/build/node_modules
+          retention-days: 1
+
+  # Parallel compilation jobs
+  compile-typescript:
+    runs-on: windows-2022
+    needs: setup
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: node-modules-windows
+          path: ainative-studio
+      
+      - name: Cache TypeScript build outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ainative-studio/out
+            ainative-studio/node_modules/.cache
+          key: build-${{ runner.os }}-${{ hashFiles('ainative-studio/src/**/*.ts', 'ainative-studio/package-lock.json') }}
+          restore-keys: |
+            build-${{ runner.os }}-
+      
+      - name: Compile TypeScript
+        working-directory: ainative-studio
+        run: npm run gulp compile-build-without-mangling
+        shell: cmd
+        env:
+          NODE_OPTIONS: "--max-old-space-size=16384"
+          UV_THREADPOOL_SIZE: 128
+      
+      - name: Upload TypeScript artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-build-windows
+          path: ainative-studio/out
+          retention-days: 1
+
+  compile-react:
+    runs-on: windows-2022
+    needs: setup
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: node-modules-windows
+          path: ainative-studio
+      
+      - name: Build React components
+        working-directory: ainative-studio
+        run: npm run buildreact
+        shell: cmd
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+      
+      - name: Upload React artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-build-windows
+          path: ainative-studio/src/vs/workbench/contrib/void/browser/react/dist
+          retention-days: 1
+
+  compile-extensions:
+    runs-on: windows-2022
+    needs: setup
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        extension-group: [
+          "configuration-editing,css-language-features,debug-auto-launch,debug-server-ready,emmet",
+          "extension-editing,git,git-base,github,github-authentication",
+          "grunt,gulp,html-language-features,ipynb,jake",
+          "json-language-features,markdown-language-features,markdown-math,media-preview,merge-conflict",
+          "terminal-suggest,microsoft-authentication,notebook-renderers,npm,php-language-features",
+          "references-view,search-result,simple-browser,tunnel-forwarding,typescript-language-features"
+        ]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: node-modules-windows
+          path: ainative-studio
+      
+      - name: Cache extension builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            ainative-studio/extensions/*/out
+            ainative-studio/extensions/*/node_modules/.cache
+          key: extensions-${{ runner.os }}-${{ matrix.extension-group }}-${{ hashFiles('ainative-studio/extensions/**/package-lock.json') }}
+          restore-keys: |
+            extensions-${{ runner.os }}-${{ matrix.extension-group }}-
+            extensions-${{ runner.os }}-
+      
+      - name: Compile extension group
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          $extensions = "${{ matrix.extension-group }}".Split(',')
+          foreach ($ext in $extensions) {
+            Write-Host "Building extension: $ext"
+            try {
+              npm run gulp "compile-extension:$ext"
+            } catch {
+              Write-Warning "Failed to build extension: $ext"
+            }
+          }
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+      
+      - name: Upload extension artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extensions-${{ strategy.job-index }}-windows
+          path: |
+            ainative-studio/extensions/*/out
+            ainative-studio/extensions/*/package.json
+          retention-days: 1
+
+  minify-and-package:
+    runs-on: windows-2022
+    needs: [compile-typescript, compile-react, compile-extensions]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      
+      - name: Restore artifacts to correct locations
+        shell: pwsh
+        run: |
+          # Restore node_modules
+          Copy-Item -Path "./artifacts/node-modules-windows/*" -Destination "ainative-studio/" -Recurse -Force
+          
+          # Restore TypeScript build
+          New-Item -Path "ainative-studio/out" -ItemType Directory -Force
+          Copy-Item -Path "./artifacts/typescript-build-windows/*" -Destination "ainative-studio/out/" -Recurse -Force
+          
+          # Restore React build
+          New-Item -Path "ainative-studio/src/vs/workbench/contrib/void/browser/react/dist" -ItemType Directory -Force
+          Copy-Item -Path "./artifacts/react-build-windows/*" -Destination "ainative-studio/src/vs/workbench/contrib/void/browser/react/dist/" -Recurse -Force
+          
+          # Restore extensions
+          Get-ChildItem "./artifacts/extensions-*-windows" | ForEach-Object {
+            if (Test-Path $_.FullName) {
+              Copy-Item -Path "$($_.FullName)/*" -Destination "ainative-studio/" -Recurse -Force
+            }
+          }
+      
+      - name: Cache gulp cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.gulp-cache
+          key: ${{ runner.os }}-gulp-${{ hashFiles('ainative-studio/package-lock.json', 'ainative-studio/build/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gulp-
+      
+      - name: Build
+        working-directory: ainative-studio
+        run: |
+          npm run gulp minify-vscode
+          npm run gulp vscode-win32-x64-min-ci
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max-old-space-size=16384"
+          UV_THREADPOOL_SIZE: 128
+      
+      - name: Verify build output
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          if (-not (Test-Path VSCode-win32-x64)) {
+            Write-Error "Build output directory not found!"
+            exit 1
+          }
+      
+      - name: Create archive
+        working-directory: ainative-studio/VSCode-win32-x64
+        run: 7z a -tzip ../ainative-studio-win32-x64.zip .
+        shell: cmd
+      
+      - name: Upload final artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-studio-win32-x64
+          path: ainative-studio/ainative-studio-win32-x64.zip
+          retention-days: 7

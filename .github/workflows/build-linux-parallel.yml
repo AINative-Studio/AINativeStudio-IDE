@@ -1,0 +1,308 @@
+name: Build Linux (Parallel)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  # Shared dependency installation
+  setup:
+    runs-on: ubuntu-latest-4-cores
+    timeout-minutes: 20
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+      
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          echo "key=deps-${{ runner.os }}-${{ hashFiles('ainative-studio/package-lock.json', 'ainative-studio/build/package-lock.json') }}" >> $GITHUB_OUTPUT
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            ainative-studio/package-lock.json
+            ainative-studio/build/package-lock.json
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libkrb5-dev
+      
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
+        run: |
+          for i in {1..5}; do
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci in build/ failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci in build/ failed $i, trying again..."
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          for i in {1..5}; do
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci failed $i, trying again..."
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload node_modules
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-modules-linux
+          path: |
+            ainative-studio/node_modules
+            ainative-studio/build/node_modules
+          retention-days: 1
+
+  # Parallel compilation jobs
+  compile-typescript:
+    runs-on: ubuntu-latest-4-cores
+    needs: setup
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: node-modules-linux
+          path: ainative-studio
+      
+      - name: Cache TypeScript build outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ainative-studio/out
+            ainative-studio/node_modules/.cache
+          key: build-${{ runner.os }}-${{ hashFiles('ainative-studio/src/**/*.ts', 'ainative-studio/package-lock.json') }}
+          restore-keys: |
+            build-${{ runner.os }}-
+      
+      - name: Compile TypeScript
+        working-directory: ainative-studio
+        run: |
+          npm run gulp compile-build-without-mangling
+        env:
+          NODE_OPTIONS: "--max-old-space-size=16384"
+          UV_THREADPOOL_SIZE: 128
+      
+      - name: Upload TypeScript artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-build-linux
+          path: ainative-studio/out
+          retention-days: 1
+
+  compile-react:
+    runs-on: ubuntu-latest-4-cores
+    needs: setup
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: node-modules-linux
+          path: ainative-studio
+      
+      - name: Build React components
+        working-directory: ainative-studio
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+      
+      - name: Upload React artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-build-linux
+          path: ainative-studio/src/vs/workbench/contrib/void/browser/react/dist
+          retention-days: 1
+
+  compile-extensions:
+    runs-on: ubuntu-latest-4-cores
+    needs: setup
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        extension-group: [
+          "configuration-editing,css-language-features,debug-auto-launch,debug-server-ready,emmet",
+          "extension-editing,git,git-base,github,github-authentication",
+          "grunt,gulp,html-language-features,ipynb,jake",
+          "json-language-features,markdown-language-features,markdown-math,media-preview,merge-conflict",
+          "terminal-suggest,microsoft-authentication,notebook-renderers,npm,php-language-features",
+          "references-view,search-result,simple-browser,tunnel-forwarding,typescript-language-features",
+          "vscode-api-tests,vscode-colorize-tests,vscode-colorize-perf-tests,vscode-test-resolver",
+          "vscode-selfhost-test-provider,vscode-selfhost-import-aid"
+        ]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: node-modules-linux
+          path: ainative-studio
+      
+      - name: Cache extension builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            ainative-studio/extensions/*/out
+            ainative-studio/extensions/*/node_modules/.cache
+          key: extensions-${{ runner.os }}-${{ matrix.extension-group }}-${{ hashFiles('ainative-studio/extensions/**/package-lock.json') }}
+          restore-keys: |
+            extensions-${{ runner.os }}-${{ matrix.extension-group }}-
+            extensions-${{ runner.os }}-
+      
+      - name: Compile extension group
+        working-directory: ainative-studio
+        run: |
+          IFS=',' read -ra EXTENSIONS <<< "${{ matrix.extension-group }}"
+          for ext in "${EXTENSIONS[@]}"; do
+            echo "Building extension: $ext"
+            npm run gulp "compile-extension:$ext" || true
+          done
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+      
+      - name: Upload extension artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extensions-${{ strategy.job-index }}-linux
+          path: |
+            ainative-studio/extensions/*/out
+            ainative-studio/extensions/*/package.json
+          retention-days: 1
+
+  minify-and-package:
+    runs-on: ubuntu-latest-4-cores
+    needs: [compile-typescript, compile-react, compile-extensions]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libkrb5-dev
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      
+      - name: Restore artifacts to correct locations
+        run: |
+          # Restore node_modules
+          cp -r ./artifacts/node-modules-linux/* ainative-studio/
+          
+          # Restore TypeScript build
+          mkdir -p ainative-studio/out
+          cp -r ./artifacts/typescript-build-linux/* ainative-studio/out/
+          
+          # Restore React build
+          mkdir -p ainative-studio/src/vs/workbench/contrib/void/browser/react/dist
+          cp -r ./artifacts/react-build-linux/* ainative-studio/src/vs/workbench/contrib/void/browser/react/dist/
+          
+          # Restore extensions
+          for ext_dir in ./artifacts/extensions-*-linux; do
+            if [ -d "$ext_dir" ]; then
+              cp -r "$ext_dir"/* ainative-studio/
+            fi
+          done
+      
+      - name: Cache gulp cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.gulp-cache
+          key: ${{ runner.os }}-gulp-${{ hashFiles('ainative-studio/package-lock.json', 'ainative-studio/build/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gulp-
+      
+      - name: Minify and package
+        working-directory: ainative-studio
+        run: |
+          npm run gulp minify-vscode
+          npm run gulp vscode-linux-x64-min-ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max-old-space-size=16384"
+          UV_THREADPOOL_SIZE: 128
+      
+      - name: Verify build output
+        run: |
+          if [ ! -d "VSCode-linux-x64" ]; then
+            echo "::error::Build output directory not found!"
+            exit 1
+          fi
+        working-directory: ainative-studio
+      
+      - name: Create archive
+        working-directory: ainative-studio/VSCode-linux-x64
+        run: tar -czf ../../ainative-studio-linux-x64.tar.gz .
+      
+      - name: Upload final artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-studio-linux-x64
+          path: ainative-studio/ainative-studio-linux-x64.tar.gz
+          retention-days: 7
