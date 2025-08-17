@@ -95,10 +95,10 @@ jobs:
         run: |
           if [ -d "VSCode-linux-x64" ]; then
             cd VSCode-linux-x64
-            tar -czf ../ainative-studio-linux-x64.tar.gz .
+            tar --warning=no-file-changed -czf ../ainative-studio-linux-x64.tar.gz . || true
           elif [ -d "../VSCode-linux-x64" ]; then
             cd ../VSCode-linux-x64
-            tar -czf ainative-studio-linux-x64.tar.gz .
+            tar --warning=no-file-changed -czf ainative-studio-linux-x64.tar.gz . || true
             mv ainative-studio-linux-x64.tar.gz ainative-studio/
           fi
         working-directory: ainative-studio

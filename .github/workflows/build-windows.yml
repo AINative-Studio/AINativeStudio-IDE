@@ -77,14 +77,26 @@ jobs:
         working-directory: ainative-studio
         shell: pwsh
         run: |
-          if (-not (Test-Path VSCode-win32-x64)) {
+          if (-not (Test-Path VSCode-win32-x64) -and -not (Test-Path ../VSCode-win32-x64)) {
             Write-Error "Build output directory not found!"
+            Write-Host "Contents of ainative-studio directory:"
+            Get-ChildItem -Force
+            Write-Host "Contents of parent directory:"
+            Get-ChildItem -Path ../ -Force
             exit 1
           }
       - name: Create archive
-        working-directory: ainative-studio/VSCode-win32-x64
-        run: 7z a -tzip ../ainative-studio-win32-x64.zip .
-        shell: cmd
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          if (Test-Path VSCode-win32-x64) {
+            Set-Location VSCode-win32-x64
+            7z a -tzip ../ainative-studio-win32-x64.zip .
+          } elseif (Test-Path ../VSCode-win32-x64) {
+            Set-Location ../VSCode-win32-x64
+            7z a -tzip ainative-studio-win32-x64.zip .
+            Move-Item ainative-studio-win32-x64.zip ../ainative-studio/
+          }
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

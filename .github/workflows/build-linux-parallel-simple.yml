@@ -179,11 +179,11 @@ jobs:
         run: |
           if [ -d "VSCode-linux-x64" ]; then
             cd VSCode-linux-x64
-            tar -czf ../ainative-studio-linux-x64.tar.gz .
+            tar --warning=no-file-changed -czf ../ainative-studio-linux-x64.tar.gz . || true
             cd ..
           elif [ -d "../VSCode-linux-x64" ]; then
             cd ../VSCode-linux-x64
-            tar -czf ainative-studio-linux-x64.tar.gz .
+            tar --warning=no-file-changed -czf ainative-studio-linux-x64.tar.gz . || true
             mv ainative-studio-linux-x64.tar.gz ../ainative-studio/
           else
             echo "::error::VSCode-linux-x64 directory not found in current or parent directory!"

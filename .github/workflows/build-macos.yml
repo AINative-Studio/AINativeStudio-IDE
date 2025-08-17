@@ -90,14 +90,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify build output
         run: |
-          if [ ! -d "VSCode-darwin-${{ matrix.arch }}" ]; then
+          if [ ! -d "VSCode-darwin-${{ matrix.arch }}" ] && [ ! -d "../VSCode-darwin-${{ matrix.arch }}" ]; then
             echo "::error::Build output directory not found!"
+            echo "Contents of ainative-studio directory:"
+            ls -la
+            echo "Contents of parent directory:"
+            ls -la ../
             exit 1
           fi
         working-directory: ainative-studio
       - name: Create archive
-        working-directory: ainative-studio/VSCode-darwin-${{ matrix.arch }}
-        run: tar -czf ../../ainative-studio-darwin-${{ matrix.arch }}.tar.gz .
+        run: |
+          if [ -d "VSCode-darwin-${{ matrix.arch }}" ]; then
+            cd VSCode-darwin-${{ matrix.arch }}
+            tar --warning=no-file-changed -czf ../ainative-studio-darwin-${{ matrix.arch }}.tar.gz . || true
+          elif [ -d "../VSCode-darwin-${{ matrix.arch }}" ]; then
+            cd ../VSCode-darwin-${{ matrix.arch }}
+            tar --warning=no-file-changed -czf ainative-studio-darwin-${{ matrix.arch }}.tar.gz . || true
+            mv ainative-studio-darwin-${{ matrix.arch }}.tar.gz ainative-studio/
+          fi
+        working-directory: ainative-studio
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
