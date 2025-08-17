@@ -7,7 +7,7 @@ on:
 jobs:
   # Shared dependency installation
   setup:
-    runs-on: windows-2022
+    runs-on: windows-latest
     timeout-minutes: 20
     outputs:
       cache-key: ${{ steps.cache-key.outputs.key }}
@@ -73,7 +73,7 @@ jobs:
 
   # Parallel compilation jobs
   compile-typescript:
-    runs-on: windows-2022
+    runs-on: windows-latest
     needs: setup
     timeout-minutes: 30
     steps:
@@ -108,7 +108,7 @@ jobs:
         run: npm run gulp compile-build-without-mangling
         shell: cmd
         env:
-          NODE_OPTIONS: "--max-old-space-size=16384"
+          NODE_OPTIONS: "--max-old-space-size=8192"
           UV_THREADPOOL_SIZE: 128
       
       - name: Upload TypeScript artifacts
@@ -119,7 +119,7 @@ jobs:
           retention-days: 1
 
   compile-react:
-    runs-on: windows-2022
+    runs-on: windows-latest
     needs: setup
     timeout-minutes: 20
     steps:
@@ -154,12 +154,12 @@ jobs:
           retention-days: 1
 
   compile-extensions:
-    runs-on: windows-2022
+    runs-on: windows-latest
     needs: setup
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      max-parallel: 6
+      max-parallel: 3
       matrix:
         extension-group: [
           "configuration-editing,css-language-features,debug-auto-launch,debug-server-ready,emmet",
@@ -223,7 +223,7 @@ jobs:
           retention-days: 1
 
   minify-and-package:
-    runs-on: windows-2022
+    runs-on: windows-latest
     needs: [compile-typescript, compile-react, compile-extensions]
     timeout-minutes: 30
     steps:
@@ -279,7 +279,7 @@ jobs:
         shell: cmd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_OPTIONS: "--max-old-space-size=16384"
+          NODE_OPTIONS: "--max-old-space-size=8192"
           UV_THREADPOOL_SIZE: 128
       
       - name: Verify build output

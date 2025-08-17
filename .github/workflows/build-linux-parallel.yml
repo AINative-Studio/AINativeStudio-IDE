@@ -7,7 +7,7 @@ on:
 jobs:
   # Shared dependency installation
   setup:
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     outputs:
       cache-key: ${{ steps.cache-key.outputs.key }}
@@ -80,7 +80,7 @@ jobs:
 
   # Parallel compilation jobs
   compile-typescript:
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-22.04
     needs: setup
     timeout-minutes: 30
     steps:
@@ -115,7 +115,7 @@ jobs:
         run: |
           npm run gulp compile-build-without-mangling
         env:
-          NODE_OPTIONS: "--max-old-space-size=16384"
+          NODE_OPTIONS: "--max-old-space-size=8192"
           UV_THREADPOOL_SIZE: 128
       
       - name: Upload TypeScript artifacts
@@ -126,7 +126,7 @@ jobs:
           retention-days: 1
 
   compile-react:
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-22.04
     needs: setup
     timeout-minutes: 20
     steps:
@@ -160,12 +160,12 @@ jobs:
           retention-days: 1
 
   compile-extensions:
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-22.04
     needs: setup
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 4
       matrix:
         extension-group: [
           "configuration-editing,css-language-features,debug-auto-launch,debug-server-ready,emmet",
@@ -226,7 +226,7 @@ jobs:
           retention-days: 1
 
   minify-and-package:
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-22.04
     needs: [compile-typescript, compile-react, compile-extensions]
     timeout-minutes: 30
     steps:
@@ -285,7 +285,7 @@ jobs:
           npm run gulp minify-vscode
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_OPTIONS: "--max-old-space-size=16384"
+          NODE_OPTIONS: "--max-old-space-size=8192"
           UV_THREADPOOL_SIZE: 128
       
       - name: Package
@@ -293,7 +293,7 @@ jobs:
         run: npm run gulp vscode-linux-x64-min-ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_OPTIONS: "--max-old-space-size=16384"
+          NODE_OPTIONS: "--max-old-space-size=8192"
           UV_THREADPOOL_SIZE: 128
       
       - name: Verify build output

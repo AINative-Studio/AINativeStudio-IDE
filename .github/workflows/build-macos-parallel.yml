@@ -135,7 +135,7 @@ jobs:
         run: |
           npm run gulp compile-build-without-mangling
         env:
-          NODE_OPTIONS: "--max-old-space-size=16384"
+          NODE_OPTIONS: "--max-old-space-size=8192"
           UV_THREADPOOL_SIZE: 128
       
       - name: Upload TypeScript artifacts
@@ -330,7 +330,7 @@ jobs:
           npm run gulp vscode-darwin-${{ matrix.arch }}-min
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_OPTIONS: "--max-old-space-size=16384"
+          NODE_OPTIONS: "--max-old-space-size=8192"
           UV_THREADPOOL_SIZE: 128
       
       - name: Package
