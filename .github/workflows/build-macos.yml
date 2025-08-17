@@ -59,8 +59,28 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache TypeScript build outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ainative-studio/out
+            ainative-studio/node_modules/.cache
+          key: build-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('ainative-studio/src/**/*.ts', 'ainative-studio/package-lock.json') }}
+          restore-keys: |
+            build-${{ runner.os }}-${{ matrix.arch }}-
+            build-${{ runner.os }}-
+      - name: Cache extension builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            ainative-studio/extensions/*/out
+            ainative-studio/extensions/*/node_modules/.cache
+          key: extensions-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('ainative-studio/extensions/**/package-lock.json') }}
+          restore-keys: |
+            extensions-${{ runner.os }}-${{ matrix.arch }}-
+            extensions-${{ runner.os }}-
       - name: Cache gulp cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.gulp-cache
           key: ${{ runner.os }}-gulp-${{ hashFiles('ainative-studio/package-lock.json', 'ainative-studio/build/package-lock.json') }}
