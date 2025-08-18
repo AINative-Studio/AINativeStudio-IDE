@@ -130,12 +130,21 @@ jobs:
         working-directory: ainative-studio
         shell: pwsh
         run: |
-          if (-not (Test-Path VSCode-win32-x64) -and -not (Test-Path ../VSCode-win32-x64)) {
-            Write-Error "Build output directory not found!"
+          Write-Host "Checking for build output directories..."
+          Write-Host "Current directory: $(Get-Location)"
+          
+          if (Test-Path VSCode-win32-x64) {
+            Write-Host "✅ Found VSCode-win32-x64 in current directory"
+          } elseif (Test-Path ../VSCode-win32-x64) {
+            Write-Host "✅ Found VSCode-win32-x64 in parent directory"
+          } else {
+            Write-Host "❌ VSCode-win32-x64 not found in expected locations"
             Write-Host "Contents of ainative-studio directory:"
-            Get-ChildItem -Force
-            Write-Host "Contents of parent directory:"
-            Get-ChildItem -Path ../ -Force
+            Get-ChildItem -Force | Format-Table Name, Length, LastWriteTime
+            Write-Host "`nContents of parent directory:"
+            Get-ChildItem -Path ../ -Force | Format-Table Name, Length, LastWriteTime
+            Write-Host "`nSearching for any VSCode directories..."
+            Get-ChildItem -Path ../ -Recurse -Directory -Name "VSCode*" -ErrorAction SilentlyContinue
             exit 1
           }
       
