@@ -85,59 +85,32 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=8192"
           UV_THREADPOOL_SIZE: 64
       
-      - name: Build extensions in parallel (batch 1)
-        working-directory: ainative-studio
-        shell: cmd
-        run: |
-          start /b npm run gulp compile-extension:configuration-editing
-          start /b npm run gulp compile-extension:css-language-features-client
-          start /b npm run gulp compile-extension:css-language-features-server
-          start /b npm run gulp compile-extension:typescript-language-features
-          start /b npm run gulp compile-extension:git
-          timeout /t 60 /nobreak >nul
-        env:
-          NODE_OPTIONS: "--max-old-space-size=6144"
-      
-      - name: Build extensions in parallel (batch 2)
-        working-directory: ainative-studio
-        shell: cmd
-        run: |
-          start /b npm run gulp compile-extension:debug-auto-launch
-          start /b npm run gulp compile-extension:debug-server-ready
-          start /b npm run gulp compile-extension:emmet
-          start /b npm run gulp compile-extension:extension-editing
-          timeout /t 60 /nobreak >nul
-        env:
-          NODE_OPTIONS: "--max-old-space-size=6144"
-      
-      - name: Build extensions in parallel (batch 3)
-        working-directory: ainative-studio
-        shell: cmd
-        run: |
-          start /b npm run gulp compile-extension:git-base
-          start /b npm run gulp compile-extension:github
-          start /b npm run gulp compile-extension:github-authentication
-          start /b npm run gulp compile-extension:grunt
-          timeout /t 60 /nobreak >nul
-        env:
-          NODE_OPTIONS: "--max-old-space-size=6144"
-      
-      - name: Build remaining extensions
+      - name: Build all extensions
         working-directory: ainative-studio
         shell: pwsh
         run: |
-          # Use PowerShell for better parallel execution control
+          # Build extensions sequentially but efficiently
           $extensions = @(
-            "gulp", "html-language-features-client", "html-language-features-server", "ipynb", "jake",
-            "json-language-features-client", "json-language-features-server", "markdown-language-features", "markdown-math", "media-preview",
+            "configuration-editing", "css-language-features-client", "css-language-features-server",
+            "typescript-language-features", "git", "git-base",
+            "debug-auto-launch", "debug-server-ready", "emmet", "extension-editing",
+            "github", "github-authentication", "grunt", "gulp",
+            "html-language-features-client", "html-language-features-server", "ipynb", "jake",
+            "json-language-features-client", "json-language-features-server", 
+            "markdown-language-features", "markdown-math", "media-preview",
             "merge-conflict", "terminal-suggest", "microsoft-authentication", "notebook-renderers",
             "npm", "php-language-features", "references-view", "search-result",
-            "simple-browser", "tunnel-forwarding"
+            "simple-browser", "tunnel-forwarding",
+            "vscode-api-tests", "vscode-colorize-tests"
           )
           
           foreach ($ext in $extensions) {
             Write-Host "Building extension: $ext"
-            npm run gulp "compile-extension:$ext"
+            try {
+              npm run gulp "compile-extension:$ext"
+            } catch {
+              Write-Warning "Failed to build extension: $ext (continuing)"
+            }
           }
         env:
           NODE_OPTIONS: "--max-old-space-size=6144"
