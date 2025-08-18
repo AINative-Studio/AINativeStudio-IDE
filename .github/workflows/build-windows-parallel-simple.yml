@@ -115,16 +115,22 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=6144"
       
-      - name: Minify and package
+      - name: Minify VSCode
         working-directory: ainative-studio
-        run: |
-          npm run gulp minify-vscode
-          npm run gulp vscode-win32-x64-min-ci
+        run: npm run gulp minify-vscode
         shell: cmd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: "--max-old-space-size=8192"
           UV_THREADPOOL_SIZE: 64
+      
+      - name: Package Windows build
+        working-directory: ainative-studio
+        run: npm run gulp vscode-win32-x64-min-ci
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max-old-space-size=8192"
       
       - name: Verify build output
         working-directory: ainative-studio
