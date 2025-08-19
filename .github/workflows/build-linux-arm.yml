@@ -158,7 +158,7 @@ jobs:
         working-directory: ainative-studio
         run: |
           npm run gulp minify-vscode
-          npm run gulp vscode-linux-arm-min-ci
+          npm run gulp vscode-linux-armhf-min-ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: "--max-old-space-size=8192"
@@ -166,7 +166,7 @@ jobs:
       
       - name: Verify build output
         run: |
-          if [ ! -d "VSCode-linux-arm" ]; then
+          if [ ! -d "VSCode-linux-armhf" ]; then
             echo "::error::Build output directory not found!"
             echo "Contents of current directory:"
             ls -la
@@ -177,16 +177,16 @@ jobs:
       
       - name: Create archive
         run: |
-          if [ -d "VSCode-linux-arm" ]; then
-            cd VSCode-linux-arm
-            tar --warning=no-file-changed -czf ../ainative-studio-linux-arm.tar.gz . || true
+          if [ -d "VSCode-linux-armhf" ]; then
+            cd VSCode-linux-armhf
+            tar --warning=no-file-changed -czf ../ainative-studio-linux-armhf.tar.gz . || true
             cd ..
-          elif [ -d "../VSCode-linux-arm" ]; then
-            cd ../VSCode-linux-arm
-            tar --warning=no-file-changed -czf ainative-studio-linux-arm.tar.gz . || true
-            mv ainative-studio-linux-arm.tar.gz ../ainative-studio/
+          elif [ -d "../VSCode-linux-armhf" ]; then
+            cd ../VSCode-linux-armhf
+            tar --warning=no-file-changed -czf ainative-studio-linux-armhf.tar.gz . || true
+            mv ainative-studio-linux-armhf.tar.gz ../ainative-studio/
           else
-            echo "::error::VSCode-linux-arm directory not found in current or parent directory!"
+            echo "::error::VSCode-linux-armhf directory not found in current or parent directory!"
             exit 1
           fi
         working-directory: ainative-studio
@@ -194,6 +194,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ainative-studio-linux-arm
-          path: ainative-studio/ainative-studio-linux-arm.tar.gz
+          name: ainative-studio-linux-armhf
+          path: ainative-studio/ainative-studio-linux-armhf.tar.gz
           retention-days: 7
