@@ -173,11 +173,10 @@ jobs:
         run: |
           if [ -d "VSCode-darwin-arm64" ]; then
             cd VSCode-darwin-arm64
-            tar --warning=no-file-changed -czf ../ainative-studio-darwin-arm64.tar.gz . || true
+            tar -czf ../ainative-studio-darwin-arm64.tar.gz .
           elif [ -d "../VSCode-darwin-arm64" ]; then
             cd ../VSCode-darwin-arm64
-            tar --warning=no-file-changed -czf ainative-studio-darwin-arm64.tar.gz . || true
-            mv ainative-studio-darwin-arm64.tar.gz ainative-studio/
+            tar -czf ../ainative-studio/ainative-studio-darwin-arm64.tar.gz .
           fi
         working-directory: ainative-studio
       
