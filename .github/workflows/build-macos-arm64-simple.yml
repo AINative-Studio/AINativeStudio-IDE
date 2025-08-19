@@ -142,10 +142,10 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=6144"
       
-      - name: Build and minify client
+      - name: Build client (non-minified for faster builds)
         working-directory: ainative-studio
         run: |
-          npm run gulp vscode-darwin-arm64-min
+          npm run gulp vscode-darwin-arm64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: "--max-old-space-size=8192"
@@ -153,7 +153,7 @@ jobs:
       
       - name: Package
         working-directory: ainative-studio
-        run: npm run gulp vscode-darwin-arm64-min-ci
+        run: npm run gulp vscode-darwin-arm64-ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
