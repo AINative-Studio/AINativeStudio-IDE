@@ -1,0 +1,175 @@
+name: Build Windows ARM64 (Simple Parallel)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            ainative-studio/package-lock.json
+            ainative-studio/build/package-lock.json
+      
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
+        run: |
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci in build/ failed too many times"
+          exit /b 1
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          for /l %%i in (1,1,5) do (
+            npm ci && exit /b 0
+          )
+          echo "npm ci failed too many times"
+          exit /b 1
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Cache node build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ainative-studio/node_modules/.cache
+            ainative-studio/extensions/*/node_modules/.cache
+          key: node-cache-${{ runner.os }}-arm64-${{ hashFiles('ainative-studio/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-arm64-
+      
+      - name: Cache gulp cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.gulp-cache
+          key: ${{ runner.os }}-arm64-gulp-${{ hashFiles('ainative-studio/package-lock.json', 'ainative-studio/build/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-arm64-gulp-
+      
+      - name: Build React components
+        working-directory: ainative-studio
+        run: npm run buildreact
+        shell: cmd
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+      
+      - name: Compile TypeScript
+        working-directory: ainative-studio
+        run: npm run gulp compile-build-without-mangling
+        shell: cmd
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+          UV_THREADPOOL_SIZE: 64
+      
+      - name: Build all extensions
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          # Build extensions sequentially but efficiently
+          $extensions = @(
+            "configuration-editing", "css-language-features-client", "css-language-features-server",
+            "typescript-language-features", "git", "git-base",
+            "debug-auto-launch", "debug-server-ready", "emmet", "extension-editing",
+            "github", "github-authentication", "grunt", "gulp",
+            "html-language-features-client", "html-language-features-server", "ipynb", "jake",
+            "json-language-features-client", "json-language-features-server", 
+            "markdown-language-features", "markdown-math", "media-preview",
+            "merge-conflict", "terminal-suggest", "microsoft-authentication", "notebook-renderers",
+            "npm", "php-language-features", "references-view", "search-result",
+            "simple-browser", "tunnel-forwarding",
+            "vscode-api-tests", "vscode-colorize-tests"
+          )
+          
+          foreach ($ext in $extensions) {
+            Write-Host "Building extension: $ext"
+            try {
+              npm run gulp "compile-extension:$ext"
+            } catch {
+              Write-Warning "Failed to build extension: $ext (continuing)"
+            }
+          }
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
+      
+      - name: Minify VSCode
+        working-directory: ainative-studio
+        run: npm run gulp minify-vscode
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max-old-space-size=8192"
+          UV_THREADPOOL_SIZE: 64
+      
+      - name: Package Windows ARM64 build
+        working-directory: ainative-studio
+        run: npm run gulp vscode-win32-arm64-min-ci
+        shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max-old-space-size=8192"
+      
+      - name: Verify build output
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          Write-Host "Checking for build output directories..."
+          Write-Host "Current directory: $(Get-Location)"
+          
+          if (Test-Path VSCode-win32-arm64) {
+            Write-Host "✅ Found VSCode-win32-arm64 in current directory"
+          } elseif (Test-Path ../VSCode-win32-arm64) {
+            Write-Host "✅ Found VSCode-win32-arm64 in parent directory"
+          } else {
+            Write-Host "❌ VSCode-win32-arm64 not found in expected locations"
+            Write-Host "Contents of ainative-studio directory:"
+            Get-ChildItem -Force | Format-Table Name, Length, LastWriteTime
+            Write-Host "`nContents of parent directory:"
+            Get-ChildItem -Path ../ -Force | Format-Table Name, Length, LastWriteTime
+            Write-Host "`nSearching for any VSCode directories..."
+            Get-ChildItem -Path ../ -Recurse -Directory -Name "VSCode*" -ErrorAction SilentlyContinue
+            exit 1
+          }
+      
+      - name: Create archive
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          if (Test-Path VSCode-win32-arm64) {
+            Set-Location VSCode-win32-arm64
+            7z a -tzip ../ainative-studio-win32-arm64.zip .
+          } elseif (Test-Path ../VSCode-win32-arm64) {
+            Set-Location ../VSCode-win32-arm64
+            7z a -tzip ainative-studio-win32-arm64.zip .
+            Move-Item ainative-studio-win32-arm64.zip ../ainative-studio/
+          }
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-studio-win32-arm64
+          path: ainative-studio/ainative-studio-win32-arm64.zip
+          retention-days: 7

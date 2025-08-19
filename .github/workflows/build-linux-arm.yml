@@ -1,0 +1,199 @@
+name: Build Linux ARM (Simple Parallel)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  # Build core components in parallel
+  build-core:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            ainative-studio/package-lock.json
+            ainative-studio/build/package-lock.json
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libkrb5-dev
+      
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
+        run: |
+          for i in {1..5}; do
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci in build/ failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci failed $i, trying again..."
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          for i in {1..5}; do
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci failed $i, trying again..."
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Cache node build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ainative-studio/node_modules/.cache
+            ainative-studio/extensions/*/node_modules/.cache
+          key: node-cache-${{ runner.os }}-arm-${{ hashFiles('ainative-studio/package-lock.json') }}
+          restore-keys: |
+            node-cache-${{ runner.os }}-arm-
+      
+      - name: Cache gulp cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.gulp-cache
+          key: ${{ runner.os }}-arm-gulp-${{ hashFiles('ainative-studio/package-lock.json', 'ainative-studio/build/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-arm-gulp-
+      
+      - name: Build React components
+        working-directory: ainative-studio
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+      
+      - name: Compile TypeScript
+        working-directory: ainative-studio
+        run: npm run gulp compile-build-without-mangling
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+          UV_THREADPOOL_SIZE: 64
+      
+      - name: Build extensions in parallel
+        working-directory: ainative-studio
+        run: |
+          # Build critical extensions first
+          npm run gulp compile-extension:configuration-editing &
+          npm run gulp compile-extension:css-language-features &
+          npm run gulp compile-extension:typescript-language-features &
+          npm run gulp compile-extension:git &
+          wait
+          
+          # Build remaining extensions in parallel batches
+          npm run gulp compile-extension:debug-auto-launch &
+          npm run gulp compile-extension:debug-server-ready &
+          npm run gulp compile-extension:emmet &
+          npm run gulp compile-extension:extension-editing &
+          wait
+          
+          npm run gulp compile-extension:git-base &
+          npm run gulp compile-extension:github &
+          npm run gulp compile-extension:github-authentication &
+          npm run gulp compile-extension:grunt &
+          wait
+          
+          npm run gulp compile-extension:gulp &
+          npm run gulp compile-extension:html-language-features &
+          npm run gulp compile-extension:ipynb &
+          npm run gulp compile-extension:jake &
+          wait
+          
+          npm run gulp compile-extension:json-language-features &
+          npm run gulp compile-extension:markdown-language-features &
+          npm run gulp compile-extension:markdown-math &
+          npm run gulp compile-extension:media-preview &
+          wait
+          
+          npm run gulp compile-extension:merge-conflict &
+          npm run gulp compile-extension:terminal-suggest &
+          npm run gulp compile-extension:microsoft-authentication &
+          npm run gulp compile-extension:notebook-renderers &
+          wait
+          
+          npm run gulp compile-extension:npm &
+          npm run gulp compile-extension:php-language-features &
+          npm run gulp compile-extension:references-view &
+          npm run gulp compile-extension:search-result &
+          wait
+          
+          npm run gulp compile-extension:simple-browser &
+          npm run gulp compile-extension:tunnel-forwarding &
+          npm run gulp compile-extension:vscode-api-tests &
+          npm run gulp compile-extension:vscode-colorize-tests &
+          wait
+          
+          # Finish remaining extensions
+          npm run gulp compile-extension:vscode-colorize-perf-tests || true
+          npm run gulp compile-extension:vscode-test-resolver || true
+          npm run gulp compile-extension:vscode-selfhost-test-provider || true
+          npm run gulp compile-extension:vscode-selfhost-import-aid || true
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
+      
+      - name: Minify and package
+        working-directory: ainative-studio
+        run: |
+          npm run gulp minify-vscode
+          npm run gulp vscode-linux-arm-min-ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max-old-space-size=8192"
+          UV_THREADPOOL_SIZE: 64
+      
+      - name: Verify build output
+        run: |
+          if [ ! -d "VSCode-linux-arm" ]; then
+            echo "::error::Build output directory not found!"
+            echo "Contents of current directory:"
+            ls -la
+            echo "Contents of parent directory:"
+            ls -la ../
+            exit 1
+          fi
+      
+      - name: Create archive
+        run: |
+          if [ -d "VSCode-linux-arm" ]; then
+            cd VSCode-linux-arm
+            tar --warning=no-file-changed -czf ../ainative-studio-linux-arm.tar.gz . || true
+            cd ..
+          elif [ -d "../VSCode-linux-arm" ]; then
+            cd ../VSCode-linux-arm
+            tar --warning=no-file-changed -czf ainative-studio-linux-arm.tar.gz . || true
+            mv ainative-studio-linux-arm.tar.gz ../ainative-studio/
+          else
+            echo "::error::VSCode-linux-arm directory not found in current or parent directory!"
+            exit 1
+          fi
+        working-directory: ainative-studio
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-studio-linux-arm
+          path: ainative-studio/ainative-studio-linux-arm.tar.gz
+          retention-days: 7
