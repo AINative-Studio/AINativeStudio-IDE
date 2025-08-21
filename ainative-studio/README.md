@@ -51,7 +51,7 @@ Use these convenient development scripts for easy setup and management:
 
 ## Reference
 
-AINative Studio is a fork of the [vscode](https://github.com/microsoft/vscode) repository. For a guide to the codebase, see [VOID_CODEBASE_GUIDE](https://github.com/voideditor/void/blob/main/VOID_CODEBASE_GUIDE.md).
+AINative Studio is a fork of the [vscode](https://github.com/microsoft/vscode) repository. For a guide to the codebase, see [AINATIVE_STUDIO_CODEBASE_GUIDE](https://github.com/AINative-Studio/AINativeStudio-IDE/blob/main/ainative-studio/AINATIVE_STUDIO_CODEBASE_GUIDE.md).
 
 ## Support
 You can always reach us in our Discord server or contact us via email: hello@voideditor.com.
