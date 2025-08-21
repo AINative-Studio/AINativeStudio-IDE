@@ -35,18 +35,12 @@ Use these convenient development scripts for easy setup and management:
 - `dev-quick.sh`: Quick application start (assumes project is already built)
 - `dev-stop.sh`: Cleanly stops all development processes (watch builds and application)
 
-- 🧭 [Website](https://voideditor.com)
-
-- 👋 [Discord](https://discord.gg/RSNjgaugJs)
-
-- 🚙 [Project Board](https://github.com/orgs/voideditor/projects/2)
+- 🧭 [Website](https://www.ainative.studio/)
 
 
 ## Contributing
 
-1. To get started working on AINative Studio, check out our Project Board! You can also see [HOW_TO_CONTRIBUTE](https://github.com/voideditor/void/blob/main/HOW_TO_CONTRIBUTE.md).
-
-2. Feel free to attend a casual weekly meeting in our Discord channel!
+1. To get started working on AINative Studio, see [HOW_TO_CONTRIBUTE](https://github.com/AINative-Studio/AINativeStudio-IDE/blob/main/HOW_TO_CONTRIBUTE.md).
 
 
 ## Reference
@@ -54,4 +48,4 @@ Use these convenient development scripts for easy setup and management:
 AINative Studio is a fork of the [vscode](https://github.com/microsoft/vscode) repository. For a guide to the codebase, see [AINATIVE_STUDIO_CODEBASE_GUIDE](https://github.com/AINative-Studio/AINativeStudio-IDE/blob/main/ainative-studio/AINATIVE_STUDIO_CODEBASE_GUIDE.md).
 
 ## Support
-You can always reach us in our Discord server or contact us via email: hello@ainative.studio.
+You can contact us via email: hello@ainative.studio.
