@@ -83,3 +83,6 @@ import '../common/voidUpdateService.js'
 
 // model service
 import '../common/voidModelService.js'
+
+// agent memory service
+import '../common/agentMemoryService.js'
