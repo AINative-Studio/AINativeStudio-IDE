@@ -3,24 +3,24 @@
  *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
  *--------------------------------------------------------------------------------------*/
 
-.monaco-editor .void-sweepIdxBG {
-	background-color: var(--vscode-void-sweepIdxBG);
+.monaco-editor .ainative-sweepIdxBG {
+	background-color: var(--vscode-ainative-sweepIdxBG);
 }
 
-.void-sweepBG {
-	background-color: var(--vscode-void-sweepBG);
+.ainative-sweepBG {
+	background-color: var(--vscode-ainative-sweepBG);
 }
 
-.void-highlightBG {
-	background-color: var(--vscode-void-highlightBG);
+.ainative-highlightBG {
+	background-color: var(--vscode-ainative-highlightBG);
 }
 
-.void-greenBG {
-	background-color: var(--vscode-void-greenBG);
+.ainative-greenBG {
+	background-color: var(--vscode-ainative-greenBG);
 }
 
-.void-redBG {
-	background-color: var(--vscode-void-redBG);
+.ainative-redBG {
+	background-color: var(--vscode-ainative-redBG);
 }
 
 
