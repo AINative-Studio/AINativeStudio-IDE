@@ -86,3 +86,9 @@ import '../common/voidModelService.js'
 
 // agent memory service
 import '../common/agentMemoryService.js'
+
+// GitHub OAuth service
+import '../common/githubOAuthService.js'
+
+// GitHub OAuth URL handler
+import './githubOAuthUrlHandler.js'

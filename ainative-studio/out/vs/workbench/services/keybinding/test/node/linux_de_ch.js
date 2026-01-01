@@ -490,4 +490,4 @@ define({
 	MailSend: { value: '', withShift: '', withAltGr: '', withShiftAltGr: '' }
 });
 
-//# sourceURL=file:///home/opez_amily_/AINativeStudio-IDE/ainative-studio/src/vs/workbench/services/keybinding/test/node/linux_de_ch.js
+//# sourceURL=file:///Users/aideveloper/AINativeStudio-IDE/ainative-studio/src/vs/workbench/services/keybinding/test/node/linux_de_ch.js

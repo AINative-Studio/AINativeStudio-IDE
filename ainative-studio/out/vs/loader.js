@@ -1890,4 +1890,4 @@ var AMDLoader;
 	}
 })(AMDLoader || (AMDLoader = {}));
 
-//# sourceURL=file:///home/opez_amily_/AINativeStudio-IDE/ainative-studio/src/vs/loader.js
+//# sourceURL=file:///Users/aideveloper/AINativeStudio-IDE/ainative-studio/src/vs/loader.js

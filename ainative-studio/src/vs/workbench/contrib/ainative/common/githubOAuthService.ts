@@ -7,6 +7,7 @@ import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
+import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { AINativeUser } from './ainativeAuthService.js';
 
 export const IGitHubOAuthService = createDecorator<IGitHubOAuthService>('githubOAuthService');
@@ -85,7 +86,7 @@ export class GitHubOAuthService extends Disposable implements IGitHubOAuthServic
 
 	private static readonly OAUTH_ENDPOINT = 'https://github.com/login/oauth/authorize';
 	private static readonly CLIENT_ID = 'Ov23liU7x20VoRInkAiq';
-	private static readonly REDIRECT_URI = 'ainativestudio://auth/github/callback';
+	private static readonly REDIRECT_URI = 'void://auth/github/callback';
 	private static readonly SCOPE = 'read:user,user:email';
 	private static readonly API_BASE = 'https://api.ainative.studio';
 
@@ -303,3 +304,6 @@ export class GitHubOAuthService extends Disposable implements IGitHubOAuthServic
 		);
 	}
 }
+
+// Register service as singleton
+registerSingleton(IGitHubOAuthService, GitHubOAuthService, InstantiationType.Delayed);
