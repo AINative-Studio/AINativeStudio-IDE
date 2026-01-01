@@ -16,10 +16,12 @@ interface Props {
 export const AINativeLoginModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 	const accessor = useAccessor();
 	const authService = accessor.get('IAINativeAuthService');
+	const githubOAuthService = accessor.get('IGitHubOAuthService');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(false);
+	const [githubLoading, setGithubLoading] = useState(false);
 	const modalRef = useRef<HTMLDivElement>(null);
 	const emailInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +41,24 @@ export const AINativeLoginModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 		document.addEventListener('keydown', handleKeyDown);
 		return () => document.removeEventListener('keydown', handleKeyDown);
 	}, [onClose]);
+
+	// Listen for OAuth completion
+	useEffect(() => {
+		const disposable = githubOAuthService.onDidCompleteAuth(async (result) => {
+			setGithubLoading(false);
+
+			if (result.success && result.token && result.user) {
+				// Store auth data in auth service
+				const loginResult = await authService.login('', '');
+				// OAuth success - token already stored by backend
+				onSuccess();
+			} else {
+				setError(result.error || 'GitHub authentication failed');
+			}
+		});
+
+		return () => disposable.dispose();
+	}, [githubOAuthService, authService, onSuccess]);
 
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -69,6 +89,21 @@ export const AINativeLoginModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 		} catch (err) {
 			setLoading(false);
 			setError('An unexpected error occurred');
+		}
+	};
+
+	const handleGitHubSignIn = async () => {
+		setError('');
+		setGithubLoading(true);
+
+		try {
+			const { authUrl } = await githubOAuthService.initiateOAuthFlow();
+
+			// Open GitHub OAuth page in external browser
+			window.open(authUrl, '_blank');
+		} catch (err) {
+			setGithubLoading(false);
+			setError('Failed to initiate GitHub authentication');
 		}
 	};
 
@@ -140,8 +175,13 @@ export const AINativeLoginModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 
 					<div className="divider">or</div>
 
-					<button className="github-signin-button" disabled>
-						Sign in with GitHub (Coming Soon)
+					<button
+						className="github-signin-button"
+						onClick={handleGitHubSignIn}
+						disabled={githubLoading || loading}
+						type="button"
+					>
+						{githubLoading ? 'Opening GitHub...' : 'Sign in with GitHub'}
 					</button>
 
 					<div className="signup-link">
