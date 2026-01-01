@@ -5,21 +5,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { isValidEmail } from '../util/validation.js';
+import { useAINativeAuth, useAccessor } from '../util/services.js';
 import './AINativeLoginModal.css';
-
-// Temporary mock hook - will be replaced when TASK-006 (AINativeAuthService) is completed
-function useAINativeAuth() {
-	return {
-		login: async (email: string, password: string) => {
-			// Mock implementation - replace with actual auth service
-			console.log('Login attempt:', { email, password: '***' });
-			return { success: true };
-		},
-		logout: async () => {},
-		isAuthenticated: false,
-		user: null
-	};
-}
 
 interface Props {
 	onClose: () => void;
@@ -27,7 +14,8 @@ interface Props {
 }
 
 export const AINativeLoginModal: React.FC<Props> = ({ onClose, onSuccess }) => {
-	const auth = useAINativeAuth();
+	const accessor = useAccessor();
+	const authService = accessor.get('IAINativeAuthService');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [error, setError] = useState('');
@@ -68,14 +56,19 @@ export const AINativeLoginModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 		setError('');
 		setLoading(true);
 
-		const result = await auth.login(email, password);
+		try {
+			const result = await authService.login(email, password);
 
-		setLoading(false);
+			setLoading(false);
 
-		if (result.success) {
-			onSuccess();
-		} else {
-			setError(result.error || 'Login failed');
+			if (result.success) {
+				onSuccess();
+			} else {
+				setError(result.error?.message || 'Login failed');
+			}
+		} catch (err) {
+			setLoading(false);
+			setError('An unexpected error occurred');
 		}
 	};
 

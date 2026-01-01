@@ -7,12 +7,13 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { ProviderName, SettingName, displayInfoOfSettingName, providerNames, VoidStatefulModelInfo, customSettingNamesOfProvider, RefreshableProviderName, refreshableProviderNames, displayInfoOfProviderName, nonlocalProviderNames, localProviderNames, GlobalSettingName, featureNames, displayInfoOfFeatureName, isProviderNameDisabled, FeatureName, hasDownloadButtonsOnModelsProviderNames, subTextMdOfProviderName } from '../../../../common/voidSettingsTypes.js'
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js'
 import { VoidButtonBgDarken, VoidCustomDropdownBox, VoidInputBox2, VoidSimpleInputBox, VoidSwitch } from '../util/inputs.js'
-import { useAccessor, useIsDark, useIsOptedOut, useRefreshModelListener, useRefreshModelState, useSettingsState } from '../util/services.js'
+import { useAccessor, useIsDark, useIsOptedOut, useRefreshModelListener, useRefreshModelState, useSettingsState, useAINativeAuth } from '../util/services.js'
 import { X, RefreshCw, Loader2, Check, Asterisk, Plus } from 'lucide-react'
 import { URI } from '../../../../../../../base/common/uri.js'
 import { ModelDropdown } from './ModelDropdown.js'
 import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js'
 import { WarningBox } from './WarningBox.js'
+import { AINativeLoginModal } from './AINativeLoginModal.js'
 import { os } from '../../../../common/helpers/systemInfo.js'
 import { IconLoading } from '../sidebar-tsx/SidebarChat.js'
 import { ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsServiceTypes.js'
@@ -1031,6 +1032,9 @@ const MCPServersList = () => {
 
 export const Settings = () => {
 	const isDark = useIsDark()
+	const auth = useAINativeAuth()
+	const [showLoginModal, setShowLoginModal] = useState(false)
+
 	// ─── sidebar nav ──────────────────────────
 	const [selectedSection, setSelectedSection] =
 		useState<Tab>('models');
@@ -1164,6 +1168,53 @@ export const Settings = () => {
 						<h1 className='text-2xl w-full'>{`AINative Studio Settings`}</h1>
 
 						<div className='w-full h-[1px] my-2' />
+
+						{/* Account Section */}
+						<ErrorBoundary>
+							<div className='border border-void-border-2 bg-void-bg-1 py-4 px-4 rounded-md my-4'>
+								<h3 className='text-lg font-medium mb-3'>AINative Cloud Account</h3>
+
+								{auth.isAuthenticated ? (
+									<div className='flex items-center gap-4'>
+										<div className='flex items-center gap-3 flex-1'>
+											<div className='w-12 h-12 rounded-full bg-void-bg-2 flex items-center justify-center overflow-hidden'>
+												{auth.user?.name ? (
+													<img
+														src={`https://ui-avatars.com/api/?name=${encodeURIComponent(auth.user.name)}&background=0e70c0&color=fff`}
+														alt='User Avatar'
+														className='w-full h-full object-cover'
+													/>
+												) : (
+													<span className='text-void-fg-3 text-xl'>👤</span>
+												)}
+											</div>
+											<div className='flex flex-col'>
+												<div className='text-void-fg-1 font-medium'>{auth.user?.name || auth.user?.email}</div>
+												<div className='text-void-fg-3 text-sm'>{auth.user?.email}</div>
+											</div>
+										</div>
+										<VoidButtonBgDarken
+											className='px-4 py-2'
+											onClick={() => auth.logout()}
+										>
+											Sign Out
+										</VoidButtonBgDarken>
+									</div>
+								) : (
+									<div className='flex flex-col gap-2'>
+										<p className='text-void-fg-3 text-sm mb-2'>
+											Sign in to access AINative Cloud models
+										</p>
+										<VoidButtonBgDarken
+											className='px-4 py-2 w-fit bg-[#0e70c0] text-white hover:bg-[#1177cb]'
+											onClick={() => setShowLoginModal(true)}
+										>
+											Sign In to AINative Cloud
+										</VoidButtonBgDarken>
+									</div>
+								)}
+							</div>
+						</ErrorBoundary>
 
 						{/* Models section (formerly FeaturesTab) */}
 						<ErrorBoundary>
@@ -1558,6 +1609,16 @@ Use Model Context Protocol to provide Agent mode with more tools.
 					</div>
 				</main>
 			</div>
+
+			{/* Login Modal */}
+			{showLoginModal && (
+				<AINativeLoginModal
+					onClose={() => setShowLoginModal(false)}
+					onSuccess={() => {
+						setShowLoginModal(false);
+					}}
+				/>
+			)}
 		</div>
 	);
 }

@@ -54,6 +54,7 @@ import { IExtensionManagementService } from '../../../../../../../platform/exten
 import { IMCPService } from '../../../../common/mcpService.js';
 import { IStorageService, StorageScope } from '../../../../../../../platform/storage/common/storage.js'
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js'
+import { IAINativeAuthService, AuthState, AINativeUser } from '../../../../common/ainativeAuthService.js'
 
 
 // normally to do this you'd use a useEffect that calls .onDidChangeState(), but useEffect mounts too late and misses initial state changes
@@ -83,6 +84,10 @@ const activeURIListeners: Set<(uri: URI | null) => void> = new Set();
 
 const mcpListeners: Set<() => void> = new Set()
 
+// AINative Auth state
+let ainativeAuthState: AuthState = AuthState.Unauthenticated
+const ainativeAuthStateListeners: Set<(state: AuthState) => void> = new Set()
+
 
 // must call this before you can use any of the hooks below
 // this should only be called ONCE! this is the only place you don't need to dispose onDidChange. If you use state.onDidChange anywhere else, make sure to dispose it!
@@ -101,9 +106,10 @@ export const _registerServices = (accessor: ServicesAccessor) => {
 		voidCommandBarService: accessor.get(IVoidCommandBarService),
 		modelService: accessor.get(IModelService),
 		mcpService: accessor.get(IMCPService),
+		ainativeAuthService: accessor.get(IAINativeAuthService),
 	}
 
-	const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, modelService, mcpService } = stateServices
+	const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, modelService, mcpService, ainativeAuthService } = stateServices
 
 
 
@@ -176,6 +182,13 @@ export const _registerServices = (accessor: ServicesAccessor) => {
 		})
 	)
 
+	ainativeAuthState = ainativeAuthService.getAuthState()
+	disposables.push(
+		ainativeAuthService.onDidChangeAuthState((newState) => {
+			ainativeAuthState = newState
+			ainativeAuthStateListeners.forEach(l => l(newState))
+		})
+	)
 
 	return disposables
 }
@@ -229,6 +242,7 @@ const getReactAccessor = (accessor: ServicesAccessor) => {
 		IMCPService: accessor.get(IMCPService),
 
 		IStorageService: accessor.get(IStorageService),
+		IAINativeAuthService: accessor.get(IAINativeAuthService),
 
 	} as const
 	return reactAccessor
@@ -425,4 +439,36 @@ export const useIsOptedOut = () => {
 	}, [storageService, getVal])
 
 	return s
+}
+
+
+// AINative Auth Hook
+export const useAINativeAuth = () => {
+	const accessor = useAccessor()
+	const authService = accessor.get('IAINativeAuthService')
+
+	const [authState, setAuthState] = useState(ainativeAuthState)
+	const [user, setUser] = useState<AINativeUser | null>(authService.getUser())
+	const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated())
+
+	useEffect(() => {
+		const listener = (newState: AuthState) => {
+			setAuthState(newState)
+			setUser(authService.getUser())
+			setIsAuthenticated(authService.isAuthenticated())
+		}
+		ainativeAuthStateListeners.add(listener)
+		return () => { ainativeAuthStateListeners.delete(listener) }
+	}, [authService])
+
+	const logout = useCallback(async () => {
+		await authService.logout()
+	}, [authService])
+
+	return {
+		authState,
+		user,
+		isAuthenticated,
+		logout
+	}
 }
