@@ -32,9 +32,9 @@ const configOfBG = (color: Color) => {
 	return { dark: color, light: color, hcDark: color, hcLight: color, }
 }
 
-// gets converted to --vscode-void-greenBG, see void.css, asCssVariable
-registerColor('void.greenBG', configOfBG(acceptBG), '', true);
-registerColor('void.redBG', configOfBG(rejectBG), '', true);
-registerColor('void.sweepBG', configOfBG(sweepBG), '', true);
-registerColor('void.highlightBG', configOfBG(highlightBG), '', true);
-registerColor('void.sweepIdxBG', configOfBG(sweepIdxBG), '', true);
+// gets converted to --vscode-ainative-greenBG, see ainative.css, asCssVariable
+registerColor('ainative.greenBG', configOfBG(acceptBG), '', true);
+registerColor('ainative.redBG', configOfBG(rejectBG), '', true);
+registerColor('ainative.sweepBG', configOfBG(sweepBG), '', true);
+registerColor('ainative.highlightBG', configOfBG(highlightBG), '', true);
+registerColor('ainative.sweepIdxBG', configOfBG(sweepIdxBG), '', true);

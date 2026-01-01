@@ -324,10 +324,10 @@ class EditCodeService extends Disposable implements IEditCodeService {
 				// add sweep styles to the diffZone
 				if (diffArea._streamState.isStreaming) {
 					// sweepLine ... sweepLine
-					const fn1 = this._addLineDecoration(model, diffArea._streamState.line, diffArea._streamState.line, 'void-sweepIdxBG')
+					const fn1 = this._addLineDecoration(model, diffArea._streamState.line, diffArea._streamState.line, 'ainative-sweepIdxBG')
 					// sweepLine+1 ... endLine
 					const fn2 = diffArea._streamState.line + 1 <= diffArea.endLine ?
-						this._addLineDecoration(model, diffArea._streamState.line + 1, diffArea.endLine, 'void-sweepBG')
+						this._addLineDecoration(model, diffArea._streamState.line + 1, diffArea.endLine, 'ainative-sweepBG')
 						: null
 					diffArea._removeStylesFns.add(() => { fn1?.(); fn2?.(); })
 
@@ -336,7 +336,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 			else if (diffArea.type === 'CtrlKZone' && diffArea._linkedStreamingDiffZone === null) {
 				// highlight zone's text
-				const fn = this._addLineDecoration(model, diffArea.startLine, diffArea.endLine, 'void-highlightBG')
+				const fn = this._addLineDecoration(model, diffArea.startLine, diffArea.endLine, 'ainative-highlightBG')
 				diffArea._removeStylesFns.add(() => fn?.());
 			}
 		}
@@ -481,7 +481,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 		// green decoration and minimap decoration
 		if (type !== 'deletion') {
-			const fn = this._addLineDecoration(model, diff.startLine, diff.endLine, 'void-greenBG', {
+			const fn = this._addLineDecoration(model, diff.startLine, diff.endLine, 'ainative-greenBG', {
 				minimap: { color: { id: 'minimapGutter.addedBackground' }, position: 2 },
 				overviewRuler: { color: { id: 'editorOverviewRuler.addedForeground' }, position: 7 }
 			})
@@ -496,7 +496,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 				fn: (editor) => {
 
 					const domNode = document.createElement('div');
-					domNode.className = 'void-redBG'
+					domNode.className = 'ainative-redBG'
 
 					const renderOptions = RenderOptions.fromEditor(editor)
 

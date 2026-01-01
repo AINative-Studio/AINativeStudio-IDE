@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 suite('CSS Class Branding Tests', () => {
-	const cssFilePath = path.join(__dirname, '../../../../src/vs/workbench/contrib/void/browser/media/void.css');
+	const cssFilePath = path.join(__dirname, '../../../../src/vs/workbench/contrib/ainative/browser/media/ainative.css');
 
 	test('CSS file should exist at correct path', () => {
 		assert.ok(fs.existsSync(cssFilePath), 'CSS file should exist at void.css path');
