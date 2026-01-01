@@ -846,6 +846,16 @@ const sendGeminiChat = async ({
 
 
 
+// ---------------- AINATIVE CLOUD ----------------
+const sendAINativeCloudChat = async (params: SendChatParams_Internal) => {
+	// This will be implemented when TASK-006 (AINativeAuthService) is complete
+	// For now, return error
+	params.onError({
+		message: 'AINative Cloud provider not yet available. Waiting for authentication service implementation (TASK-006).',
+		fullError: null
+	});
+}
+
 type CallFnOfProvider = {
 	[providerName in ProviderName]: {
 		sendChat: (params: SendChatParams_Internal) => Promise<void>;
@@ -934,6 +944,11 @@ export const sendLLMMessageToProviderImplementation = {
 	},
 	awsBedrock: {
 		sendChat: (params) => _sendOpenAICompatibleChat(params),
+		sendFIM: null,
+		list: null,
+	},
+	ainativeCloud: {
+		sendChat: sendAINativeCloudChat,
 		sendFIM: null,
 		list: null,
 	},

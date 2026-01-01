@@ -65,6 +65,10 @@ export const defaultProviderSettings = {
 		region: 'us-east-1', // add region setting
 		endpoint: '', // optionally allow overriding default
 	},
+	ainativeCloud: {
+		// JWT-based authentication via AINativeAuthService
+		// No API key needed - uses user session
+	},
 
 } as const
 
@@ -152,6 +156,12 @@ export const defaultModelsOfProvider = {
 	googleVertex: [],
 	microsoftAzure: [],
 	awsBedrock: [],
+	ainativeCloud: [ // AINative Cloud unified API
+		'claude-sonnet-4-5',
+		'claude-haiku-4',
+		'gpt-4o',
+		'gpt-4o-mini',
+	],
 	liteLLM: [],
 
 
@@ -1446,7 +1456,57 @@ const openRouterSettings: VoidStaticProviderInfo = {
 	},
 }
 
+// ---------------- AINATIVE CLOUD ----------------
+const ainativeCloudModelOptions = {
+	'claude-sonnet-4-5': {
+		contextWindow: 200_000,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0, output: 0 }, // Charged via subscription
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style' as const,
+		supportsSystemMessage: 'system-role' as const,
+		reasoningCapabilities: false as const,
+	},
+	'claude-haiku-4': {
+		contextWindow: 200_000,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0, output: 0 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style' as const,
+		supportsSystemMessage: 'system-role' as const,
+		reasoningCapabilities: false as const,
+	},
+	'gpt-4o': {
+		contextWindow: 128_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0, output: 0 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style' as const,
+		supportsSystemMessage: 'system-role' as const,
+		reasoningCapabilities: false as const,
+	},
+	'gpt-4o-mini': {
+		contextWindow: 128_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0, output: 0 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style' as const,
+		supportsSystemMessage: 'system-role' as const,
+		reasoningCapabilities: false as const,
+	},
+} as const satisfies { [s: string]: VoidStaticModelInfo }
 
+const ainativeCloudSettings: VoidStaticProviderInfo = {
+	modelOptions: ainativeCloudModelOptions,
+	modelOptionsFallback: (modelName) => { return null },
+	providerReasoningIOSettings: {
+		input: { includeInPayload: openAICompatIncludeInPayloadReasoning },
+	},
+}
 
 
 // ---------------- model settings of everything above ----------------
@@ -1474,6 +1534,7 @@ const modelSettingsOfProvider: { [providerName in ProviderName]: VoidStaticProvi
 	googleVertex: googleVertexSettings,
 	microsoftAzure: microsoftAzureSettings,
 	awsBedrock: awsBedrockSettings,
+	ainativeCloud: ainativeCloudSettings,
 } as const
 
 
