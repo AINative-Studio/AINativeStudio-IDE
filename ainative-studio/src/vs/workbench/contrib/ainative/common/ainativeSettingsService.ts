@@ -12,7 +12,10 @@ import { createDecorator } from '../../../../platform/instantiation/common/insta
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IMetricsService } from './metricsService.js';
 import { defaultProviderSettings, getModelCapabilities, ModelOverrides } from './modelCapabilities.js';
-import { VOID_SETTINGS_STORAGE_KEY } from './storageKeys.js';
+import {
+	VOID_SETTINGS_STORAGE_KEY,
+	LEGACY_VOID_SETTINGS_STORAGE_KEY
+} from './storageKeys.js';
 import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, VoidStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './voidSettingsTypes.js';
 
 
@@ -346,8 +349,45 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 
 	}
 
+	/**
+	 * Migrate storage keys from legacy 'void.*' to new 'ainative.*' keys.
+	 * This migration is idempotent and will only run once.
+	 * If the new key already has data, migration is skipped to prevent data loss.
+	 */
+	private async _migrateStorageKeys(): Promise<void> {
+		// Check if migration already completed (new key exists)
+		const newKeyData = this._storageService.get(VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
+		if (newKeyData) {
+			// Migration already done or new key already has data
+			return;
+		}
+
+		// Read data from legacy key
+		const legacyData = this._storageService.get(LEGACY_VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
+		if (!legacyData) {
+			// No legacy data to migrate
+			return;
+		}
+
+		// Migrate: copy data to new key
+		this._storageService.store(
+			VOID_SETTINGS_STORAGE_KEY,
+			legacyData,
+			StorageScope.APPLICATION,
+			StorageTarget.USER
+		);
+
+		// Remove legacy key after successful migration
+		this._storageService.remove(LEGACY_VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
+
+		console.log('[AINative Migration] Successfully migrated settings from void.settingsServiceStorageII to ainative.settingsServiceStorageII');
+	}
+
 
 	private async _readState(): Promise<VoidSettingsState> {
+		// Migrate legacy storage keys before reading state
+		await this._migrateStorageKeys();
+
 		const encryptedState = this._storageService.get(VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION)
 
 		if (!encryptedState)

@@ -30,7 +30,7 @@ import { IEditCodeService } from './editCodeServiceInterface.js';
 import { VoidFileSnapshot } from '../common/editCodeServiceTypes.js';
 import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
 import { truncate } from '../../../../base/common/strings.js';
-import { THREAD_STORAGE_KEY } from '../common/storageKeys.js';
+import { THREAD_STORAGE_KEY, LEGACY_THREAD_STORAGE_KEY } from '../common/storageKeys.js';
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
 import { timeout } from '../../../../base/common/async.js';
 import { deepClone } from '../../../../base/common/objects.js';
@@ -402,7 +402,32 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		});
 	}
 
+	/**
+	 * Migrate chat threads from legacy 'void.chatThreadStorageII' to 'ainative.chatThreadStorageII'
+	 */
+	private _migrateChatThreads(): void {
+		// Check if new key already exists
+		const newKeyData = this._storageService.get(THREAD_STORAGE_KEY, StorageScope.APPLICATION);
+		if (newKeyData) {
+			return; // Already migrated
+		}
+
+		// Read from legacy key
+		const legacyData = this._storageService.get(LEGACY_THREAD_STORAGE_KEY, StorageScope.APPLICATION);
+		if (!legacyData) {
+			return; // No legacy data to migrate
+		}
+
+		// Migrate
+		this._storageService.store(THREAD_STORAGE_KEY, legacyData, StorageScope.APPLICATION, StorageTarget.USER);
+		this._storageService.remove(LEGACY_THREAD_STORAGE_KEY, StorageScope.APPLICATION);
+		console.log('[AINative Migration] Successfully migrated chat threads from void.chatThreadStorageII to ainative.chatThreadStorageII');
+	}
+
 	private _readAllThreads(): ChatThreads | null {
+		// Migrate from legacy storage key if needed
+		this._migrateChatThreads();
+
 		const threadsStr = this._storageService.get(THREAD_STORAGE_KEY, StorageScope.APPLICATION);
 		if (!threadsStr) {
 			return null

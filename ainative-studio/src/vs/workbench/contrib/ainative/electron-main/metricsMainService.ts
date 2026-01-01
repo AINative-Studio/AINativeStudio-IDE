@@ -13,7 +13,12 @@ import { IApplicationStorageMainService } from '../../../../platform/storage/ele
 
 import { IMetricsService } from '../common/metricsService.js';
 import { PostHog } from 'posthog-node'
-import { OPT_OUT_KEY } from '../common/storageKeys.js';
+import {
+	OPT_OUT_KEY,
+	MACHINE_ID_KEY,
+	LEGACY_OPT_OUT_KEY,
+	LEGACY_MACHINE_ID_KEY
+} from '../common/storageKeys.js';
 
 
 const os = isWindows ? 'windows' : isMacintosh ? 'mac' : isLinux ? 'linux' : null
@@ -72,9 +77,34 @@ export class MetricsMainService extends Disposable implements IMetricsService {
 
 	// the main id
 	private get distinctId() {
+		// Migrate from legacy key if needed
+		this._migrateMachineId();
+
 		const oldId = this.oldId
 		const setValIfNotExist = oldId === 'NULL' ? undefined : oldId
-		return this._memoStorage('void.app.machineId', StorageTarget.MACHINE, setValIfNotExist)
+		return this._memoStorage(MACHINE_ID_KEY, StorageTarget.MACHINE, setValIfNotExist)
+	}
+
+	/**
+	 * Migrate machine ID from legacy 'void.app.machineId' to 'ainative.app.machineId'
+	 */
+	private _migrateMachineId(): void {
+		// Check if new key already exists
+		const newKeyData = this._appStorage.get(MACHINE_ID_KEY, StorageScope.APPLICATION);
+		if (newKeyData) {
+			return; // Already migrated
+		}
+
+		// Read from legacy key
+		const legacyData = this._appStorage.get(LEGACY_MACHINE_ID_KEY, StorageScope.APPLICATION);
+		if (!legacyData) {
+			return; // No legacy data to migrate
+		}
+
+		// Migrate
+		this._appStorage.store(MACHINE_ID_KEY, legacyData, StorageScope.APPLICATION, StorageTarget.MACHINE);
+		this._appStorage.remove(LEGACY_MACHINE_ID_KEY, StorageScope.APPLICATION);
+		console.log('[AINative Migration] Successfully migrated machine ID from void.app.machineId to ainative.app.machineId');
 	}
 
 	// just to see if there are ever multiple machineIDs per userID (instead of this, we should just track by the user's email)
@@ -95,9 +125,34 @@ export class MetricsMainService extends Disposable implements IMetricsService {
 		this.initialize() // async
 	}
 
+	/**
+	 * Migrate opt-out setting from legacy 'void.app.optOutAll' to 'ainative.app.optOutAll'
+	 */
+	private _migrateOptOut(): void {
+		// Check if new key already exists
+		const newKeyData = this._appStorage.get(OPT_OUT_KEY, StorageScope.APPLICATION);
+		if (newKeyData !== undefined) {
+			return; // Already migrated
+		}
+
+		// Read from legacy key
+		const legacyData = this._appStorage.get(LEGACY_OPT_OUT_KEY, StorageScope.APPLICATION);
+		if (!legacyData) {
+			return; // No legacy data to migrate
+		}
+
+		// Migrate
+		this._appStorage.store(OPT_OUT_KEY, legacyData, StorageScope.APPLICATION, StorageTarget.MACHINE);
+		this._appStorage.remove(LEGACY_OPT_OUT_KEY, StorageScope.APPLICATION);
+		console.log('[AINative Migration] Successfully migrated opt-out setting from void.app.optOutAll to ainative.app.optOutAll');
+	}
+
 	async initialize() {
 		// very important to await whenReady!
 		await this._appStorage.whenReady
+
+		// Migrate legacy storage keys
+		this._migrateOptOut();
 
 		const { commit, version, voidVersion, release, quality } = this._productService
 
