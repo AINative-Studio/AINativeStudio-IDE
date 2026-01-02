@@ -108,7 +108,7 @@ export const AINATIVE_VIEW_ID = AINATIVE_VIEW_CONTAINER_ID
 const viewContainerRegistry = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.ViewContainersRegistry);
 const container = viewContainerRegistry.registerViewContainer({
 	id: AINATIVE_VIEW_CONTAINER_ID,
-	title: nls.localize2('voidContainer', 'Chat'), // this is used to say "AINative Studio" (Ctrl + L)
+	title: nls.localize2('voidContainer', 'Cody'), // this is used to say "AINative Studio" (Ctrl + L)
 	ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [AINATIVE_VIEW_CONTAINER_ID, {
 		mergeViewWithContainerWhenSingleView: true,
 		orientation: Orientation.HORIZONTAL,
@@ -130,7 +130,7 @@ viewsRegistry.registerViews([{
 	id: AINATIVE_VIEW_ID,
 	hideByDefault: false, // start open
 	// containerIcon: voidViewIcon,
-	name: nls.localize2('voidChat', ''), // this says ... : CHAT
+	name: nls.localize2('voidChat', 'Cody'), // this says ... : Cody
 	ctorDescriptor: new SyncDescriptor(SidebarViewPane),
 	canToggleVisibility: false,
 	canMoveView: false, // can't move this out of its container
