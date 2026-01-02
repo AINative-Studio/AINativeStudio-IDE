@@ -153,12 +153,12 @@ class MockMarketplaceService implements ISkillMarketplaceService {
 
 	async searchSkills(query: string, options?: any): Promise<Skill[]> {
 		return this.mockSkills.filter(skill =>
-			skill.name || \'\'.includes(query) || skill.description || \'\'.includes(query)
+			(skill.name || '').includes(query) || (skill.description || '').includes(query)
 		);
 	}
 
 	async getSkillByName(name: string): Promise<Skill | undefined> {
-		return this.mockSkills.find(skill => skill.name || \'\' === name);
+		return this.mockSkills.find(skill => (skill.name || '') === name);
 	}
 
 	async getOfficialSkills(): Promise<Skill[]> {
@@ -392,7 +392,7 @@ Content
 			ok(result.success);
 			ok(result.data.installed);
 			ok(result.data.enabled);
-			strictEqual(result.data.skill.name || \'\', 'test-skill');
+			strictEqual(result.data.skill.name || '', 'test-skill');
 		});
 
 		test('should search marketplace for non-installed skill', async () => {
