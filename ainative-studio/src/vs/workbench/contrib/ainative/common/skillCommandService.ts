@@ -190,14 +190,15 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 
 				case 'marketplace':
 					const searchResults = await this.marketplace.searchSkills(source);
-					if (!searchResults || searchResults.length === 0) {
+					const results = searchResults.results;
+					if (!results || results.length === 0) {
 						return {
 							success: false,
 							message: `Skill '${source}' not found in marketplace`,
 							error: 'NOT_FOUND'
 						};
 					}
-					skillUri = searchResults[0].source;
+					skillUri = results[0].source;
 					break;
 
 				default:
@@ -314,8 +315,9 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 
 			if (!skill) {
 				const marketplaceResults = await this.marketplace.searchSkills(skillName);
-				if (marketplaceResults && marketplaceResults.length > 0) {
-					const marketplaceSkill = marketplaceResults[0];
+				const marketplaceSkillsArray = marketplaceResults.results;
+				if (marketplaceSkillsArray && marketplaceSkillsArray.length > 0) {
+					const marketplaceSkill = marketplaceSkillsArray[0];
 					return {
 						success: true,
 						message: `Skill '${skillName}' available in marketplace (not installed)`,
@@ -392,7 +394,9 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 				limit: options.limit
 			});
 
-			if (!results || results.length === 0) {
+			const skillsArray = results.results;
+
+			if (!skillsArray || skillsArray.length === 0) {
 				return {
 					success: true,
 					message: `No skills found for query: ${options.query}`,
@@ -401,15 +405,15 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 			}
 
 			if (options.sort) {
-				this.sortSearchResults(results, options.sort);
+				this.sortSearchResults(skillsArray, options.sort);
 			}
 
-			const formatted = this.formatSearchResults(results);
+			const formatted = this.formatSearchResults(skillsArray);
 
 			return {
 				success: true,
-				message: `Found ${results.length} skills`,
-				data: { results, count: results.length, formatted }
+				message: `Found ${skillsArray.length} skills`,
+				data: { results: skillsArray, count: skillsArray.length, formatted }
 			};
 
 		} catch (error) {
