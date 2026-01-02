@@ -8,7 +8,7 @@ import { endsWithAnyPrefixOf, SurroundingsRemover } from '../../common/helpers/e
 import { availableTools, InternalToolInfo } from '../../common/prompt/prompts.js'
 import { OnFinalMessage, OnText, RawToolCallObj, RawToolParamsObj } from '../../common/sendLLMMessageTypes.js'
 import { ToolName, ToolParamName } from '../../common/toolsServiceTypes.js'
-import { ChatMode } from '../../common/voidSettingsTypes.js'
+import { ChatMode } from '../../common/ainativeSettingsTypes.js'
 
 
 // =============== reasoning ===============

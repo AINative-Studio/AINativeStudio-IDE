@@ -9,12 +9,12 @@ import { Action2, MenuId, registerAction2 } from '../../../../platform/actions/c
 import { ContextKeyExpr, IContextKey, IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js'
 import { ISCMService } from '../../scm/common/scm.js'
 import { ProxyChannel } from '../../../../base/parts/ipc/common/ipc.js'
-import { IVoidSCMService } from '../common/voidSCMTypes.js'
+import { IAINativeSCMService } from '../common/ainativeSCMTypes.js'
 import { IMainProcessService } from '../../../../platform/ipc/common/mainProcessService.js'
-import { IVoidSettingsService } from '../common/voidSettingsService.js'
+import { IAINativeSettingsService } from '../common/ainativeSettingsService.js'
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js'
 import { ILLMMessageService } from '../common/sendLLMMessageService.js'
-import { ModelSelection, OverridesOfModel, ModelSelectionOptions } from '../common/voidSettingsTypes.js'
+import { ModelSelection, OverridesOfModel, ModelSelectionOptions } from '../common/ainativeSettingsTypes.js'
 import { gitCommitMessage_systemMessage, gitCommitMessage_userMessage } from '../common/prompt/prompts.js'
 import { LLMChatMessage } from '../common/sendLLMMessageTypes.js'
 import { generateUuid } from '../../../../base/common/uuid.js'
@@ -46,13 +46,13 @@ class GenerateCommitMessageService extends Disposable implements IGenerateCommit
 	private readonly execute = new ThrottledDelayer(300)
 	private llmRequestId: string | null = null
 	private currentRequestId: string | null = null
-	private voidSCM: IVoidSCMService
+	private voidSCM: IAINativeSCMService
 	private loadingContextKey: IContextKey<boolean>
 
 	constructor(
 		@ISCMService private readonly scmService: ISCMService,
 		@IMainProcessService mainProcessService: IMainProcessService,
-		@IVoidSettingsService private readonly voidSettingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly ainativeSettingsService: IAINativeSettingsService,
 		@IConvertToLLMMessageService private readonly convertToLLMMessageService: IConvertToLLMMessageService,
 		@ILLMMessageService private readonly llmMessageService: ILLMMessageService,
 		@IContextKeyService private readonly contextKeyService: IContextKeyService,
@@ -60,7 +60,7 @@ class GenerateCommitMessageService extends Disposable implements IGenerateCommit
 	) {
 		super()
 		this.loadingContextKey = this.contextKeyService.createKey(loadingContextKey, false)
-		this.voidSCM = ProxyChannel.toService<IVoidSCMService>(mainProcessService.getChannel('void-channel-scm'))
+		this.voidSCM = ProxyChannel.toService<IAINativeSCMService>(mainProcessService.getChannel('void-channel-scm'))
 	}
 
 	override dispose() {
@@ -86,9 +86,9 @@ class GenerateCommitMessageService extends Disposable implements IGenerateCommit
 
 				if (!this.isCurrentRequest(requestId)) { throw new CancellationError() }
 
-				const modelSelection = this.voidSettingsService.state.modelSelectionOfFeature['SCM'] ?? null
-				const modelSelectionOptions = modelSelection ? this.voidSettingsService.state.optionsOfModelSelection['SCM'][modelSelection?.providerName]?.[modelSelection.modelName] : undefined
-				const overridesOfModel = this.voidSettingsService.state.overridesOfModel
+				const modelSelection = this.ainativeSettingsService.state.modelSelectionOfFeature['SCM'] ?? null
+				const modelSelectionOptions = modelSelection ? this.ainativeSettingsService.state.optionsOfModelSelection['SCM'][modelSelection?.providerName]?.[modelSelection.modelName] : undefined
+				const overridesOfModel = this.ainativeSettingsService.state.overridesOfModel
 
 				const modelOptions: ModelOptions = { modelSelection, modelSelectionOptions, overridesOfModel }
 

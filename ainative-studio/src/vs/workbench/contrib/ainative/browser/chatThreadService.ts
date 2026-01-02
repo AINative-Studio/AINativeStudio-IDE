@@ -14,8 +14,8 @@ import { ILLMMessageService } from '../common/sendLLMMessageService.js';
 import { chat_userMessageContent, isABuiltinToolName } from '../common/prompt/prompts.js';
 import { AnthropicReasoning, getErrorMessage, RawToolCallObj, RawToolParamsObj } from '../common/sendLLMMessageTypes.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
-import { FeatureName, ModelSelection, ModelSelectionOptions } from '../common/voidSettingsTypes.js';
-import { IVoidSettingsService } from '../common/voidSettingsService.js';
+import { FeatureName, ModelSelection, ModelSelectionOptions } from '../common/ainativeSettingsTypes.js';
+import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, ToolCallParams, ToolName, ToolResult } from '../common/toolsServiceTypes.js';
 import { IToolsService } from './toolsService.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
@@ -24,7 +24,7 @@ import { ChatMessage, CheckpointEntry, CodespanLocationLink, StagingSelectionIte
 import { Position } from '../../../../editor/common/core/position.js';
 import { IMetricsService } from '../common/metricsService.js';
 import { shorten } from '../../../../base/common/labels.js';
-import { IVoidModelService } from '../common/voidModelService.js';
+import { IAINativeModelService } from '../common/ainativeModelService.js';
 import { findLast, findLastIdx } from '../../../../base/common/arraysFind.js';
 import { IEditCodeService } from './editCodeServiceInterface.js';
 import { VoidFileSnapshot } from '../common/editCodeServiceTypes.js';
@@ -314,10 +314,10 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 
 	constructor(
 		@IStorageService private readonly _storageService: IStorageService,
-		@IVoidModelService private readonly _voidModelService: IVoidModelService,
+		@IAINativeModelService private readonly _ainativeModelService: IAINativeModelService,
 		@ILLMMessageService private readonly _llmMessageService: ILLMMessageService,
 		@IToolsService private readonly _toolsService: IToolsService,
-		@IVoidSettingsService private readonly _settingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly _settingsService: IAINativeSettingsService,
 		@ILanguageFeaturesService private readonly _languageFeaturesService: ILanguageFeaturesService,
 		@IMetricsService private readonly _metricsService: IMetricsService,
 		@IEditCodeService private readonly _editCodeService: IEditCodeService,
@@ -989,7 +989,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		// add a change for all the URIs in the checkpoint history
 		const { lastIdxOfURI } = this._getCheckpointsBetween({ threadId, loIdx: 0, hiIdx: lastCheckpointIdx, }) ?? {}
 		for (const fsPath in lastIdxOfURI ?? {}) {
-			const { model } = this._voidModelService.getModelFromFsPath(fsPath)
+			const { model } = this._ainativeModelService.getModelFromFsPath(fsPath)
 			if (!model) continue
 			const checkpoint2 = thread.messages[lastIdxOfURI[fsPath]] || null
 			if (!checkpoint2) continue
@@ -1007,7 +1007,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		// // add a change for all user-edited files (that aren't in the history)
 		// for (const fsPath of this._userModifiedFilesToCheckInCheckpoints.keys()) {
 		// 	if (fsPath in lastIdxOfURI) continue // if already visisted, don't visit again
-		// 	const { model } = this._voidModelService.getModelFromFsPath(fsPath)
+		// 	const { model } = this._ainativeModelService.getModelFromFsPath(fsPath)
 		// 	if (!model) continue
 		// 	currStrOfFsPath[fsPath] = model.getValue(EndOfLinePreference.LF)
 		// }
@@ -1029,7 +1029,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 	private _addToolEditCheckpoint({ threadId, uri, }: { threadId: string, uri: URI }) {
 		const thread = this.state.allThreads[threadId]
 		if (!thread) return
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) return // should never happen
 		const diffAreasSnapshot = this._editCodeService.getVoidFileSnapshot(uri)
 		this._addCheckpoint(threadId, {
@@ -1488,7 +1488,7 @@ We only need to do it for files that were edited since `from`, ie files between 
 			// check all prevUris for the target
 			for (const uri of prevUris) {
 
-				const modelRef = await this._voidModelService.getModelSafe(uri)
+				const modelRef = await this._ainativeModelService.getModelSafe(uri)
 				const { model } = modelRef
 				if (!model) continue
 

@@ -3,16 +3,11 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { strictEqual, ok, deepStrictEqual, rejects } from 'assert';
+import { strictEqual, ok } from 'assert';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import {
-	IAINativeAuthService,
-	AINativeAuthResult,
-	AINativeUser,
 	AuthState,
-	AINativeAuthError,
-	AINativeAuthErrorCode
 } from '../../common/ainativeAuthService.js';
 import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
@@ -23,7 +18,7 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../../pla
 class MockEncryptionService implements IEncryptionService {
 	_serviceBrand: undefined;
 
-	private storage = new Map<string, string>();
+	// private storage = new Map<string, string>();
 
 	async encrypt(value: string): Promise<string> {
 		// Simple base64 encoding for testing
@@ -56,7 +51,7 @@ class MockStorageService implements IStorageService {
 
 	private storage = new Map<string, string>();
 
-	onDidChangeValue: any = () => ({ dispose: () => {} });
+	onDidChangeValue: any = (_scope: any, _key: any, _disposable: any) => ({ dispose: () => {} });
 	onDidChangeTarget: any = () => ({ dispose: () => {} });
 	onWillSaveState: any = () => ({ dispose: () => {} });
 
@@ -68,7 +63,7 @@ class MockStorageService implements IStorageService {
 
 	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
-		const value = this.get(key, scope);
+		const value = this.get(key, scope, undefined);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -77,7 +72,7 @@ class MockStorageService implements IStorageService {
 
 	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
-		const value = this.get(key, scope);
+		const value = this.get(key, scope, undefined);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -117,24 +112,42 @@ class MockStorageService implements IStorageService {
 		return Promise.resolve();
 	}
 
-	log(): Promise<void> {
+	log(): void {
+		// No-op for testing
+	}
+
+	switch(to: any, preserveData: boolean): Promise<void> {
 		return Promise.resolve();
 	}
 
-	switch(): Promise<void> {
-		return Promise.resolve();
-	}
-
-	hasScope(): boolean {
+	hasScope(scope: any): boolean {
 		return true;
 	}
 
-	storeAll(): void {
+	storeAll(entries: any[], external: boolean): void {
 		// No-op for testing
 	}
 
 	logStorage(): void {
 		// No-op for testing
+	}
+
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		const value = this.get(key, scope, undefined);
+		if (value === undefined) {
+			return fallbackValue;
+		}
+		try {
+			return JSON.parse(value) as T;
+		} catch {
+			return fallbackValue;
+		}
+	}
+
+	async optimize(scope: StorageScope): Promise<void> {
+		// No-op for mock
+		return Promise.resolve();
 	}
 }
 
@@ -284,6 +297,15 @@ suite('AINativeAuthService', () => {
 /**
  * Helper function to create mock JWT tokens for testing
  */
+interface JWTClaims {
+	sub?: string;
+	email?: string;
+	role?: string;
+	exp?: number;
+	iat?: number;
+}
+
+
 function createMockJWT(claims: Partial<JWTClaims>): string {
 	const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64');
 	const payload = Buffer.from(JSON.stringify({

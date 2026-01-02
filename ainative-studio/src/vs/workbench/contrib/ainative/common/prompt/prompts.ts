@@ -10,7 +10,7 @@ import { StagingSelectionItem } from '../chatThreadServiceTypes.js';
 import { os } from '../helpers/systemInfo.js';
 import { RawToolParamsObj } from '../sendLLMMessageTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, BuiltinToolResultType, ToolName } from '../toolsServiceTypes.js';
-import { ChatMode } from '../voidSettingsTypes.js';
+import { ChatMode } from '../ainativeSettingsTypes.js';
 
 // Triple backtick wrapper used throughout the prompts for code blocks
 export const tripleTick = ['```', '```']
@@ -826,7 +826,7 @@ For example, if the user is asking you to "make this variable a better name", ma
 
 
 
-// export const aiRegex_computeReplacementsForFile_userMessage = async ({ searchClause, replaceClause, fileURI, voidFileService }: { searchClause: string, replaceClause: string, fileURI: URI, voidFileService: IVoidFileService }) => {
+// export const aiRegex_computeReplacementsForFile_userMessage = async ({ searchClause, replaceClause, fileURI, voidFileService }: { searchClause: string, replaceClause: string, fileURI: URI, voidFileService: IAINativeFileService }) => {
 
 // 	// we may want to do this in batches
 // 	const fileSelection: FileSelection = { type: 'File', fileURI, selectionStr: null, range: null, state: { isOpened: false } }

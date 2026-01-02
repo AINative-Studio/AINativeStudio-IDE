@@ -9,11 +9,11 @@ import { ChatMessage } from '../common/chatThreadServiceTypes.js';
 import { getIsReasoningEnabledState, getReservedOutputTokenSpace, getModelCapabilities } from '../common/modelCapabilities.js';
 import { reParsedToolXMLString, chat_systemMessage } from '../common/prompt/prompts.js';
 import { AnthropicLLMChatMessage, AnthropicReasoning, GeminiLLMChatMessage, LLMChatMessage, LLMFIMMessage, OpenAILLMChatMessage, RawToolParamsObj } from '../common/sendLLMMessageTypes.js';
-import { IVoidSettingsService } from '../common/voidSettingsService.js';
-import { ChatMode, FeatureName, ModelSelection, ProviderName } from '../common/voidSettingsTypes.js';
+import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
+import { ChatMode, FeatureName, ModelSelection, ProviderName } from '../common/ainativeSettingsTypes.js';
 import { IDirectoryStrService } from '../common/directoryStrService.js';
 import { ITerminalToolService } from './terminalToolService.js';
-import { IVoidModelService } from '../common/voidModelService.js';
+import { IAINativeModelService } from '../common/ainativeModelService.js';
 import { URI } from '../../../../base/common/uri.js';
 import { EndOfLinePreference } from '../../../../editor/common/model.js';
 import { ToolName } from '../common/toolsServiceTypes.js';
@@ -538,8 +538,8 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		@IEditorService private readonly editorService: IEditorService,
 		@IDirectoryStrService private readonly directoryStrService: IDirectoryStrService,
 		@ITerminalToolService private readonly terminalToolService: ITerminalToolService,
-		@IVoidSettingsService private readonly voidSettingsService: IVoidSettingsService,
-		@IVoidModelService private readonly voidModelService: IVoidModelService,
+		@IAINativeSettingsService private readonly ainativeSettingsService: IAINativeSettingsService,
+		@IAINativeModelService private readonly ainativeModelService: IAINativeModelService,
 		@IMCPService private readonly mcpService: IMCPService,
 	) {
 		super()
@@ -552,7 +552,7 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 			let voidRules = '';
 			for (const folder of workspaceFolders) {
 				const uri = URI.joinPath(folder.uri, '.voidrules')
-				const { model } = this.voidModelService.getModel(uri)
+				const { model } = this.ainativeModelService.getModel(uri)
 				if (!model) continue
 				voidRules += model.getValue(EndOfLinePreference.LF) + '\n\n';
 			}
@@ -565,7 +565,7 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 
 	// Get combined AI instructions from settings and .voidrules files
 	private _getCombinedAIInstructions(): string {
-		const globalAIInstructions = this.voidSettingsService.state.globalSettings.aiInstructions;
+		const globalAIInstructions = this.ainativeSettingsService.state.globalSettings.aiInstructions;
 		const voidRulesFileContent = this._getVoidRulesFileContents();
 
 		const ans: string[] = []
@@ -637,7 +637,7 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 	prepareLLMSimpleMessages: IConvertToLLMMessageService['prepareLLMSimpleMessages'] = ({ simpleMessages, systemMessage, modelSelection, featureName }) => {
 		if (modelSelection === null) return { messages: [], separateSystemMessage: undefined }
 
-		const { overridesOfModel } = this.voidSettingsService.state
+		const { overridesOfModel } = this.ainativeSettingsService.state
 
 		const { providerName, modelName } = modelSelection
 		const {
@@ -646,7 +646,7 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 			supportsSystemMessage,
 		} = getModelCapabilities(providerName, modelName, overridesOfModel)
 
-		const modelSelectionOptions = this.voidSettingsService.state.optionsOfModelSelection[featureName][modelSelection.providerName]?.[modelSelection.modelName]
+		const modelSelectionOptions = this.ainativeSettingsService.state.optionsOfModelSelection[featureName][modelSelection.providerName]?.[modelSelection.modelName]
 
 		// Get combined AI instructions
 		const aiInstructions = this._getCombinedAIInstructions();
@@ -670,7 +670,7 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 	prepareLLMChatMessages: IConvertToLLMMessageService['prepareLLMChatMessages'] = async ({ chatMessages, chatMode, modelSelection }) => {
 		if (modelSelection === null) return { messages: [], separateSystemMessage: undefined }
 
-		const { overridesOfModel } = this.voidSettingsService.state
+		const { overridesOfModel } = this.ainativeSettingsService.state
 
 		const { providerName, modelName } = modelSelection
 		const {
@@ -679,11 +679,11 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 			supportsSystemMessage,
 		} = getModelCapabilities(providerName, modelName, overridesOfModel)
 
-		const { disableSystemMessage } = this.voidSettingsService.state.globalSettings;
+		const { disableSystemMessage } = this.ainativeSettingsService.state.globalSettings;
 		const fullSystemMessage = await this._generateChatMessagesSystemMessage(chatMode, specialToolFormat)
 		const systemMessage = disableSystemMessage ? '' : fullSystemMessage;
 
-		const modelSelectionOptions = this.voidSettingsService.state.optionsOfModelSelection['Chat'][modelSelection.providerName]?.[modelSelection.modelName]
+		const modelSelectionOptions = this.ainativeSettingsService.state.optionsOfModelSelection['Chat'][modelSelection.providerName]?.[modelSelection.modelName]
 
 		// Get combined AI instructions
 		const aiInstructions = this._getCombinedAIInstructions();

@@ -12,7 +12,7 @@ import { IMainProcessService } from '../../../../platform/ipc/common/mainProcess
 import { generateUuid } from '../../../../base/common/uuid.js';
 import { Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { IVoidSettingsService } from './voidSettingsService.js';
+import { IAINativeSettingsService } from './ainativeSettingsService.js';
 import { IMCPService } from './mcpService.js';
 
 // calls channel to implement features
@@ -60,7 +60,7 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 
 	constructor(
 		@IMainProcessService private readonly mainProcessService: IMainProcessService, // used as a renderer (only usable on client side)
-		@IVoidSettingsService private readonly voidSettingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly ainativeSettingsService: IAINativeSettingsService,
 		// @INotificationService private readonly notificationService: INotificationService,
 		@IMCPService private readonly mcpService: IMCPService,
 	) {
@@ -116,7 +116,7 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 			return null
 		}
 
-		const { settingsOfProvider, } = this.voidSettingsService.state
+		const { settingsOfProvider, } = this.ainativeSettingsService.state
 
 		const mcpTools = this.mcpService.getMCPTools()
 
@@ -149,7 +149,7 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 	ollamaList = (params: ServiceModelListParams<OllamaModelResponse>) => {
 		const { onSuccess, onError, ...proxyParams } = params
 
-		const { settingsOfProvider } = this.voidSettingsService.state
+		const { settingsOfProvider } = this.ainativeSettingsService.state
 
 		// add state for request id
 		const requestId_ = generateUuid();
@@ -168,7 +168,7 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 	openAICompatibleList = (params: ServiceModelListParams<OpenaiCompatibleModelResponse>) => {
 		const { onSuccess, onError, ...proxyParams } = params
 
-		const { settingsOfProvider } = this.voidSettingsService.state
+		const { settingsOfProvider } = this.ainativeSettingsService.state
 
 		// add state for request id
 		const requestId_ = generateUuid();

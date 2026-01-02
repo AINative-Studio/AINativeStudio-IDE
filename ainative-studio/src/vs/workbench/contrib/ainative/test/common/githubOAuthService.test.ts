@@ -21,22 +21,48 @@ suite('GitHubOAuthService', () => {
 		readonly _serviceBrand = undefined;
 		private storage = new Map<string, string>();
 
+		get(key: string, scope: StorageScope, fallbackValue: string): string;
+		get(key: string, scope: StorageScope): string | undefined;
 		get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 			return this.storage.get(key) ?? fallbackValue;
 		}
 
-		getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean {
+		getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
+		getBoolean(key: string, scope: StorageScope): boolean | undefined;
+		getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
 			const value = this.storage.get(key);
-			return value !== undefined ? value === 'true' : (fallbackValue ?? false);
-		}
-
-		getNumber(key: string, scope: StorageScope, fallbackValue?: number): number {
-			const value = this.storage.get(key);
-			return value !== undefined ? parseInt(value, 10) : (fallbackValue ?? 0);
-		}
-
-		store(key: string, value: string | boolean | number | undefined, scope: StorageScope, target: StorageTarget): void {
 			if (value === undefined) {
+				return fallbackValue;
+			}
+			return value === 'true';
+		}
+
+		getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
+		getNumber(key: string, scope: StorageScope): number | undefined;
+		getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
+			const value = this.storage.get(key);
+			if (value === undefined) {
+				return fallbackValue;
+			}
+			return parseInt(value, 10);
+		}
+
+		getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+		getObject<T extends object>(key: string, scope: StorageScope): T | undefined;
+		getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+			const value = this.storage.get(key);
+			if (value === undefined) {
+				return fallbackValue;
+			}
+			try {
+				return JSON.parse(value) as T;
+			} catch {
+				return fallbackValue;
+			}
+		}
+
+		store(key: string, value: string | boolean | number | undefined | null, scope: StorageScope, target: StorageTarget): void {
+			if (value === undefined || value === null) {
 				this.storage.delete(key);
 			} else {
 				this.storage.set(key, String(value));
@@ -47,20 +73,23 @@ suite('GitHubOAuthService', () => {
 			this.storage.delete(key);
 		}
 
-		keys(scope: StorageScope, target: StorageTarget): readonly string[] {
+		keys(scope: StorageScope, target: StorageTarget): string[] {
 			return Array.from(this.storage.keys());
 		}
 
-		onDidChangeValue = () => ({ dispose: () => { } });
-		onDidChangeTarget = () => ({ dispose: () => { } });
-		onWillSaveState = () => ({ dispose: () => { } });
+		onDidChangeValue: any = (_scope: any, _key: any, _disposable: any) => ({ dispose: () => { } });
+		onDidChangeTarget: any = () => ({ dispose: () => { } });
+		onWillSaveState: any = () => ({ dispose: () => { } });
 
 		logStorage(): void { }
+		storeAll(entries: any[], external: boolean): void { }
+		log(): void { }
 		migrate(): Promise<void> { return Promise.resolve(); }
 		isNew(scope: StorageScope): boolean { return false; }
 		flush(reason?: number): Promise<void> { return Promise.resolve(); }
-		switch(): Promise<void> { return Promise.resolve(); }
-		hasScope(scope: StorageScope): boolean { return true; }
+		switch(to: any, preserveData: boolean): Promise<void> { return Promise.resolve(); }
+		hasScope(scope: any): boolean { return true; }
+		async optimize(scope: StorageScope): Promise<void> { return Promise.resolve(); }
 	}
 
 	setup(() => {
@@ -120,7 +149,7 @@ suite('GitHubOAuthService', () => {
 
 	suite('handleCallback', () => {
 		test('should validate state token', async () => {
-			const { state } = await service.initiateOAuthFlow();
+			const { state: _state } = await service.initiateOAuthFlow();
 
 			await assert.rejects(
 				() => service.handleCallback('valid_code', 'invalid_state'),
@@ -130,7 +159,7 @@ suite('GitHubOAuthService', () => {
 		});
 
 		test('should accept valid state token', async () => {
-			const { state } = await service.initiateOAuthFlow();
+			const { state: _state } = await service.initiateOAuthFlow();
 
 			// Mock successful backend response
 			global.fetch = async () => ({
@@ -149,7 +178,7 @@ suite('GitHubOAuthService', () => {
 				})
 			}) as Response;
 
-			const result = await service.handleCallback('valid_code', state);
+			const result = await service.handleCallback('valid_code', _state);
 
 			assert.ok(result.success, 'Callback should succeed with valid state');
 			assert.strictEqual(result.token, 'test_token', 'Should return access token');
@@ -157,7 +186,7 @@ suite('GitHubOAuthService', () => {
 		});
 
 		test('should clear state after successful callback', async () => {
-			const { state } = await service.initiateOAuthFlow();
+			const { state: _state } = await service.initiateOAuthFlow();
 
 			global.fetch = async () => ({
 				ok: true,
@@ -169,14 +198,14 @@ suite('GitHubOAuthService', () => {
 				})
 			}) as Response;
 
-			await service.handleCallback('valid_code', state);
+			await service.handleCallback('valid_code', _state);
 
 			const storedState = storageService.get('ainative.oauth.github.state', StorageScope.APPLICATION);
 			assert.strictEqual(storedState, undefined, 'State should be cleared after successful callback');
 		});
 
 		test('should emit onDidCompleteAuth event on success', async () => {
-			const { state } = await service.initiateOAuthFlow();
+			const { state: _state } = await service.initiateOAuthFlow();
 
 			global.fetch = async () => ({
 				ok: true,
@@ -196,14 +225,14 @@ suite('GitHubOAuthService', () => {
 				eventResult = result;
 			});
 
-			await service.handleCallback('valid_code', state);
+			await service.handleCallback('valid_code', _state);
 
 			assert.ok(eventFired, 'Event should be fired');
 			assert.ok(eventResult.success, 'Event should contain success result');
 		});
 
 		test('should handle backend errors', async () => {
-			const { state } = await service.initiateOAuthFlow();
+			const { state: _state } = await service.initiateOAuthFlow();
 
 			global.fetch = async () => ({
 				ok: false,
@@ -211,20 +240,20 @@ suite('GitHubOAuthService', () => {
 				statusText: 'Unauthorized'
 			}) as Response;
 
-			const result = await service.handleCallback('invalid_code', state);
+			const result = await service.handleCallback('invalid_code', _state);
 
 			assert.strictEqual(result.success, false, 'Should return failure result');
 			assert.ok(result.error, 'Should include error message');
 		});
 
 		test('should handle network errors', async () => {
-			const { state } = await service.initiateOAuthFlow();
+			const { state: _state } = await service.initiateOAuthFlow();
 
 			global.fetch = async () => {
 				throw new Error('Network error');
 			};
 
-			const result = await service.handleCallback('valid_code', state);
+			const result = await service.handleCallback('valid_code', _state);
 
 			assert.strictEqual(result.success, false, 'Should return failure result');
 			assert.ok(result.error?.includes('Network'), 'Should include network error message');
@@ -267,7 +296,7 @@ suite('GitHubOAuthService', () => {
 		});
 
 		test('should return false after completing flow', async () => {
-			const { state } = await service.initiateOAuthFlow();
+			const { state: _state } = await service.initiateOAuthFlow();
 
 			global.fetch = async () => ({
 				ok: true,
@@ -279,7 +308,7 @@ suite('GitHubOAuthService', () => {
 				})
 			}) as Response;
 
-			await service.handleCallback('valid_code', state);
+			await service.handleCallback('valid_code', _state);
 
 			assert.strictEqual(service.isOAuthInProgress(), false, 'OAuth should not be in progress after completion');
 		});

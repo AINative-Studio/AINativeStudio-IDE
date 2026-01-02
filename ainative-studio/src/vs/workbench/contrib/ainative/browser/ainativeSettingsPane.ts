@@ -23,7 +23,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 
 
-import { mountVoidSettings } from './react/out/void-settings-tsx/index.js'
+import { mountVoidSettings } from './react/out/ainative-settings-tsx/index.js'
 import { Codicon } from '../../../../base/common/codicons.js';
 import { toDisposable } from '../../../../base/common/lifecycle.js';
 
@@ -118,11 +118,11 @@ Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane
 
 
 // register the gear on the top right
-export const VOID_TOGGLE_SETTINGS_ACTION_ID = 'workbench.action.toggleVoidSettings'
+export const AINATIVE_TOGGLE_SETTINGS_ACTION_ID = 'workbench.action.toggleVoidSettings'
 registerAction2(class extends Action2 {
 	constructor() {
 		super({
-			id: VOID_TOGGLE_SETTINGS_ACTION_ID,
+			id: AINATIVE_TOGGLE_SETTINGS_ACTION_ID,
 			title: nls.localize2('voidSettings', "AINative Studio: Toggle Settings"),
 			icon: Codicon.settingsGear,
 			menu: [
@@ -167,11 +167,11 @@ registerAction2(class extends Action2 {
 
 
 
-export const VOID_OPEN_SETTINGS_ACTION_ID = 'workbench.action.openVoidSettings'
+export const AINATIVE_OPEN_SETTINGS_ACTION_ID = 'workbench.action.openVoidSettings'
 registerAction2(class extends Action2 {
 	constructor() {
 		super({
-			id: VOID_OPEN_SETTINGS_ACTION_ID,
+			id: AINATIVE_OPEN_SETTINGS_ACTION_ID,
 			title: nls.localize2('voidSettingsAction2', "AINative Studio: Open Settings"),
 			f1: true,
 			icon: Codicon.settingsGear,
@@ -201,7 +201,7 @@ registerAction2(class extends Action2 {
 MenuRegistry.appendMenuItem(MenuId.GlobalActivity, {
 	group: '0_command',
 	command: {
-		id: VOID_TOGGLE_SETTINGS_ACTION_ID,
+		id: AINATIVE_TOGGLE_SETTINGS_ACTION_ID,
 		title: nls.localize('voidSettingsActionGear', "AINative Studio Settings")
 	},
 	order: 1

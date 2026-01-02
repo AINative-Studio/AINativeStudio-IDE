@@ -24,9 +24,9 @@ import { Widget } from '../../../../base/browser/ui/widget.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IConsistentEditorItemService, IConsistentItemService } from './helperServices/consistentItemService.js';
 import { voidPrefixAndSuffix, ctrlKStream_userMessage, ctrlKStream_systemMessage, defaultQuickEditFimTags, rewriteCode_systemMessage, rewriteCode_userMessage, searchReplaceGivenDescription_systemMessage, searchReplaceGivenDescription_userMessage, tripleTick, } from '../common/prompt/prompts.js';
-import { IVoidCommandBarService } from './voidCommandBarService.js';
+import { IAINativeCommandBarService } from './ainativeCommandBarService.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
-import { VOID_ACCEPT_DIFF_ACTION_ID, VOID_REJECT_DIFF_ACTION_ID } from './actionIDs.js';
+import { AINATIVE_ACCEPT_DIFF_ACTION_ID, AINATIVE_REJECT_DIFF_ACTION_ID } from './actionIDs.js';
 
 import { mountCtrlK } from './react/out/quick-edit-tsx/index.js'
 import { QuickEditPropsType } from './quickEditActions.js';
@@ -39,15 +39,15 @@ import { ILLMMessageService } from '../common/sendLLMMessageService.js';
 import { LLMChatMessage } from '../common/sendLLMMessageTypes.js';
 import { IMetricsService } from '../common/metricsService.js';
 import { IEditCodeService, AddCtrlKOpts, StartApplyingOpts, CallBeforeStartApplyingOpts, } from './editCodeServiceInterface.js';
-import { IVoidSettingsService } from '../common/voidSettingsService.js';
-import { FeatureName } from '../common/voidSettingsTypes.js';
-import { IVoidModelService } from '../common/voidModelService.js';
+import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
+import { FeatureName } from '../common/ainativeSettingsTypes.js';
+import { IAINativeModelService } from '../common/ainativeModelService.js';
 import { deepClone } from '../../../../base/common/objects.js';
 import { acceptBg, acceptBorder, buttonFontSize, buttonTextColor, rejectBg, rejectBorder } from '../common/helpers/colors.js';
 import { DiffArea, Diff, CtrlKZone, VoidFileSnapshot, DiffAreaSnapshotEntry, diffAreaSnapshotKeys, DiffZone, TrackingZone, ComputedDiff } from '../common/editCodeServiceTypes.js';
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
 // import { isMacintosh } from '../../../../base/common/platform.js';
-// import { VOID_OPEN_SETTINGS_ACTION_ID } from './voidSettingsPane.js';
+// import { AINATIVE_OPEN_SETTINGS_ACTION_ID } from './ainativeSettingsPane.js';
 
 const numLinesOfStr = (str: string) => str.split('\n').length
 
@@ -192,9 +192,9 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		@IMetricsService private readonly _metricsService: IMetricsService,
 		@INotificationService private readonly _notificationService: INotificationService,
 		// @ICommandService private readonly _commandService: ICommandService,
-		@IVoidSettingsService private readonly _settingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly _settingsService: IAINativeSettingsService,
 		// @IFileService private readonly _fileService: IFileService,
-		@IVoidModelService private readonly _voidModelService: IVoidModelService,
+		@IAINativeModelService private readonly _ainativeModelService: IAINativeModelService,
 		@IConvertToLLMMessageService private readonly _convertToLLMMessageService: IConvertToLLMMessageService,
 	) {
 		super();
@@ -203,7 +203,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		const registeredModelURIs = new Set<string>()
 		const initializeModel = async (model: ITextModel) => {
 
-			await this._voidModelService.initializeModel(model.uri)
+			await this._ainativeModelService.initializeModel(model.uri)
 
 			// do not add listeners to the same model twice - important, or will see duplicates
 			if (registeredModelURIs.has(model.uri.fsPath)) return
@@ -287,10 +287,10 @@ class EditCodeService extends Disposable implements IEditCodeService {
 	// 				label: `Open Void's settings`,
 	// 				tooltip: '',
 	// 				class: undefined,
-	// 				run: () => { this._commandService.executeCommand(VOID_OPEN_SETTINGS_ACTION_ID) }
+	// 				run: () => { this._commandService.executeCommand(AINATIVE_OPEN_SETTINGS_ACTION_ID) }
 	// 			}]
 	// 		},
-	// 		source: details ? `(Hold ${isMacintosh ? 'Option' : 'Alt'} to hover) - ${details}\n\nIf this persists, feel free to [report](https://github.com/voideditor/void/issues/new) it.` : undefined
+	// 		source: details ? `(Hold ${isMacintosh ? 'Option' : 'Alt'} to hover) - ${details}\n\nIf this persists, feel free to [report](https://github.com/voideditor/ainative/issues/new) it.` : undefined
 	// 	})
 	// }
 
@@ -315,7 +315,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 
 	private _addDiffAreaStylesToURI = (uri: URI) => {
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 
 		for (const diffareaid of this.diffAreasOfURI[uri.fsPath] || []) {
 			const diffArea = this.diffAreaOfId[diffareaid]
@@ -344,7 +344,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 
 	private _computeDiffsAndAddStylesToURI = (uri: URI) => {
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (model === null) return
 		const fullFileText = model.getValue(EndOfLinePreference.LF)
 
@@ -477,7 +477,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 		const disposeInThisEditorFns: (() => void)[] = []
 
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 
 		// green decoration and minimap decoration
 		if (type !== 'deletion') {
@@ -625,7 +625,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 	weAreWriting = false
 	private _writeURIText(uri: URI, text: string, range_: IRange | 'wholeFileRange', { shouldRealignDiffAreas, }: { shouldRealignDiffAreas: boolean, }) {
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) {
 			this._refreshStylesAndDiffsInURI(uri) // at the end of a write, we still expect to refresh all styles. e.g. sometimes we expect to restore all the decorations even if no edits were made when _writeText is used
 			return
@@ -664,7 +664,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 
 	private _getCurrentVoidFileSnapshot = (uri: URI): VoidFileSnapshot => {
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		const snapshottedDiffAreaOfId: Record<string, DiffAreaSnapshotEntry> = {}
 
 		for (const diffareaid in this.diffAreaOfId) {
@@ -752,7 +752,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 		const onFinishEdit = async () => {
 			afterSnapshot = this._getCurrentVoidFileSnapshot(uri)
-			await this._voidModelService.saveModel(uri)
+			await this._ainativeModelService.saveModel(uri)
 		}
 		return { onFinishEdit }
 	}
@@ -1127,8 +1127,8 @@ class EditCodeService extends Disposable implements IEditCodeService {
 	public async callBeforeApplyOrEdit(givenURI: URI | 'current') {
 		const uri = this._uriOfGivenURI(givenURI)
 		if (!uri) return
-		await this._voidModelService.initializeModel(uri)
-		await this._voidModelService.saveModel(uri) // save the URI
+		await this._ainativeModelService.initializeModel(uri)
+		await this._ainativeModelService.saveModel(uri) // save the URI
 	}
 
 
@@ -1269,7 +1269,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		linkedCtrlKZone: CtrlKZone | null,
 		onWillUndo: () => void,
 	}) {
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) return
 
 		// treat like full file, unless linkedCtrlKZone was provided in which case use its diff's range
@@ -1379,7 +1379,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 			throw new Error(`Void: diff.type not recognized on: ${from}`)
 		}
 
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) return
 
 		let streamRequestIdRef: { current: string | null } = { current: null } // can use this as a proxy to set the diffArea's stream state requestId
@@ -1578,7 +1578,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 	_fileLengthOfGivenURI(givenURI: URI | 'current') {
 		const uri = this._uriOfGivenURI(givenURI)
 		if (!uri) return null
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) return null
 		const numCharsInFile = model.getValueLength(EndOfLinePreference.LF)
 		return numCharsInFile
@@ -1617,7 +1617,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		const blocks = extractSearchReplaceBlocks(blocksStr)
 		if (blocks.length === 0) throw new Error(`No Search/Replace blocks were received!`)
 
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) throw new Error(`Error applying Search/Replace blocks: File does not exist.`)
 		const modelStr = model.getValue(EndOfLinePreference.LF)
 		// .split('\n').map(l => '\t' + l).join('\n') // for testing purposes only, remember to remove this
@@ -1678,7 +1678,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		const uri = this._getURIBeforeStartApplying(opts)
 		if (!uri) return
 
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) return
 
 		let streamRequestIdRef: { current: string | null } = { current: null } // can use this as a proxy to set the diffArea's stream state requestId
@@ -2305,7 +2305,7 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 			startLine: number,
 			offsetLines: number
 		},
-		@IVoidCommandBarService private readonly _voidCommandBarService: IVoidCommandBarService,
+		@IAINativeCommandBarService private readonly _ainativeCommandBarService: IAINativeCommandBarService,
 		@IKeybindingService private readonly _keybindingService: IKeybindingService,
 		@IEditCodeService private readonly _editCodeService: IEditCodeService,
 	) {
@@ -2328,15 +2328,15 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 		const lineHeight = editor.getOption(EditorOption.lineHeight);
 
 		const getAcceptRejectText = () => {
-			const acceptKeybinding = this._keybindingService.lookupKeybinding(VOID_ACCEPT_DIFF_ACTION_ID);
-			const rejectKeybinding = this._keybindingService.lookupKeybinding(VOID_REJECT_DIFF_ACTION_ID);
+			const acceptKeybinding = this._keybindingService.lookupKeybinding(AINATIVE_ACCEPT_DIFF_ACTION_ID);
+			const rejectKeybinding = this._keybindingService.lookupKeybinding(AINATIVE_REJECT_DIFF_ACTION_ID);
 
 			// Use the standalone function directly since we're in a nested class that
 			// can't access EditCodeService's methods
 			const acceptKeybindLabel = this._editCodeService.processRawKeybindingText(acceptKeybinding && acceptKeybinding.getLabel() || '');
 			const rejectKeybindLabel = this._editCodeService.processRawKeybindingText(rejectKeybinding && rejectKeybinding.getLabel() || '');
 
-			const commandBarStateAtUri = this._voidCommandBarService.stateOfURI[uri.fsPath];
+			const commandBarStateAtUri = this._ainativeCommandBarService.stateOfURI[uri.fsPath];
 			const selectedDiffIdx = commandBarStateAtUri?.diffIdx ?? 0; // 0th item is selected by default
 			const thisDiffIdx = commandBarStateAtUri?.sortedDiffIds.indexOf(diffid) ?? null;
 
@@ -2435,7 +2435,7 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 
 
 		// Listen for state changes in the command bar service
-		this._register(this._voidCommandBarService.onDidChangeState(e => {
+		this._register(this._ainativeCommandBarService.onDidChangeState(e => {
 			if (uri && e.uri.fsPath === uri.fsPath) {
 
 				const { acceptText, rejectText } = getAcceptRejectText()

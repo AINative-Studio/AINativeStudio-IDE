@@ -101,15 +101,15 @@ class SidebarViewPane extends ViewPane {
 // const voidViewIcon = registerIcon('void-view-icon', voidThemeIcon, localize('voidViewIcon', 'View icon of the Void chat view.'));
 
 // called VIEWLET_ID in other places for some reason
-export const VOID_VIEW_CONTAINER_ID = 'workbench.view.void'
-export const VOID_VIEW_ID = VOID_VIEW_CONTAINER_ID
+export const AINATIVE_VIEW_CONTAINER_ID = 'workbench.view.void'
+export const AINATIVE_VIEW_ID = AINATIVE_VIEW_CONTAINER_ID
 
 // Register view container
 const viewContainerRegistry = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.ViewContainersRegistry);
 const container = viewContainerRegistry.registerViewContainer({
-	id: VOID_VIEW_CONTAINER_ID,
+	id: AINATIVE_VIEW_CONTAINER_ID,
 	title: nls.localize2('voidContainer', 'Chat'), // this is used to say "AINative Studio" (Ctrl + L)
-	ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [VOID_VIEW_CONTAINER_ID, {
+	ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [AINATIVE_VIEW_CONTAINER_ID, {
 		mergeViewWithContainerWhenSingleView: true,
 		orientation: Orientation.HORIZONTAL,
 	}]),
@@ -127,7 +127,7 @@ const container = viewContainerRegistry.registerViewContainer({
 // Register search default location to the container (sidebar)
 const viewsRegistry = Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry);
 viewsRegistry.registerViews([{
-	id: VOID_VIEW_ID,
+	id: AINATIVE_VIEW_ID,
 	hideByDefault: false, // start open
 	// containerIcon: voidViewIcon,
 	name: nls.localize2('voidChat', ''), // this says ... : CHAT
@@ -139,7 +139,7 @@ viewsRegistry.registerViews([{
 	// singleViewPaneContainerTitle: 'hi',
 
 	// openCommandActionDescriptor: {
-	// 	id: VOID_VIEW_CONTAINER_ID,
+	// 	id: AINATIVE_VIEW_CONTAINER_ID,
 	// 	keybindings: {
 	// 		primary: KeyMod.CtrlCmd | KeyCode.KeyL,
 	// 	},
@@ -149,17 +149,17 @@ viewsRegistry.registerViews([{
 
 
 // open sidebar
-export const VOID_OPEN_SIDEBAR_ACTION_ID = 'void.openSidebar'
+export const AINATIVE_OPEN_SIDEBAR_ACTION_ID = 'void.openSidebar'
 registerAction2(class extends Action2 {
 	constructor() {
 		super({
-			id: VOID_OPEN_SIDEBAR_ACTION_ID,
+			id: AINATIVE_OPEN_SIDEBAR_ACTION_ID,
 			title: 'Open AINative Studio Sidebar',
 		})
 	}
 	run(accessor: ServicesAccessor): void {
 		const viewsService = accessor.get(IViewsService)
-		viewsService.openViewContainer(VOID_VIEW_CONTAINER_ID);
+		viewsService.openViewContainer(AINATIVE_VIEW_CONTAINER_ID);
 	}
 });
 
@@ -168,7 +168,7 @@ export class SidebarStartContribution implements IWorkbenchContribution {
 	constructor(
 		@ICommandService private readonly commandService: ICommandService,
 	) {
-		this.commandService.executeCommand(VOID_OPEN_SIDEBAR_ACTION_ID)
+		this.commandService.executeCommand(AINATIVE_OPEN_SIDEBAR_ACTION_ID)
 	}
 }
 registerWorkbenchContribution2(SidebarStartContribution.ID, SidebarStartContribution, WorkbenchPhase.AfterRestored);

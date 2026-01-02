@@ -25,7 +25,7 @@ import { splitRecentLabel } from '../../../../base/common/labels.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 
 /* eslint-disable */ // Void
-import { VOID_CTRL_K_ACTION_ID, VOID_CTRL_L_ACTION_ID } from '../../../contrib/void/browser/actionIDs.js';
+import { AINATIVE_CTRL_K_ACTION_ID, AINATIVE_CTRL_L_ACTION_ID } from '../../../contrib/ainative/browser/actionIDs.js';
 import { VIEWLET_ID as REMOTE_EXPLORER_VIEWLET_ID } from '../../../contrib/remote/browser/remoteExplorer.js';
 /* eslint-enable */
 
@@ -284,7 +284,7 @@ export class EditorGroupWatermark extends Disposable {
 			else {
 
 				// show them Void keybindings
-				const keys = this.keybindingService.lookupKeybinding(VOID_CTRL_L_ACTION_ID);
+				const keys = this.keybindingService.lookupKeybinding(AINATIVE_CTRL_L_ACTION_ID);
 				const dl = append(voidIconBox, $('dl'));
 				const dt = append(dl, $('dt'));
 				dt.textContent = 'Chat'
@@ -295,7 +295,7 @@ export class EditorGroupWatermark extends Disposable {
 				this.currentDisposables.add(label);
 
 
-				const keys2 = this.keybindingService.lookupKeybinding(VOID_CTRL_K_ACTION_ID);
+				const keys2 = this.keybindingService.lookupKeybinding(AINATIVE_CTRL_K_ACTION_ID);
 				const dl2 = append(voidIconBox, $('dl'));
 				const dt2 = append(dl2, $('dt'));
 				dt2.textContent = 'Quick Edit'
@@ -317,7 +317,7 @@ export class EditorGroupWatermark extends Disposable {
 				// if (keys3)
 				// 	label3.set(keys3);
 				// button3.onclick = () => {
-				// 	this.commandService.executeCommand(VOID_OPEN_SETTINGS_ACTION_ID)
+				// 	this.commandService.executeCommand(AINATIVE_OPEN_SETTINGS_ACTION_ID)
 				// }
 				// this.currentDisposables.add(label3);
 

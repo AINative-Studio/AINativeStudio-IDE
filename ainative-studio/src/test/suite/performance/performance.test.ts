@@ -3,9 +3,9 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { strictEqual, ok } from 'assert';
-import { DisposableStore } from '../../../base/common/lifecycle.js';
-import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../base/test/common/utils.js';
+import { ok } from 'assert';
+import { DisposableStore } from '../../../vs/base/common/lifecycle.js';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../vs/base/test/common/utils.js';
 import { AINativeAuthService } from '../../../vs/workbench/contrib/ainative/common/ainativeAuthService.js';
 import { IEncryptionService } from '../../../vs/platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../vs/platform/storage/common/storage.js';
@@ -45,7 +45,7 @@ class MockStorageService implements IStorageService {
 
 	private storage = new Map<string, string>();
 
-	onDidChangeValue: any = () => ({ dispose: () => {} });
+	onDidChangeValue: any = (_scope: any, _key: any, _disposable: any) => ({ dispose: () => {} });
 	onDidChangeTarget: any = () => ({ dispose: () => {} });
 	onWillSaveState: any = () => ({ dispose: () => {} });
 
@@ -57,7 +57,7 @@ class MockStorageService implements IStorageService {
 
 	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
-		const value = this.get(key, scope);
+		const value = this.get(key, scope, undefined);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -66,7 +66,7 @@ class MockStorageService implements IStorageService {
 
 	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
-		const value = this.get(key, scope);
+		const value = this.get(key, scope, undefined);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -124,6 +124,24 @@ class MockStorageService implements IStorageService {
 
 	logStorage(): void {
 		// No-op
+	}
+
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		const value = this.get(key, scope, undefined);
+		if (value === undefined) {
+			return fallbackValue;
+		}
+		try {
+			return JSON.parse(value) as T;
+		} catch {
+			return fallbackValue;
+		}
+	}
+
+	async optimize(scope: StorageScope): Promise<void> {
+		// No-op for mock
+		return Promise.resolve();
 	}
 }
 

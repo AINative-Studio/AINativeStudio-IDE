@@ -16,7 +16,7 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { MCPConfigFileJSON, MCPConfigFileEntryJSON, MCPServer, RawMCPToolCall, MCPToolErrorResponse, MCPServerEventResponse, MCPToolCallParams, removeMCPToolNamePrefix } from '../common/mcpServiceTypes.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { MCPUserStateOfName } from '../common/voidSettingsTypes.js';
+import { MCPUserStateOfName } from '../common/ainativeSettingsTypes.js';
 
 const getClientConfig = (serverName: string) => {
 	return {

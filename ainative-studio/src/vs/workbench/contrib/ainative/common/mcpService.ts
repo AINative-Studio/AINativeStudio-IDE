@@ -17,8 +17,8 @@ import { IMainProcessService } from '../../../../platform/ipc/common/mainProcess
 import { MCPServerOfName, MCPConfigFileJSON, MCPServer, MCPToolCallParams, RawMCPToolCall, MCPServerEventResponse } from './mcpServiceTypes.js';
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { InternalToolInfo } from './prompt/prompts.js';
-import { IVoidSettingsService } from './voidSettingsService.js';
-import { MCPUserStateOfName } from './voidSettingsTypes.js';
+import { IAINativeSettingsService } from './ainativeSettingsService.js';
+import { MCPUserStateOfName } from './ainativeSettingsTypes.js';
 
 
 type MCPServiceState = {
@@ -81,7 +81,7 @@ class MCPService extends Disposable implements IMCPService {
 		@IProductService private readonly productService: IProductService,
 		@IEditorService private readonly editorService: IEditorService,
 		@IMainProcessService private readonly mainProcessService: IMainProcessService,
-		@IVoidSettingsService private readonly voidSettingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly ainativeSettingsService: IAINativeSettingsService,
 	) {
 		super();
 		this.channel = this.mainProcessService.getChannel('void-channel-mcp')
@@ -101,7 +101,7 @@ class MCPService extends Disposable implements IMCPService {
 
 	private async _initialize() {
 		try {
-			await this.voidSettingsService.waitForInitState;
+			await this.ainativeSettingsService.waitForInitState;
 
 			// Create .mcpConfig if it doesn't exist
 			const mcpConfigUri = await this._getMCPConfigFilePath();
@@ -277,10 +277,10 @@ class MCPService extends Disposable implements IMCPService {
 		// set isOn to any new servers in the config
 		const addedUserStateOfName: MCPUserStateOfName = {}
 		for (const name of addedServerNames) { addedUserStateOfName[name] = { isOn: true } }
-		await this.voidSettingsService.addMCPUserStateOfNames(addedUserStateOfName);
+		await this.ainativeSettingsService.addMCPUserStateOfNames(addedUserStateOfName);
 
 		// delete isOn for any servers that no longer show up in the config
-		await this.voidSettingsService.removeMCPUserStateOfNames(removedServerNames);
+		await this.ainativeSettingsService.removeMCPUserStateOfNames(removedServerNames);
 
 		// set all servers to loading
 		for (const serverName in newConfigFileJSON.mcpServers) {
@@ -293,7 +293,7 @@ class MCPService extends Disposable implements IMCPService {
 			addedServerNames,
 			removedServerNames,
 			updatedServerNames,
-			userStateOfName: this.voidSettingsService.state.mcpUserStateOfName,
+			userStateOfName: this.ainativeSettingsService.state.mcpUserStateOfName,
 		})
 	}
 
@@ -317,7 +317,7 @@ class MCPService extends Disposable implements IMCPService {
 	public async toggleServerIsOn(serverName: string, isOn: boolean): Promise<void> {
 		this._setMCPServerState(serverName, { status: 'loading', tools: [] })
 
-		await this.voidSettingsService.setMCPServerState(serverName, { isOn });
+		await this.ainativeSettingsService.setMCPServerState(serverName, { isOn });
 		this.channel.call('toggleMCPServer', { serverName, isOn })
 	}
 

@@ -13,10 +13,10 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../platfo
 import { IMetricsService } from './metricsService.js';
 import { defaultProviderSettings, getModelCapabilities, ModelOverrides } from './modelCapabilities.js';
 import {
-	VOID_SETTINGS_STORAGE_KEY,
-	LEGACY_VOID_SETTINGS_STORAGE_KEY
+	AINATIVE_SETTINGS_STORAGE_KEY,
+	LEGACY_AINATIVE_SETTINGS_STORAGE_KEY
 } from './storageKeys.js';
-import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, VoidStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './voidSettingsTypes.js';
+import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, VoidStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './ainativeSettingsTypes.js';
 
 
 // name is the name in the dropdown
@@ -55,7 +55,7 @@ export type VoidSettingsState = {
 // type EventProp<T extends RealVoidSettings = RealVoidSettings> = T extends 'globalSettings' ? [T, keyof VoidSettingsState[T]] : T | 'all'
 
 
-export interface IVoidSettingsService {
+export interface IAINativeSettingsService {
 	readonly _serviceBrand: undefined;
 	readonly state: VoidSettingsState; // in order to play nicely with react, you should immutably change state
 	readonly waitForInitState: Promise<void>;
@@ -228,8 +228,8 @@ const defaultState = () => {
 }
 
 
-export const IVoidSettingsService = createDecorator<IVoidSettingsService>('VoidSettingsService');
-class VoidSettingsService extends Disposable implements IVoidSettingsService {
+export const IAINativeSettingsService = createDecorator<IAINativeSettingsService>('VoidSettingsService');
+class VoidSettingsService extends Disposable implements IAINativeSettingsService {
 	_serviceBrand: undefined;
 
 	private readonly _onDidChangeState = new Emitter<void>();
@@ -356,14 +356,14 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 	 */
 	private async _migrateStorageKeys(): Promise<void> {
 		// Check if migration already completed (new key exists)
-		const newKeyData = this._storageService.get(VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
+		const newKeyData = this._storageService.get(AINATIVE_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
 		if (newKeyData) {
 			// Migration already done or new key already has data
 			return;
 		}
 
 		// Read data from legacy key
-		const legacyData = this._storageService.get(LEGACY_VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
+		const legacyData = this._storageService.get(LEGACY_AINATIVE_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
 		if (!legacyData) {
 			// No legacy data to migrate
 			return;
@@ -371,14 +371,14 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 
 		// Migrate: copy data to new key
 		this._storageService.store(
-			VOID_SETTINGS_STORAGE_KEY,
+			AINATIVE_SETTINGS_STORAGE_KEY,
 			legacyData,
 			StorageScope.APPLICATION,
 			StorageTarget.USER
 		);
 
 		// Remove legacy key after successful migration
-		this._storageService.remove(LEGACY_VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
+		this._storageService.remove(LEGACY_AINATIVE_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
 
 		console.log('[AINative Migration] Successfully migrated settings from void.settingsServiceStorageII to ainative.settingsServiceStorageII');
 	}
@@ -388,7 +388,7 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 		// Migrate legacy storage keys before reading state
 		await this._migrateStorageKeys();
 
-		const encryptedState = this._storageService.get(VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION)
+		const encryptedState = this._storageService.get(AINATIVE_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION)
 
 		if (!encryptedState)
 			return defaultState()
@@ -402,7 +402,7 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 	private async _storeState() {
 		const state = this.state
 		const encryptedState = await this._encryptionService.encrypt(JSON.stringify(state))
-		this._storageService.store(VOID_SETTINGS_STORAGE_KEY, encryptedState, StorageScope.APPLICATION, StorageTarget.USER);
+		this._storageService.store(AINATIVE_SETTINGS_STORAGE_KEY, encryptedState, StorageScope.APPLICATION, StorageTarget.USER);
 	}
 
 	setSettingOfProvider: SetSettingOfProviderFn = async (providerName, settingName, newVal) => {
@@ -652,4 +652,4 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 }
 
 
-registerSingleton(IVoidSettingsService, VoidSettingsService, InstantiationType.Eager);
+registerSingleton(IAINativeSettingsService, VoidSettingsService, InstantiationType.Eager);

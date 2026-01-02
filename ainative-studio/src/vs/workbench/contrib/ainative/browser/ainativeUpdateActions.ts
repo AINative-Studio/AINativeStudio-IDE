@@ -10,11 +10,11 @@ import { localize2 } from '../../../../nls.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { INotificationActions, INotificationHandle, INotificationService } from '../../../../platform/notification/common/notification.js';
 import { IMetricsService } from '../common/metricsService.js';
-import { IVoidUpdateService } from '../common/voidUpdateService.js';
+import { IAINativeUpdateService } from '../common/ainativeUpdateService.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import * as dom from '../../../../base/browser/dom.js';
 import { IUpdateService } from '../../../../platform/update/common/update.js';
-import { VoidCheckUpdateRespose } from '../common/voidUpdateServiceTypes.js';
+import { VoidCheckUpdateRespose } from '../common/ainativeUpdateServiceTypes.js';
 import { IAction } from '../../../../base/common/actions.js';
 
 
@@ -140,7 +140,7 @@ const notifyErrChecking = (notifService: INotificationService): INotificationHan
 const performVoidCheck = async (
 	explicit: boolean,
 	notifService: INotificationService,
-	voidUpdateService: IVoidUpdateService,
+	ainativeUpdateService: IAINativeUpdateService,
 	metricsService: IMetricsService,
 	updateService: IUpdateService,
 ): Promise<INotificationHandle | null> => {
@@ -148,7 +148,7 @@ const performVoidCheck = async (
 	const metricsTag = explicit ? 'Manual' : 'Auto'
 
 	metricsService.capture(`Void Update ${metricsTag}: Checking...`, {})
-	const res = await voidUpdateService.check(explicit)
+	const res = await ainativeUpdateService.check(explicit)
 	if (!res) {
 		const notifController = notifyErrChecking(notifService);
 		metricsService.capture(`Void Update ${metricsTag}: Error`, { res })
@@ -181,14 +181,14 @@ registerAction2(class extends Action2 {
 		});
 	}
 	async run(accessor: ServicesAccessor): Promise<void> {
-		const voidUpdateService = accessor.get(IVoidUpdateService)
+		const ainativeUpdateService = accessor.get(IAINativeUpdateService)
 		const notifService = accessor.get(INotificationService)
 		const metricsService = accessor.get(IMetricsService)
 		const updateService = accessor.get(IUpdateService)
 
 		const currNotifController = lastNotifController
 
-		const newController = await performVoidCheck(true, notifService, voidUpdateService, metricsService, updateService)
+		const newController = await performVoidCheck(true, notifService, ainativeUpdateService, metricsService, updateService)
 
 		if (newController) {
 			currNotifController?.close()
@@ -201,7 +201,7 @@ registerAction2(class extends Action2 {
 class VoidUpdateWorkbenchContribution extends Disposable implements IWorkbenchContribution {
 	static readonly ID = 'workbench.contrib.void.voidUpdate'
 	constructor(
-		@IVoidUpdateService voidUpdateService: IVoidUpdateService,
+		@IAINativeUpdateService ainativeUpdateService: IAINativeUpdateService,
 		@IMetricsService metricsService: IMetricsService,
 		@INotificationService notifService: INotificationService,
 		@IUpdateService updateService: IUpdateService,
@@ -209,7 +209,7 @@ class VoidUpdateWorkbenchContribution extends Disposable implements IWorkbenchCo
 		super()
 
 		const autoCheck = () => {
-			performVoidCheck(false, notifService, voidUpdateService, metricsService, updateService)
+			performVoidCheck(false, notifService, ainativeUpdateService, metricsService, updateService)
 		}
 
 		// check once 5 seconds after mount

@@ -8,7 +8,6 @@ import { Emitter } from '../../../../../base/common/event.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import {
-	IAgentMemoryService,
 	AgentMemoryService,
 	MemorySearchResult,
 	MemoryEntry,

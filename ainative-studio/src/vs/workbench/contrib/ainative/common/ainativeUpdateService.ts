@@ -7,40 +7,40 @@ import { ProxyChannel } from '../../../../base/parts/ipc/common/ipc.js';
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { IMainProcessService } from '../../../../platform/ipc/common/mainProcessService.js';
-import { VoidCheckUpdateRespose } from './voidUpdateServiceTypes.js';
+import { VoidCheckUpdateRespose } from './ainativeUpdateServiceTypes.js';
 
 
 
-export interface IVoidUpdateService {
+export interface IAINativeUpdateService {
 	readonly _serviceBrand: undefined;
 	check: (explicit: boolean) => Promise<VoidCheckUpdateRespose>;
 }
 
 
-export const IVoidUpdateService = createDecorator<IVoidUpdateService>('VoidUpdateService');
+export const IAINativeUpdateService = createDecorator<IAINativeUpdateService>('VoidUpdateService');
 
 
 // implemented by calling channel
-export class VoidUpdateService implements IVoidUpdateService {
+export class VoidUpdateService implements IAINativeUpdateService {
 
 	readonly _serviceBrand: undefined;
-	private readonly voidUpdateService: IVoidUpdateService;
+	private readonly ainativeUpdateService: IAINativeUpdateService;
 
 	constructor(
 		@IMainProcessService mainProcessService: IMainProcessService, // (only usable on client side)
 	) {
 		// creates an IPC proxy to use metricsMainService.ts
-		this.voidUpdateService = ProxyChannel.toService<IVoidUpdateService>(mainProcessService.getChannel('void-channel-update'));
+		this.ainativeUpdateService = ProxyChannel.toService<IAINativeUpdateService>(mainProcessService.getChannel('void-channel-update'));
 	}
 
 
 	// anything transmitted over a channel must be async even if it looks like it doesn't have to be
-	check: IVoidUpdateService['check'] = async (explicit) => {
-		const res = await this.voidUpdateService.check(explicit)
+	check: IAINativeUpdateService['check'] = async (explicit) => {
+		const res = await this.ainativeUpdateService.check(explicit)
 		return res
 	}
 }
 
-registerSingleton(IVoidUpdateService, VoidUpdateService, InstantiationType.Eager);
+registerSingleton(IAINativeUpdateService, VoidUpdateService, InstantiationType.Eager);
 
 

@@ -6,7 +6,7 @@
 
 import { defaultModelsOfProvider, defaultProviderSettings, ModelOverrides } from './modelCapabilities.js';
 import { ToolApprovalType } from './toolsServiceTypes.js';
-import { VoidSettingsState } from './voidSettingsService.js'
+import { VoidSettingsState } from './ainativeSettingsService.js'
 
 
 type UnionOfKeys<T> = T extends T ? keyof T : never;

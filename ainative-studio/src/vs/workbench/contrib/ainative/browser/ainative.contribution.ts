@@ -23,7 +23,7 @@ import './autocompleteService.js'
 // import './contextUserChangesService.js'
 
 // settings pane
-import './voidSettingsPane.js'
+import './ainativeSettingsPane.js'
 
 // register css
 import './media/void.css'
@@ -70,7 +70,7 @@ import './voidSCMService.js'
 import '../common/sendLLMMessageService.js'
 
 // voidSettings
-import '../common/voidSettingsService.js'
+import '../common/ainativeSettingsService.js'
 
 // refreshModel
 import '../common/refreshModelService.js'
@@ -79,10 +79,10 @@ import '../common/refreshModelService.js'
 import '../common/metricsService.js'
 
 // updates
-import '../common/voidUpdateService.js'
+import '../common/ainativeUpdateService.js'
 
 // model service
-import '../common/voidModelService.js'
+import '../common/ainativeModelService.js'
 
 // agent memory service
 import '../common/agentMemoryService.js'

@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { strictEqual, ok, rejects } from 'assert';
-import { DisposableStore } from '../../../base/common/lifecycle.js';
-import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../base/test/common/utils.js';
+import { DisposableStore } from '../../../vs/base/common/lifecycle.js';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../vs/base/test/common/utils.js';
 import {
 	AINativeAuthService,
 	AuthState,
@@ -76,11 +76,12 @@ class MockStorageService implements IStorageService {
 		this.shouldThrowOnGet = value;
 	}
 
-	onDidChangeValue: any = () => ({ dispose: () => {} });
+	onDidChangeValue: any = (_scope: any, _key: any, _disposable: any) => ({ dispose: () => {} });
 	onDidChangeTarget: any = () => ({ dispose: () => {} });
 	onWillSaveState: any = () => ({ dispose: () => {} });
 
 	get(key: string, scope: StorageScope, fallbackValue: string): string;
+	get(key: string, scope: StorageScope): string | undefined;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 		if (this.shouldThrowOnGet) {
 			throw new Error('Storage get failed');
@@ -90,6 +91,7 @@ class MockStorageService implements IStorageService {
 	}
 
 	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
+	getBoolean(key: string, scope: StorageScope): boolean | undefined;
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
 		const value = this.get(key, scope);
 		if (value === undefined) {
@@ -99,6 +101,7 @@ class MockStorageService implements IStorageService {
 	}
 
 	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
+	getNumber(key: string, scope: StorageScope): number | undefined;
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
 		const value = this.get(key, scope);
 		if (value === undefined) {
@@ -161,6 +164,24 @@ class MockStorageService implements IStorageService {
 
 	logStorage(): void {
 		// No-op
+	}
+
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		const value = this.get(key, scope);
+		if (value === undefined) {
+			return fallbackValue;
+		}
+		try {
+			return JSON.parse(value) as T;
+		} catch {
+			return fallbackValue;
+		}
+	}
+
+	async optimize(scope: StorageScope): Promise<void> {
+		// No-op for mock
+		return Promise.resolve();
 	}
 }
 

@@ -308,8 +308,8 @@ export class AINativeAuthService extends Disposable implements IAINativeAuthServ
 
 			return {
 				success: true,
-				accessToken: this._accessToken,
-				refreshToken: this._refreshToken,
+				accessToken: this._accessToken ?? undefined,
+				refreshToken: this._refreshToken ?? undefined,
 				user: this._user,
 			};
 
@@ -413,7 +413,7 @@ export class AINativeAuthService extends Disposable implements IAINativeAuthServ
 
 			console.log('[AINativeAuthService] Token refresh successful');
 
-			return this._accessToken;
+			return this._accessToken ?? undefined;
 
 		} catch (error) {
 			console.error('[AINativeAuthService] Token refresh failed:', error);
