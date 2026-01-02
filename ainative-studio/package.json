@@ -20,6 +20,8 @@
     "test-extension": "vscode-test",
     "preinstall": "node build/npm/preinstall.js",
     "postinstall": "node build/npm/postinstall.js",
+    "inject-commit": "node build/inject-commit.js",
+    "precompile": "npm run inject-commit",
     "compile": "node --max-old-space-size=16384 ./node_modules/gulp/bin/gulp.js compile",
     "watch": "npm-run-all -lp watch-client watch-extensions",
     "watchd": "deemon npm run watch",
