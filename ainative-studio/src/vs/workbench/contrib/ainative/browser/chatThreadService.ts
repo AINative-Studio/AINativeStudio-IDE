@@ -39,6 +39,7 @@ import { IDirectoryStrService } from '../common/directoryStrService.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IMCPService } from '../common/mcpService.js';
 import { RawMCPToolCall } from '../common/mcpServiceTypes.js';
+import { IPromptHistoryService } from './promptHistoryService.js';
 
 
 // related to retrying when LLM message has error
@@ -327,6 +328,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		@IDirectoryStrService private readonly _directoryStringService: IDirectoryStrService,
 		@IFileService private readonly _fileService: IFileService,
 		@IMCPService private readonly _mcpService: IMCPService,
+		@IPromptHistoryService private readonly _promptHistoryService: IPromptHistoryService,
 	) {
 		super()
 		this.state = { allThreads: {}, currentThreadId: null as unknown as string } // default state
@@ -1278,6 +1280,14 @@ We only need to do it for files that were edited since `from`, ie files between 
 		const userMessageContent = await chat_userMessageContent(instructions, currSelns, { directoryStrService: this._directoryStringService, fileService: this._fileService }) // user message + names of files (NOT content)
 		const userHistoryElt: ChatMessage = { role: 'user', content: userMessageContent, displayContent: instructions, selections: currSelns, state: defaultMessageState }
 		this._addMessageToThread(threadId, userHistoryElt)
+
+		// Capture prompt in history
+		const { modelSelection } = this._currentModelSelectionProps();
+		await this._promptHistoryService.addPrompt(instructions, {
+			threadId,
+			modelName: modelSelection?.modelName,
+			providerName: modelSelection?.providerName,
+		});
 
 		this._setThreadState(threadId, { currCheckpointIdx: null }) // no longer at a checkpoint because started streaming
 

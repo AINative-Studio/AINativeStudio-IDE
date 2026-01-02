@@ -15,5 +15,6 @@ export const LEGACY_MACHINE_ID_KEY = 'void.app.machineId';
 // Current AINative keys (active)
 export const AINATIVE_SETTINGS_STORAGE_KEY = 'ainative.settingsServiceStorageII';
 export const THREAD_STORAGE_KEY = 'ainative.chatThreadStorageII';
+export const PROMPT_HISTORY_STORAGE_KEY = 'ainative.promptHistory';
 export const OPT_OUT_KEY = 'ainative.app.optOutAll';
 export const MACHINE_ID_KEY = 'ainative.app.machineId';

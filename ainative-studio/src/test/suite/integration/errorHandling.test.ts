@@ -3,7 +3,7 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { strictEqual, ok, rejects } from 'assert';
+import { strictEqual, ok } from 'assert';
 import { DisposableStore } from '../../../vs/base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../vs/base/test/common/utils.js';
 import {

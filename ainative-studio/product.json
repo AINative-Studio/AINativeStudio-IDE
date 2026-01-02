@@ -5,7 +5,7 @@
 	"voidRelease": "0044",
 	"version": "1.4.9.0044",
 	"quality": "stable",
-	"commit": "${COMMIT_HASH}",
+	"commit": "ec64ca705e2dbeab77fdc280593e5515849a4688",
 	"updateUrl": "https://api.ainative.studio/api/update",
 	"downloadUrl": "https://github.com/AINative-Studio/AINativeStudio-IDE/releases",
 	"releaseNotesUrl": "https://docs.ainativestudio.com/release-notes",
