@@ -1,0 +1,23 @@
+{
+  "name": "AINative Studio Testing Session",
+  "description": "Auto-approval configuration for compilation error fixing",
+  "autoApprove": {
+    "read": [
+      "//Users/aideveloper/AINativeStudio-IDE/**"
+    ],
+    "edit": [
+      "//Users/aideveloper/AINativeStudio-IDE/**"
+    ],
+    "write": [
+      "//Users/aideveloper/AINativeStudio-IDE/**",
+      "//tmp/**"
+    ],
+    "bash": [
+      "cd /Users/aideveloper/AINativeStudio-IDE/** && npm run compile*",
+      "cd /Users/aideveloper/AINativeStudio-IDE/** && python3*",
+      "cd /Users/aideveloper/AINativeStudio-IDE/** && grep*",
+      "cd /Users/aideveloper/AINativeStudio-IDE/** && git*"
+    ]
+  },
+  "notes": "This configuration auto-approves file operations for testing/compilation error fixes in the AINativeStudio-IDE project"
+}

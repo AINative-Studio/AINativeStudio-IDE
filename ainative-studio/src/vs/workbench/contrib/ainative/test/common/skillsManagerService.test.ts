@@ -8,11 +8,11 @@ import { Emitter } from '../../../../../base/common/event.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { SkillsManagerService } from '../../common/skillsManagerService.js';
-import { Skill, SkillPreferences } from '../../common/skillTypes.js';
+import { Skill as __Skill, SkillPreferences } from '../../common/skillTypes.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
-import { IFileService, __FileSystemProviderCapabilities, __IFileSystemProvider, IFileChange } from '../../../../../platform/files/common/files.js';
+import { IFileService, /* FileSystemProviderCapabilities, IFileSystemProvider, */ IFileChange } from '../../../../../platform/files/common/files.js';
 import { URI } from '../../../../../base/common/uri.js';
-import { Event } from '../../../../../base/common/event.js';
+import { Event as __Event } from '../../../../../base/common/event.js';
 import { VSBuffer } from '../../../../../base/common/buffer.js';
 
 /**
@@ -21,29 +21,51 @@ import { VSBuffer } from '../../../../../base/common/buffer.js';
 class MockStorageService implements IStorageService {
 	readonly _serviceBrand: undefined;
 
-	private readonly _onDidChangeValue = new Emitter<{ key: string; scope: StorageScope }>();
-	readonly onDidChangeValue = this._onDidChangeValue.event;
+	private readonly _onDidChangeValue = new Emitter<any>();
+	onDidChangeValue(scope: StorageScope, key: string | undefined, disposable: DisposableStore): any {
+		return this._onDidChangeValue.event;
+	}
 
-	private readonly _onDidChangeTarget = new Emitter<{ key: string }>();
+	private readonly _onDidChangeTarget = new Emitter<any>();
 	readonly onDidChangeTarget = this._onDidChangeTarget.event;
 
-	private readonly _onWillSaveState = new Emitter<void>();
+	private readonly _onWillSaveState = new Emitter<any>();
 	readonly onWillSaveState = this._onWillSaveState.event;
 
 	private storage = new Map<string, string>();
 
+	get(key: string, scope: StorageScope, fallbackValue: string): string;
+	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 		return this.storage.get(key) ?? fallbackValue;
 	}
 
-	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean {
+	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
+	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined;
+	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
 		const value = this.storage.get(key);
-		return value !== undefined ? value === 'true' : (fallbackValue ?? false);
+		return value !== undefined ? value === 'true' : fallbackValue;
 	}
 
-	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number {
+	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
+	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined;
+	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
 		const value = this.storage.get(key);
-		return value !== undefined ? parseInt(value, 10) : (fallbackValue ?? 0);
+		return value !== undefined ? parseInt(value, 10) : fallbackValue;
+	}
+
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		const value = this.storage.get(key);
+		if (value === undefined) {
+			return fallbackValue;
+		}
+		try {
+			return JSON.parse(value);
+		} catch {
+			return fallbackValue;
+		}
 	}
 
 	store(key: string, value: string | boolean | number | undefined, scope: StorageScope, target: StorageTarget): void {
@@ -55,6 +77,12 @@ class MockStorageService implements IStorageService {
 		this._onDidChangeValue.fire({ key, scope });
 	}
 
+	storeAll(entries: any[], external: boolean): void {
+		for (const entry of entries) {
+			this.store(entry.key, entry.value, entry.scope, entry.target);
+		}
+	}
+
 	remove(key: string, scope: StorageScope): void {
 		this.storage.delete(key);
 		this._onDidChangeValue.fire({ key, scope });
@@ -64,22 +92,22 @@ class MockStorageService implements IStorageService {
 		return Array.from(this.storage.keys());
 	}
 
-	switch(): Promise<void> {
-		return Promise.resolve();
-	}
+	log(): void { }
 
-	hasScope(): boolean {
+	hasScope(scope: any): boolean {
 		return true;
 	}
 
-	logStorage(): void { }
-
-	migrate(): Promise<void> {
+	switch(to: any, preserveData: boolean): Promise<void> {
 		return Promise.resolve();
 	}
 
 	isNew(scope: StorageScope): boolean {
 		return false;
+	}
+
+	optimize(scope: StorageScope): Promise<void> {
+		return Promise.resolve();
 	}
 
 	flush(): Promise<void> {

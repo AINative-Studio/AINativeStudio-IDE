@@ -108,13 +108,13 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 
 			if (options.enabled !== undefined) {
 				filteredSkills = filteredSkills.filter(skill =>
-					!preferences.disabledSkills?.includes(skill.name)
+					!preferences.disabledSkills?.includes(skill.name || \'\')
 				);
 			}
 
 			if (options.disabled !== undefined) {
 				filteredSkills = filteredSkills.filter(skill =>
-					preferences.disabledSkills?.includes(skill.name)
+					preferences.disabledSkills?.includes(skill.name || \'\')
 				);
 			}
 
@@ -126,7 +126,7 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 
 			if (options.tag) {
 				filteredSkills = filteredSkills.filter(skill =>
-					skill.tags?.includes(options.tag)
+					skill.tags?.includes(options.tag || \'\')
 				);
 			}
 
@@ -189,7 +189,7 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 					};
 
 				case 'marketplace':
-					const searchResults = await this.marketplace.searchSkills(source);
+					const searchResults = await this.marketplace.searchSkills({ query: source });
 					const results = searchResults.results;
 					if (!results || results.length === 0) {
 						return {
@@ -198,7 +198,8 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 							error: 'NOT_FOUND'
 						};
 					}
-					skillUri = results[0].source;
+					// Note: SkillSearchResult uses downloadUrl, not source
+					skillUri = URI.parse(results[0].downloadUrl || results[0].name);
 					break;
 
 				default:
@@ -314,7 +315,7 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 			const skill = this.skillsManager.getSkillByName(skillName);
 
 			if (!skill) {
-				const marketplaceResults = await this.marketplace.searchSkills(skillName);
+				const marketplaceResults = await this.marketplace.searchSkills({ query: skillName });
 				const marketplaceSkillsArray = marketplaceResults.results;
 				if (marketplaceSkillsArray && marketplaceSkillsArray.length > 0) {
 					const marketplaceSkill = marketplaceSkillsArray[0];
@@ -324,7 +325,8 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 						data: {
 							skill: marketplaceSkill,
 							installed: false,
-							formatted: this.formatSkillInfo(marketplaceSkill, false)
+							// Note: formatSkillInfo expects Skill type, SkillSearchResult is different
+							formatted: `${marketplaceSkill.name} (${marketplaceSkill.version})\n${marketplaceSkill.description}`
 						}
 					};
 				}
@@ -388,11 +390,11 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 
 	async searchSkills(options: SearchSkillsOptions): Promise<SkillCommandResult> {
 		try {
-			const results = await this.marketplace.searchSkills(options.query, {
+			const results = await this.marketplace.searchSkills({ query: options.query, 
 				category: options.category,
 				tags: options.tag ? [options.tag] : undefined,
 				limit: options.limit
-			});
+			 });
 
 			const skillsArray = results.results;
 
@@ -594,7 +596,7 @@ See [SKILL.md](./SKILL.md) for details.
 		const lines: string[] = ['Installed Skills:\n'];
 
 		for (const skill of skills) {
-			const isEnabled = !preferences.disabledSkills?.includes(skill.name);
+			const isEnabled = !preferences.disabledSkills?.includes(skill.name || \'\');
 			const status = isEnabled ? '✅' : '❌';
 			const disabled = isEnabled ? '' : ' [DISABLED]';
 

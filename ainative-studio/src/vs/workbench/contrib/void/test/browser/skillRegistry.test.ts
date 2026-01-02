@@ -37,7 +37,7 @@ interface ISkillRegistry {
 
 // Mock registry implementation for testing structure
 class SkillRegistry implements ISkillRegistry {
-	private __skills: Map<string, ISkill> = new Map();
+	private ___skills: Map<string, ISkill> = new Map();
 
 	add(skill: ISkill): void {
 		// TODO: Replace with actual implementation
@@ -259,7 +259,7 @@ suite('Skills Manager - Skill Registry', () => {
 
 		test('should list all __skills', () => {
 			// Given: Registry with N __skills
-			const __skills = [
+			const skills = [
 				SkillTestUtils.createMockSkill({ name: 'skill-1' }),
 				SkillTestUtils.createMockSkill({ name: 'skill-2' }),
 				SkillTestUtils.createMockSkill({ name: 'skill-3' })

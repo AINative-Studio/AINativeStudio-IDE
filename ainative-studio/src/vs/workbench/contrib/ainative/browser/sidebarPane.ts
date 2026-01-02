@@ -33,7 +33,8 @@ import { IKeybindingService } from '../../../../platform/keybinding/common/keybi
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
-import { mountSidebar } from './react/out/sidebar-tsx/index.js';
+// TEMP: React build needed
+// import { mountSidebar } from './react/out/sidebar-tsx/index.js';
 
 import { Codicon } from '../../../../base/common/codicons.js';
 import { Orientation } from '../../../../base/browser/ui/sash/sash.js';

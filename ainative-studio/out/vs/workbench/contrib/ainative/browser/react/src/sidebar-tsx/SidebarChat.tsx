@@ -16,6 +16,7 @@ import { ErrorDisplay } from './ErrorDisplay.js';
 import { BlockCode, TextAreaFns, VoidCustomDropdownBox, VoidInputBox2, VoidSlider, VoidSwitch, VoidDiffEditor } from '../util/inputs.js';
 import { ModelDropdown, } from '../void-settings-tsx/ModelDropdown.js';
 import { PastThreadsList } from './SidebarThreadSelector.js';
+import { PromptHistoryPanel, PromptEntry } from './PromptHistoryPanel.js';
 import { VOID_CTRL_L_ACTION_ID } from '../../../actionIDs.js';
 import { VOID_OPEN_SETTINGS_ACTION_ID } from '../../../voidSettingsPane.js';
 import { ChatMode, displayInfoOfProviderName, FeatureName, isFeatureNameDisabled } from '../../../../../../../workbench/contrib/void/common/voidSettingsTypes.js';
@@ -2913,6 +2914,9 @@ export const SidebarChat = () => {
 	const initVal = ''
 	const [instructionsAreEmpty, setInstructionsAreEmpty] = useState(!initVal)
 
+	// prompt history panel state
+	const [showPromptHistory, setShowPromptHistory] = useState(false)
+
 	const isDisabled = instructionsAreEmpty || !!isFeatureNameDisabled('Chat', settingsState)
 
 	const sidebarRef = useRef<HTMLDivElement>(null)
@@ -2961,6 +2965,27 @@ export const SidebarChat = () => {
 		})
 
 	}, [chatThreadsState, threadId, textAreaRef, scrollContainerRef, isResolved])
+
+	// Keyboard shortcut for prompt history panel (Cmd/Ctrl+H)
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
+				e.preventDefault()
+				setShowPromptHistory(prev => !prev)
+			}
+		}
+
+		window.addEventListener('keydown', handleKeyDown)
+		return () => window.removeEventListener('keydown', handleKeyDown)
+	}, [])
+
+	// Handle prompt selection from history
+	const handlePromptSelect = useCallback((prompt: PromptEntry) => {
+		// Populate the input field with the selected prompt
+		textAreaFnsRef.current?.setValue(prompt.content)
+		textAreaRef.current?.focus()
+		setShowPromptHistory(false)
+	}, [textAreaFnsRef, textAreaRef])
 
 
 
@@ -3186,9 +3211,28 @@ export const SidebarChat = () => {
 	return (
 		<Fragment key={threadId} // force rerender when change thread
 		>
-			{isLandingPage ?
-				landingPageContent
-				: threadPageContent}
+			<div className="relative w-full h-full">
+				{/* Main content */}
+				<div className={`w-full h-full transition-all duration-300 ${showPromptHistory ? 'mr-80' : ''}`}>
+					{isLandingPage ?
+						landingPageContent
+						: threadPageContent}
+				</div>
+
+				{/* Prompt History Panel - Slide-out from right */}
+				{showPromptHistory && (
+					<div className="absolute top-0 right-0 bottom-0 w-80 border-l border-void-border-3 bg-void-bg-2 z-50 shadow-lg">
+						<div className="h-full p-4">
+							<ErrorBoundary>
+								<PromptHistoryPanel
+									onPromptSelect={handlePromptSelect}
+									onClose={() => setShowPromptHistory(false)}
+								/>
+							</ErrorBoundary>
+						</div>
+					</div>
+				)}
+			</div>
 		</Fragment>
 	)
 }

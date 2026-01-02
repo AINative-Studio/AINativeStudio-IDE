@@ -106,8 +106,8 @@ export class PromptHistoryZeroDBService extends Disposable implements IPromptHis
 	private static readonly NAMESPACE = 'prompt-history';
 	private static readonly MAX_RETRIES = 3;
 	private static readonly RETRY_DELAY_MS = 1000;
-	private static readonly BATCH_SIZE = 10;
-	private static readonly QUEUE_CONCURRENCY = 2;
+	private static readonly __BATCH_SIZE = 10;
+	private static readonly __QUEUE_CONCURRENCY = 2;
 
 	private readonly _onDidStoreVector = this._register(new Emitter<PromptEntry>());
 	readonly onDidStoreVector = this._onDidStoreVector.event;

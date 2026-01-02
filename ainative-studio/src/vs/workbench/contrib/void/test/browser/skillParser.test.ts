@@ -47,17 +47,17 @@ class SkillParser {
 		throw new Error('Not implemented - to be implemented in Phase 1');
 	}
 
-	private __extractFrontmatter(content: string): { frontmatter: string; body: string } | null {
+	private ___extractFrontmatter(content: string): { frontmatter: string; body: string } | null {
 		// TODO: Implementation
 		throw new Error('Not implemented');
 	}
 
-	private __parseYaml(yaml: string): ISkillMetadata {
+	private ___parseYaml(yaml: string): ISkillMetadata {
 		// TODO: Implementation
 		throw new Error('Not implemented');
 	}
 
-	private __validateMetadata(metadata: Partial<ISkillMetadata>): string[] {
+	private ___validateMetadata(metadata: Partial<ISkillMetadata>): string[] {
 		// TODO: Implementation
 		throw new Error('Not implemented');
 	}
