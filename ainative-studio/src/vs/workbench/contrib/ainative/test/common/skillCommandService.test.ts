@@ -151,10 +151,18 @@ class MockMarketplaceService implements ISkillMarketplaceService {
 		this.mockSkills = skills;
 	}
 
-	async searchSkills(query: string, options?: any): Promise<Skill[]> {
-		return this.mockSkills.filter(skill =>
+	async searchSkills(filters?: any): Promise<{ results: Skill[]; total: number; offset: number; limit: number; hasMore: boolean }> {
+		const query = filters?.query || '';
+		const results = this.mockSkills.filter(skill =>
 			(skill.name || '').includes(query) || (skill.description || '').includes(query)
 		);
+		return {
+			results,
+			total: results.length,
+			offset: 0,
+			limit: results.length,
+			hasMore: false
+		};
 	}
 
 	async getSkillByName(name: string): Promise<Skill | undefined> {
@@ -403,7 +411,12 @@ Content
 				category: 'general',
 				content: 'Content',
 				source: 'marketplace' as any,
-				tags: ['marketplace']
+				tags: ['marketplace'],
+				// Required Skill properties
+				metadata: { name: 'marketplace-skill', version: '1.0.0', description: 'Marketplace skill', tags: ['marketplace'] },
+				instructions: 'Test instructions',
+				filePath: URI.parse('file:///test'),
+				lastModified: Date.now()
 			}]);
 
 			const result = await commandService.getSkillInfo('marketplace-skill');
@@ -424,23 +437,33 @@ Content
 		test('should search marketplace for skills', async () => {
 			marketplace.setMockSkills([
 				{
-					name: 'database-skill',
-					version: '1.0.0',
-					description: 'Database management skill',
-					category: 'database',
-					content: 'Content',
-					source: 'marketplace' as any,
-					tags: ['database', 'sql']
-				},
+				name: 'database-skill',
+				version: '1.0.0',
+				description: 'Database management skill',
+				category: 'database',
+				content: 'Content',
+				source: 'marketplace' as any,
+				tags: ['database', 'sql'],
+				// Required Skill properties
+				metadata: { name: 'database-skill', version: '1.0.0', description: 'Database management skill', tags: ['database', 'sql'] },
+				instructions: 'Test instructions',
+				filePath: URI.parse('file:///test'),
+				lastModified: Date.now()
+			},
 				{
-					name: 'testing-skill',
-					version: '1.0.0',
-					description: 'Testing patterns skill',
-					category: 'testing',
-					content: 'Content',
-					source: 'marketplace' as any,
-					tags: ['testing', 'tdd']
-				}
+				name: 'testing-skill',
+				version: '1.0.0',
+				description: 'Testing patterns skill',
+				category: 'testing',
+				content: 'Content',
+				source: 'marketplace' as any,
+				tags: ['testing', 'tdd'],
+				// Required Skill properties
+				metadata: { name: 'testing-skill', version: '1.0.0', description: 'Testing patterns skill', tags: ['testing', 'tdd'] },
+				instructions: 'Test instructions',
+				filePath: URI.parse('file:///test'),
+				lastModified: Date.now()
+			}
 			]);
 
 			const result = await commandService.searchSkills({ query: 'database' });

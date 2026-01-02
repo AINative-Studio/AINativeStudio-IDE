@@ -73,7 +73,7 @@ suite('AINativeCloudProvider', () => {
 		};
 
 		const onError: OnError = () => {
-			__errorOccurred = true;
+			errorOccurred = true;
 		};
 
 		const abortController = new AbortController();
@@ -152,7 +152,7 @@ suite('AINativeCloudProvider', () => {
 		const onText: OnText = () => { };
 		const onFinalMessage: OnFinalMessage = () => { };
 		const onError: OnError = () => {
-			__errorOccurred = true;
+			errorOccurred = true;
 		};
 
 		const abortController = new AbortController();
