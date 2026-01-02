@@ -566,10 +566,12 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 	// Get combined AI instructions from settings and .voidrules files
 	private _getCombinedAIInstructions(): string {
 		const globalAIInstructions = this.ainativeSettingsService.state.globalSettings.aiInstructions;
+		const projectRules = this.ainativeSettingsService.state.globalSettings.projectRules;
 		const voidRulesFileContent = this._getVoidRulesFileContents();
 
 		const ans: string[] = []
 		if (globalAIInstructions) ans.push(globalAIInstructions)
+		if (projectRules) ans.push(projectRules)
 		if (voidRulesFileContent) ans.push(voidRulesFileContent)
 		return ans.join('\n\n')
 	}

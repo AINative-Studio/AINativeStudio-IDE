@@ -797,6 +797,21 @@ export const AIInstructionsBox = () => {
 	/>
 }
 
+export const ProjectRulesBox = () => {
+	const accessor = useAccessor()
+	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsState = useSettingsState()
+	return <VoidInputBox2
+		className='min-h-[81px] p-3 rounded-sm'
+		initValue={voidSettingsState.globalSettings.projectRules}
+		placeholder={`Always use snake_case for file names in this project. Include JSDoc comments for all exported functions. `}
+		multiline
+		onChangeText={(newText) => {
+			voidSettingsService.setGlobalSetting('projectRules', newText)
+		}}
+	/>
+}
+
 const FastApplyMethodDropdown = () => {
 	const accessor = useAccessor()
 	const voidSettingsService = accessor.get('IVoidSettingsService')
@@ -1541,12 +1556,12 @@ export const Settings = () => {
 									</div>
 								</div>
 
-								{/* AI Instructions section */}
+								{/* Global Rules section */}
 								<div className='max-w-[600px]'>
-									<h2 className={`text-3xl mb-2`}>AI Instructions</h2>
+									<h2 className={`text-3xl mb-2`}>Global Rules</h2>
 									<h4 className={`text-void-fg-3 mb-4`}>
 										<ChatMarkdownRender inPTag={true} string={`
-System instructions to include with all AI requests.
+Rules that apply to all AI interactions across the IDE.
 Alternatively, place a \`.voidrules\` file in the root of your workspace.
 								`} chatMessageLocation={undefined} />
 									</h4>
@@ -1573,6 +1588,19 @@ Alternatively, place a \`.voidrules\` file in the root of your workspace.
 											{`When disabled, AINative Studio will not include anything in the system message except for content you specified above.`}
 										</div>
 									</div>
+								</div>
+
+								{/* Project Rules section */}
+								<div className='max-w-[600px] mt-8'>
+									<h2 className={`text-3xl mb-2`}>Project Rules</h2>
+									<h4 className={`text-void-fg-3 mb-4`}>
+										<ChatMarkdownRender inPTag={true} string={`
+Rules that apply only to AI interactions within this specific project.
+								`} chatMessageLocation={undefined} />
+									</h4>
+									<ErrorBoundary>
+										<ProjectRulesBox />
+									</ErrorBoundary>
 								</div>
 
 							</div>
