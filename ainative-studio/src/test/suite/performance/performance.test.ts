@@ -49,6 +49,7 @@ class MockStorageService implements IStorageService {
 	onDidChangeTarget: any = () => ({ dispose: () => {} });
 	onWillSaveState: any = () => ({ dispose: () => {} });
 
+	get(key: string, scope: StorageScope): string | undefined;
 	get(key: string, scope: StorageScope, fallbackValue: string): string;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 		const storageKey = `${scope}:${key}`;
@@ -57,7 +58,7 @@ class MockStorageService implements IStorageService {
 
 	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
-		const value = this.get(key, scope, undefined);
+		const value = this.get(key, scope);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -66,7 +67,7 @@ class MockStorageService implements IStorageService {
 
 	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
-		const value = this.get(key, scope, undefined);
+		const value = this.get(key, scope);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -128,7 +129,7 @@ class MockStorageService implements IStorageService {
 
 	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
 	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
-		const value = this.get(key, scope, undefined);
+		const value = this.get(key, scope);
 		if (value === undefined) {
 			return fallbackValue;
 		}
