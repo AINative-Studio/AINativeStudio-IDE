@@ -11,6 +11,8 @@ export const LEGACY_AINATIVE_SETTINGS_STORAGE_KEY = 'void.settingsServiceStorage
 export const LEGACY_THREAD_STORAGE_KEY = 'void.chatThreadStorageII';
 export const LEGACY_OPT_OUT_KEY = 'void.app.optOutAll';
 export const LEGACY_MACHINE_ID_KEY = 'void.app.machineId';
+export const LEGACY_OLD_MACHINE_ID_KEY = 'void.app.oldMachineId';
+export const LEGACY_USER_MACHINE_ID_KEY = 'void.app.userMachineId';
 
 // Current AINative keys (active)
 export const AINATIVE_SETTINGS_STORAGE_KEY = 'ainative.settingsServiceStorageII';
@@ -18,4 +20,6 @@ export const THREAD_STORAGE_KEY = 'ainative.chatThreadStorageII';
 export const PROMPT_HISTORY_STORAGE_KEY = 'ainative.promptHistory';
 export const OPT_OUT_KEY = 'ainative.app.optOutAll';
 export const MACHINE_ID_KEY = 'ainative.app.machineId';
+export const OLD_MACHINE_ID_KEY = 'ainative.app.oldMachineId';
+export const USER_MACHINE_ID_KEY = 'ainative.app.userMachineId';
 export const SKILLS_PREFERENCES_KEY = 'ainative.skillsPreferences';
