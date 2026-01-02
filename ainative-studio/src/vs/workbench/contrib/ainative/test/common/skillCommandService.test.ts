@@ -3,16 +3,16 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { strictEqual, ok, deepStrictEqual } from 'assert';
+import { strictEqual, ok, __deepStrictEqual } from 'assert';
 import { Emitter } from '../../../../../base/common/event.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
-import { SkillCommandService, ISkillCommandService } from '../../common/skillCommandService.js';
-import { SkillsManagerService, ISkillsManagerService } from '../../common/skillsManagerService.js';
+import { SkillCommandService, __ISkillCommandService } from '../../common/skillCommandService.js';
+import { SkillsManagerService, __ISkillsManagerService } from '../../common/skillsManagerService.js';
 import { ISkillMarketplaceService } from '../../common/skillMarketplaceService.js';
-import { Skill, SkillPreferences } from '../../common/skillTypes.js';
+import { Skill, __SkillPreferences } from '../../common/skillTypes.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
-import { IFileService, FileSystemProviderCapabilities, IFileSystemProvider } from '../../../../../platform/files/common/files.js';
+import { IFileService, __FileSystemProviderCapabilities, __IFileSystemProvider } from '../../../../../platform/files/common/files.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { Event } from '../../../../../base/common/event.js';

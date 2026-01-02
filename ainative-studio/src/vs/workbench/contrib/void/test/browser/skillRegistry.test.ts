@@ -37,7 +37,7 @@ interface ISkillRegistry {
 
 // Mock registry implementation for testing structure
 class SkillRegistry implements ISkillRegistry {
-	private skills: Map<string, ISkill> = new Map();
+	private __skills: Map<string, ISkill> = new Map();
 
 	add(skill: ISkill): void {
 		// TODO: Replace with actual implementation
@@ -133,13 +133,13 @@ suite('Skills Manager - Skill Registry', () => {
 			assert.strictEqual(registry.get('test-skill-1')?.name, 'test-skill-1');
 		});
 
-		test('should add multiple skills', () => {
+		test('should add multiple __skills', () => {
 			// Given: Empty registry
 			const skill1 = SkillTestUtils.createMockSkill({ name: 'skill-1' });
 			const skill2 = SkillTestUtils.createMockSkill({ name: 'skill-2' });
 			const skill3 = SkillTestUtils.createMockSkill({ name: 'skill-3' });
 
-			// When: Add multiple skills
+			// When: Add multiple __skills
 			registry.add(skill1);
 			registry.add(skill2);
 			registry.add(skill3);
@@ -170,7 +170,7 @@ suite('Skills Manager - Skill Registry', () => {
 		});
 
 		test('should remove skill from registry', () => {
-			// Given: Registry with multiple skills
+			// Given: Registry with multiple __skills
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-1' }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-2' }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-3' }));
@@ -198,8 +198,8 @@ suite('Skills Manager - Skill Registry', () => {
 			assert.strictEqual(registry.count(), 1);
 		});
 
-		test('should clear all skills', () => {
-			// Given: Registry with multiple skills
+		test('should clear all __skills', () => {
+			// Given: Registry with multiple __skills
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-1' }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-2' }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-3' }));
@@ -219,7 +219,7 @@ suite('Skills Manager - Skill Registry', () => {
 	suite('Lookup Skills', () => {
 
 		test('should lookup skill by exact name', () => {
-			// Given: Registry with multiple skills
+			// Given: Registry with multiple __skills
 			const skill1 = SkillTestUtils.createMockSkill({ name: 'skill-alpha' });
 			const skill2 = SkillTestUtils.createMockSkill({ name: 'skill-beta' });
 			registry.add(skill1);
@@ -234,7 +234,7 @@ suite('Skills Manager - Skill Registry', () => {
 		});
 
 		test('should return undefined for non-existent skill', () => {
-			// Given: Registry with skills
+			// Given: Registry with __skills
 			registry.add(SkillTestUtils.createMockSkill({ name: 'existing-skill' }));
 
 			// When: Lookup non-existent skill
@@ -257,19 +257,19 @@ suite('Skills Manager - Skill Registry', () => {
 			assert.strictEqual(notExists, false);
 		});
 
-		test('should list all skills', () => {
-			// Given: Registry with N skills
-			const skills = [
+		test('should list all __skills', () => {
+			// Given: Registry with N __skills
+			const __skills = [
 				SkillTestUtils.createMockSkill({ name: 'skill-1' }),
 				SkillTestUtils.createMockSkill({ name: 'skill-2' }),
 				SkillTestUtils.createMockSkill({ name: 'skill-3' })
 			];
-			skills.forEach(s => registry.add(s));
+			__skills.forEach(s => registry.add(s));
 
-			// When: List all skills
+			// When: List all __skills
 			const list = registry.list();
 
-			// Then: Should return array of N skills
+			// Then: Should return array of N __skills
 			assert.strictEqual(list.length, 3);
 			assert.ok(list.find(s => s.name === 'skill-1'));
 			assert.ok(list.find(s => s.name === 'skill-2'));
@@ -278,7 +278,7 @@ suite('Skills Manager - Skill Registry', () => {
 
 		test('should return empty list for empty registry', () => {
 			// Given: Empty registry
-			// When: List all skills
+			// When: List all __skills
 			const list = registry.list();
 
 			// Then: Should return empty array
@@ -292,16 +292,16 @@ suite('Skills Manager - Skill Registry', () => {
 	 */
 	suite('Tag Search', () => {
 
-		test('should find skills by tag', () => {
+		test('should find __skills by tag', () => {
 			// Given: Skills with various tags
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-1', tags: ['testing', 'qa'] }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-2', tags: ['testing', 'automation'] }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-3', tags: ['deployment'] }));
 
-			// When: Lookup skills by tag
+			// When: Lookup __skills by tag
 			const testingSkills = registry.findByTag('testing');
 
-			// Then: Should return all skills with that tag
+			// Then: Should return all __skills with that tag
 			assert.strictEqual(testingSkills.length, 2);
 			assert.ok(testingSkills.find(s => s.name === 'skill-1'));
 			assert.ok(testingSkills.find(s => s.name === 'skill-2'));
@@ -319,7 +319,7 @@ suite('Skills Manager - Skill Registry', () => {
 			assert.ok(Array.isArray(results));
 		});
 
-		test('should handle skills with no tags', () => {
+		test('should handle __skills with no tags', () => {
 			// Given: Skills with and without tags
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-1', tags: [] }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-2', tags: ['testing'] }));
@@ -327,7 +327,7 @@ suite('Skills Manager - Skill Registry', () => {
 			// When: Search by tag
 			const results = registry.findByTag('testing');
 
-			// Then: Should only return skills with the tag
+			// Then: Should only return __skills with the tag
 			assert.strictEqual(results.length, 1);
 			assert.strictEqual(results[0].name, 'skill-2');
 		});
@@ -413,7 +413,7 @@ suite('Skills Manager - Skill Registry', () => {
 			assert.strictEqual(deps.length, 0);
 		});
 
-		test('should handle multiple skills depending on same skill', () => {
+		test('should handle multiple __skills depending on same skill', () => {
 			// Given: Diamond dependency (A->B, A->C, B->D, C->D)
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-d', dependencies: [] }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-b', dependencies: ['skill-d'] }));
@@ -437,7 +437,7 @@ suite('Skills Manager - Skill Registry', () => {
 	suite('Performance', () => {
 
 		test('should handle large registry efficiently', () => {
-			// Given: Very large registry (10000+ skills)
+			// Given: Very large registry (10000+ __skills)
 			const startTime = performance.now();
 
 			for (let i = 0; i < 10000; i++) {
@@ -448,10 +448,10 @@ suite('Skills Manager - Skill Registry', () => {
 
 			// Then: Should complete in reasonable time
 			assert.strictEqual(registry.count(), 10000);
-			assert.ok(duration < 2000, `Adding 10000 skills took ${duration}ms, expected < 2000ms`);
+			assert.ok(duration < 2000, `Adding 10000 __skills took ${duration}ms, expected < 2000ms`);
 		});
 
-		test('should lookup skills quickly in large registry', () => {
+		test('should lookup __skills quickly in large registry', () => {
 			// Given: Large registry
 			for (let i = 0; i < 5000; i++) {
 				registry.add(SkillTestUtils.createMockSkill({ name: `skill-${i}` }));
@@ -468,7 +468,7 @@ suite('Skills Manager - Skill Registry', () => {
 		});
 
 		test('should search by tag efficiently in large registry', () => {
-			// Given: Large registry with tagged skills
+			// Given: Large registry with tagged __skills
 			for (let i = 0; i < 5000; i++) {
 				const tags = i % 10 === 0 ? ['testing'] : ['other'];
 				registry.add(SkillTestUtils.createMockSkill({ name: `skill-${i}`, tags }));
@@ -490,7 +490,7 @@ suite('Skills Manager - Skill Registry', () => {
 	 */
 	suite('Edge Cases', () => {
 
-		test('should handle skills with identical tags but different names', () => {
+		test('should handle __skills with identical tags but different names', () => {
 			// Given: Skills with identical tags
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-1', tags: ['a', 'b', 'c'] }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-2', tags: ['a', 'b', 'c'] }));
@@ -498,11 +498,11 @@ suite('Skills Manager - Skill Registry', () => {
 			// When: Search by tag
 			const results = registry.findByTag('a');
 
-			// Then: Should return both skills
+			// Then: Should return both __skills
 			assert.strictEqual(results.length, 2);
 		});
 
-		test('should handle skills with very long names', () => {
+		test('should handle __skills with very long names', () => {
 			// Given: Skill with long name (> 100 characters)
 			const longName = 'a'.repeat(150);
 			const skill = SkillTestUtils.createMockSkill({ name: longName });
@@ -515,11 +515,11 @@ suite('Skills Manager - Skill Registry', () => {
 			assert.strictEqual(registry.get(longName)?.name, longName);
 		});
 
-		test('should handle skills with special characters in names', () => {
+		test('should handle __skills with special characters in names', () => {
 			// Given: Skill names with hyphens, underscores
 			const names = ['skill-with-hyphens', 'skill_with_underscores', 'skill.with.dots'];
 
-			// When: Add skills
+			// When: Add __skills
 			names.forEach(name => {
 				registry.add(SkillTestUtils.createMockSkill({ name }));
 			});
@@ -531,7 +531,7 @@ suite('Skills Manager - Skill Registry', () => {
 		});
 
 		test('should handle concurrent modifications safely', () => {
-			// Given: Registry with skills
+			// Given: Registry with __skills
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-1' }));
 			registry.add(SkillTestUtils.createMockSkill({ name: 'skill-2' }));
 

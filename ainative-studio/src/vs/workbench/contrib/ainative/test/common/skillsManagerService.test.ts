@@ -10,7 +10,7 @@ import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/tes
 import { SkillsManagerService } from '../../common/skillsManagerService.js';
 import { Skill, SkillPreferences } from '../../common/skillTypes.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
-import { IFileService, FileSystemProviderCapabilities, IFileSystemProvider, IFileChange } from '../../../../../platform/files/common/files.js';
+import { IFileService, __FileSystemProviderCapabilities, __IFileSystemProvider, IFileChange } from '../../../../../platform/files/common/files.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { Event } from '../../../../../base/common/event.js';
 import { VSBuffer } from '../../../../../base/common/buffer.js';
