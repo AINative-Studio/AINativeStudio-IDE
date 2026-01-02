@@ -18,7 +18,6 @@ import { VSBuffer } from '../../../../../base/common/buffer.js';
 /**
  * Mock storage service for testing
  */
-// @ts-expect-error - Mock service for testing
 class MockStorageService implements IStorageService {
 	readonly _serviceBrand: undefined;
 

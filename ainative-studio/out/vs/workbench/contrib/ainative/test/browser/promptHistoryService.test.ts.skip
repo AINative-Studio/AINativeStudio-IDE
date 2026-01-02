@@ -13,7 +13,6 @@ import { PROMPT_HISTORY_STORAGE_KEY } from '../../common/storageKeys.js';
 /**
  * Mock storage service for testing
  */
-// @ts-expect-error - Mock service for testing
 class MockStorageService implements IStorageService {
 	_serviceBrand: undefined;
 
