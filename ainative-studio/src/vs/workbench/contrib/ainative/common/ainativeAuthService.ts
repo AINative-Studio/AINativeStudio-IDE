@@ -308,8 +308,8 @@ export class AINativeAuthService extends Disposable implements IAINativeAuthServ
 
 			return {
 				success: true,
-				accessToken: this._accessToken ?? undefined,
-				refreshToken: this._refreshToken ?? undefined,
+				accessToken: this._accessToken || undefined,
+				refreshToken: this._refreshToken || undefined,
 				user: this._user,
 			};
 
@@ -413,7 +413,13 @@ export class AINativeAuthService extends Disposable implements IAINativeAuthServ
 
 			console.log('[AINativeAuthService] Token refresh successful');
 
-			if (!this._accessToken) { throw new AINativeAuthError(AINativeAuthErrorCode.TokenRefreshFailed, "Token refresh succeeded but access token is not set"); } return this._accessToken;
+			if (!this._accessToken) {
+			throw new AINativeAuthError(
+				AINativeAuthErrorCode.TokenRefreshFailed,
+				"Token refresh succeeded but access token is not set"
+			);
+		}
+		return this._accessToken;
 
 		} catch (error) {
 			console.error('[AINativeAuthService] Token refresh failed:', error);
