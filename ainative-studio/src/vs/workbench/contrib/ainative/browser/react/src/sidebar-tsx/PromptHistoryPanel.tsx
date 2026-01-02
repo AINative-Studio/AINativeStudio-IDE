@@ -8,8 +8,8 @@ import { Clock, Search, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { useAccessor } from '../util/services.js';
 
 /**
- * Interface matching the planned IPromptHistoryService structure
- * This will be replaced with the actual service interface when implemented
+ * Interface for prompt history entries
+ * Matches the IPromptHistoryService structure
  */
 export interface PromptEntry {
 	id: string;
@@ -28,70 +28,59 @@ interface PromptHistoryPanelProps {
 
 /**
  * Custom hook for prompt history state management
- * This will integrate with IPromptHistoryService when it's implemented
- *
- * TODO: Connect to actual IPromptHistoryService once created:
- * - Listen to onDidChangeHistory event for live updates
- * - Call getHistory() for initial load
- * - Call searchHistory() for semantic search
+ * Integrates with IPromptHistoryService for persistent storage
  */
 export const usePromptHistory = () => {
 	const accessor = useAccessor();
-	// TODO: Uncomment when service is available
-	// const promptHistoryService = accessor.get('IPromptHistoryService');
+	const promptHistoryService = accessor.get('IPromptHistoryService');
 
-	// Mock data for development - will be replaced with actual service calls
-	const [prompts, setPrompts] = useState<PromptEntry[]>([
-		{
-			id: '1',
-			content: 'Create a React component for user authentication',
-			timestamp: Date.now() - 1000 * 60 * 5, // 5 minutes ago
-			threadId: 'thread-1',
-			modelName: 'Claude 3.7 Sonnet',
-			providerName: 'Anthropic'
-		},
-		{
-			id: '2',
-			content: 'Fix the TypeScript error in the navigation component',
-			timestamp: Date.now() - 1000 * 60 * 30, // 30 minutes ago
-			threadId: 'thread-2',
-			modelName: 'GPT-4',
-			providerName: 'OpenAI'
-		},
-		{
-			id: '3',
-			content: 'Explain how async/await works in JavaScript',
-			timestamp: Date.now() - 1000 * 60 * 60 * 2, // 2 hours ago
-			threadId: 'thread-3',
-			modelName: 'Claude 3.7 Sonnet',
-			providerName: 'Anthropic'
-		}
-	]);
-	const [isLoading, setIsLoading] = useState(false);
+	const [prompts, setPrompts] = useState<PromptEntry[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
 
-	// TODO: Replace with actual service integration
+	// Load initial history and subscribe to updates
 	useEffect(() => {
-		// When service is available:
-		// const disposable = promptHistoryService.onDidChangeHistory(() => {
-		//   const history = await promptHistoryService.getHistory();
-		//   setPrompts(history);
-		// });
-		// return () => disposable.dispose();
-	}, []);
+		const loadHistory = async () => {
+			try {
+				setIsLoading(true);
+				const history = await promptHistoryService.getHistory();
+				setPrompts(history);
+			} catch (error) {
+				console.error('Failed to load prompt history:', error);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		loadHistory();
+
+		// Subscribe to history changes
+		const disposable = promptHistoryService.onDidChangeHistory(() => {
+			loadHistory();
+		});
+
+		return () => disposable.dispose();
+	}, [promptHistoryService]);
 
 	const searchHistory = useCallback(async (query: string): Promise<PromptEntry[]> => {
-		// TODO: Call promptHistoryService.searchHistory(query)
-		// For now, simple client-side filtering
 		if (!query.trim()) {
+			// Return all prompts if no search query
 			return prompts;
 		}
 
-		return prompts.filter(p =>
-			p.content.toLowerCase().includes(query.toLowerCase()) ||
-			p.modelName?.toLowerCase().includes(query.toLowerCase()) ||
-			p.providerName?.toLowerCase().includes(query.toLowerCase())
-		);
-	}, [prompts]);
+		try {
+			// Use the service's semantic search capability
+			const results = await promptHistoryService.searchHistory(query);
+			return results;
+		} catch (error) {
+			console.error('Failed to search prompt history:', error);
+			// Fallback to client-side filtering
+			return prompts.filter(p =>
+				p.content.toLowerCase().includes(query.toLowerCase()) ||
+				p.modelName?.toLowerCase().includes(query.toLowerCase()) ||
+				p.providerName?.toLowerCase().includes(query.toLowerCase())
+			);
+		}
+	}, [promptHistoryService, prompts]);
 
 	return {
 		prompts,
@@ -242,16 +231,17 @@ const EmptyState: React.FC<{ isSearching: boolean }> = ({ isSearching }) => {
  * Main Prompt History Panel Component
  *
  * Features:
- * - List of recent prompts (virtualized for performance when service is connected)
- * - Search box for semantic/text search
+ * - List of recent prompts with real-time updates
+ * - Semantic search via IPromptHistoryService
  * - Click to re-use a prompt
  * - Show metadata (timestamp, model used, thread)
- * - Keyboard navigation (up/down arrows)
+ * - Keyboard navigation (up/down arrows, Enter to select)
+ * - Keyboard shortcut (Cmd/Ctrl+H) to toggle panel
  *
- * Integration points:
- * - Will connect to IPromptHistoryService when implemented
+ * Integration:
+ * - Connected to IPromptHistoryService for persistent storage
  * - Emits onPromptSelect when user clicks a prompt
- * - Can be embedded in sidebar or shown as slide-out panel
+ * - Integrated as slide-out panel in SidebarChat
  */
 export const PromptHistoryPanel: React.FC<PromptHistoryPanelProps> = ({
 	className = '',
