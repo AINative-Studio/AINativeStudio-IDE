@@ -61,7 +61,7 @@ suite('AINativeCloudProvider', () => {
 		const messages = [{ role: 'user' as const, content: 'Hello' }];
 		let textReceived = '';
 		let finalMessageReceived = false;
-		let _errorOccurred = false;
+		let __errorOccurred = false;
 
 		const onText: OnText = ({ fullText }) => {
 			textReceived = fullText;
@@ -73,7 +73,7 @@ suite('AINativeCloudProvider', () => {
 		};
 
 		const onError: OnError = () => {
-			_errorOccurred = true;
+			__errorOccurred = true;
 		};
 
 		const abortController = new AbortController();
@@ -147,12 +147,12 @@ suite('AINativeCloudProvider', () => {
 		const provider = new AINativeCloudProvider(mockAuth);
 
 		const messages = [{ role: 'user' as const, content: 'Test 401' }];
-		let _errorOccurred = false;
+		let __errorOccurred = false;
 
 		const onText: OnText = () => { };
 		const onFinalMessage: OnFinalMessage = () => { };
 		const onError: OnError = () => {
-			_errorOccurred = true;
+			__errorOccurred = true;
 		};
 
 		const abortController = new AbortController();
