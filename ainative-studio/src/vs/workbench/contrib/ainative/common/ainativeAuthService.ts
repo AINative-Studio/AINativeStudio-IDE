@@ -67,6 +67,11 @@ export interface User {
 }
 
 /**
+ * Type alias for backwards compatibility with React components
+ */
+export type AINativeUser = User;
+
+/**
  * Current authentication state
  */
 export interface AuthState {
@@ -181,4 +186,19 @@ export interface IAINativeAuthService {
 	 * @returns The JWT access token or null if not authenticated
 	 */
 	getAuthToken(): string | null;
+
+	/**
+	 * Get the cached user synchronously
+	 * For async user fetching, use getCurrentUser()
+	 *
+	 * @returns The cached user or null if not authenticated
+	 */
+	getUser(): User | null;
+
+	/**
+	 * Get the current authentication state synchronously
+	 *
+	 * @returns The current authentication state
+	 */
+	getAuthState(): AuthState;
 }

@@ -315,6 +315,23 @@ export class AINativeAuthService extends Disposable implements IAINativeAuthServ
 	}
 
 	/**
+	 * Get the cached user synchronously
+	 */
+	public getUser(): User | null {
+		return this._currentUser;
+	}
+
+	/**
+	 * Get the current authentication state synchronously
+	 */
+	public getAuthState(): AuthState {
+		return {
+			isAuthenticated: this._isAuthenticated,
+			user: this._currentUser
+		};
+	}
+
+	/**
 	 * Clear authentication state
 	 */
 	private _clearAuthState(): void {
