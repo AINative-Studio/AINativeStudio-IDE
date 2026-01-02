@@ -1,1 +1,0 @@
-{"version":3,"sources":["completions/upstream/pwd.ts"],"names":[],"mappings":";;AAAA,MAAM,cAAc,GAAa;IAChC,IAAI,EAAE,KAAK;IACX,WAAW,EAAE,+BAA+B;IAC5C,OAAO,EAAE;QACR;YACC,IAAI,EAAE,IAAI;YACV,WAAW,EAAE,+CAA+C;SAC5D;QACD;YACC,IAAI,EAAE,IAAI;YACV,WAAW,EAAE,gDAAgD;SAC7D;KACD;CACD,CAAC;AAEF,kBAAe,cAAc,CAAC","file":"pwd.js","sourceRoot":"../../../src/"}
