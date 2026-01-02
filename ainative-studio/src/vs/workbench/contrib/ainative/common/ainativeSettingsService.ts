@@ -14,7 +14,11 @@ import { IMetricsService } from './metricsService.js';
 import { defaultProviderSettings, getModelCapabilities, ModelOverrides } from './modelCapabilities.js';
 import {
 	AINATIVE_SETTINGS_STORAGE_KEY,
-	LEGACY_AINATIVE_SETTINGS_STORAGE_KEY
+	LEGACY_AINATIVE_SETTINGS_STORAGE_KEY,
+	OPT_OUT_KEY,
+	LEGACY_OPT_OUT_KEY,
+	MACHINE_ID_KEY,
+	LEGACY_MACHINE_ID_KEY
 } from './storageKeys.js';
 import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, VoidStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './ainativeSettingsTypes.js';
 
@@ -351,36 +355,34 @@ class VoidSettingsService extends Disposable implements IAINativeSettingsService
 
 	/**
 	 * Migrate storage keys from legacy 'void.*' to new 'ainative.*' keys.
-	 * This migration is idempotent and will only run once.
+	 * This migration is idempotent and will only run once per key.
 	 * If the new key already has data, migration is skipped to prevent data loss.
 	 */
 	private async _migrateStorageKeys(): Promise<void> {
-		// Check if migration already completed (new key exists)
-		const newKeyData = this._storageService.get(AINATIVE_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
-		if (newKeyData) {
-			// Migration already done or new key already has data
-			return;
+		const migrations = [
+			{ old: LEGACY_AINATIVE_SETTINGS_STORAGE_KEY, new: AINATIVE_SETTINGS_STORAGE_KEY },
+			{ old: LEGACY_OPT_OUT_KEY, new: OPT_OUT_KEY },
+			{ old: LEGACY_MACHINE_ID_KEY, new: MACHINE_ID_KEY }
+		];
+
+		for (const { old, new: newKey } of migrations) {
+			// Check if new key already has data
+			const newData = this._storageService.get(newKey, StorageScope.APPLICATION);
+			if (newData !== undefined) {
+				// Migration already done or new key already has data
+				continue;
+			}
+
+			// Read from old key
+			const oldData = this._storageService.get(old, StorageScope.APPLICATION);
+			if (oldData !== undefined) {
+				// Write to new key
+				this._storageService.store(newKey, oldData, StorageScope.APPLICATION, StorageTarget.MACHINE);
+				// Remove old key
+				this._storageService.remove(old, StorageScope.APPLICATION);
+				console.log(`[AINative Migration] Migrated: ${old} → ${newKey}`);
+			}
 		}
-
-		// Read data from legacy key
-		const legacyData = this._storageService.get(LEGACY_AINATIVE_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
-		if (!legacyData) {
-			// No legacy data to migrate
-			return;
-		}
-
-		// Migrate: copy data to new key
-		this._storageService.store(
-			AINATIVE_SETTINGS_STORAGE_KEY,
-			legacyData,
-			StorageScope.APPLICATION,
-			StorageTarget.USER
-		);
-
-		// Remove legacy key after successful migration
-		this._storageService.remove(LEGACY_AINATIVE_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
-
-		console.log('[AINative Migration] Successfully migrated settings from void.settingsServiceStorageII to ainative.settingsServiceStorageII');
 	}
 
 
