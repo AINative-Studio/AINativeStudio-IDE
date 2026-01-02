@@ -16,8 +16,12 @@ import { PostHog } from 'posthog-node'
 import {
 	OPT_OUT_KEY,
 	MACHINE_ID_KEY,
+	OLD_MACHINE_ID_KEY,
+	USER_MACHINE_ID_KEY,
 	LEGACY_OPT_OUT_KEY,
-	LEGACY_MACHINE_ID_KEY
+	LEGACY_MACHINE_ID_KEY,
+	LEGACY_OLD_MACHINE_ID_KEY,
+	LEGACY_USER_MACHINE_ID_KEY
 } from '../common/storageKeys.js';
 
 
@@ -59,18 +63,24 @@ export class MetricsMainService extends Disposable implements IMetricsService {
 	// returns 'NULL' or the old key
 	private get oldId() {
 		// check new storage key first
-		const newKey = 'void.app.oldMachineId'
-		const newOldId = this._appStorage.get(newKey, StorageScope.APPLICATION)
+		const newOldId = this._appStorage.get(OLD_MACHINE_ID_KEY, StorageScope.APPLICATION)
 		if (newOldId) return newOldId
 
+		// Migrate from legacy void key if exists
+		const legacyOldId = this._appStorage.get(LEGACY_OLD_MACHINE_ID_KEY, StorageScope.APPLICATION)
+		if (legacyOldId) {
+			this._appStorage.store(OLD_MACHINE_ID_KEY, legacyOldId, StorageScope.APPLICATION, StorageTarget.MACHINE)
+			return legacyOldId
+		}
+
 		// put old key into new key if didn't already
-		const oldValue = this._appStorage.get('void.machineId', StorageScope.APPLICATION) ?? 'NULL' // the old way of getting the key
-		this._appStorage.store(newKey, oldValue, StorageScope.APPLICATION, StorageTarget.MACHINE)
+		const oldValue = this._appStorage.get(LEGACY_MACHINE_ID_KEY, StorageScope.APPLICATION) ?? 'NULL' // the old way of getting the key
+		this._appStorage.store(OLD_MACHINE_ID_KEY, oldValue, StorageScope.APPLICATION, StorageTarget.MACHINE)
 		return oldValue
 
 		// in a few weeks we can replace above with this
 		// private get oldId() {
-		// 	return this._memoStorage('void.app.oldMachineId', StorageTarget.MACHINE, 'NULL')
+		// 	return this._memoStorage(OLD_MACHINE_ID_KEY, StorageTarget.MACHINE, 'NULL')
 		// }
 	}
 
@@ -109,7 +119,15 @@ export class MetricsMainService extends Disposable implements IMetricsService {
 
 	// just to see if there are ever multiple machineIDs per userID (instead of this, we should just track by the user's email)
 	private get userId() {
-		return this._memoStorage('void.app.userMachineId', StorageTarget.USER)
+		// Migrate from legacy key if needed
+		const newKeyData = this._appStorage.get(USER_MACHINE_ID_KEY, StorageScope.APPLICATION);
+		if (!newKeyData) {
+			const legacyData = this._appStorage.get(LEGACY_USER_MACHINE_ID_KEY, StorageScope.APPLICATION);
+			if (legacyData) {
+				this._appStorage.store(USER_MACHINE_ID_KEY, legacyData, StorageScope.APPLICATION, StorageTarget.USER);
+			}
+		}
+		return this._memoStorage(USER_MACHINE_ID_KEY, StorageTarget.USER)
 	}
 
 	constructor(
