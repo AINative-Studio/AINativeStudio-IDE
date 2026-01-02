@@ -107,7 +107,7 @@ suite('Branding - File Naming Tests', () => {
 		const ainativeDir = path.join(contribDir, 'ainative');
 
 		// Search for icon directories
-		// // const ainativeIconsPath = path.join(ainativeDir, 'browser/media/ainative_icons');
+		// // const __ainativeIconsPath = path.join(ainativeDir, 'browser/media/ainative_icons');
 		const voidIconsPath = path.join(ainativeDir, 'browser/media/void_icons');
 
 		// Check if we can find any icon directory

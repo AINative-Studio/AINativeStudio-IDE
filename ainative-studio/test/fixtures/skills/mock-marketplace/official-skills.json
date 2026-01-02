@@ -1,0 +1,76 @@
+{
+  "skills": [
+    {
+      "name": "ci-cd-compliance",
+      "description": "CI/CD pipeline requirements and deployment standards",
+      "version": "1.0.0",
+      "author": "AINative Studio",
+      "tags": ["ci-cd", "compliance", "deployment", "official"],
+      "dependencies": [],
+      "downloadUrl": "https://marketplace.ainative.studio/skills/ci-cd-compliance/1.0.0.md",
+      "checksum": "sha256:1234567890abcdef",
+      "size": 15420,
+      "downloads": 1523,
+      "rating": 4.8,
+      "lastUpdated": "2026-01-01T00:00:00Z"
+    },
+    {
+      "name": "code-quality",
+      "description": "Coding style standards, security guidelines, and accessibility requirements",
+      "version": "1.1.0",
+      "author": "AINative Studio",
+      "tags": ["code-quality", "security", "accessibility", "official"],
+      "dependencies": [],
+      "downloadUrl": "https://marketplace.ainative.studio/skills/code-quality/1.1.0.md",
+      "checksum": "sha256:abcdef1234567890",
+      "size": 18950,
+      "downloads": 2341,
+      "rating": 4.9,
+      "lastUpdated": "2025-12-28T00:00:00Z"
+    },
+    {
+      "name": "database-schema-sync",
+      "description": "Database schema management using idempotent sync scripts",
+      "version": "1.0.2",
+      "author": "AINative Studio",
+      "tags": ["database", "schema", "migration", "official"],
+      "dependencies": [],
+      "downloadUrl": "https://marketplace.ainative.studio/skills/database-schema-sync/1.0.2.md",
+      "checksum": "sha256:fedcba0987654321",
+      "size": 12340,
+      "downloads": 987,
+      "rating": 4.7,
+      "lastUpdated": "2025-12-15T00:00:00Z"
+    },
+    {
+      "name": "delivery-checklist",
+      "description": "Pre-delivery acceptance checklist and reusable mini-prompts",
+      "version": "2.0.0",
+      "author": "AINative Studio",
+      "tags": ["delivery", "checklist", "qa", "official"],
+      "dependencies": ["code-quality"],
+      "downloadUrl": "https://marketplace.ainative.studio/skills/delivery-checklist/2.0.0.md",
+      "checksum": "sha256:0123456789abcdef",
+      "size": 16780,
+      "downloads": 1765,
+      "rating": 4.9,
+      "lastUpdated": "2026-01-02T00:00:00Z"
+    },
+    {
+      "name": "file-placement",
+      "description": "File placement rules for documentation and scripts",
+      "version": "1.0.1",
+      "author": "AINative Studio",
+      "tags": ["file-organization", "best-practices", "official"],
+      "dependencies": [],
+      "downloadUrl": "https://marketplace.ainative.studio/skills/file-placement/1.0.1.md",
+      "checksum": "sha256:9876543210fedcba",
+      "size": 11230,
+      "downloads": 1432,
+      "rating": 4.6,
+      "lastUpdated": "2025-12-20T00:00:00Z"
+    }
+  ],
+  "total": 5,
+  "timestamp": "2026-01-02T12:00:00Z"
+}
