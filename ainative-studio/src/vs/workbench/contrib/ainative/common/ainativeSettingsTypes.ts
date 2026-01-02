@@ -352,6 +352,12 @@ export const defaultSettingsOfProvider: SettingsOfProvider = {
 		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.awsBedrock),
 		_didFillInProviderSettings: undefined,
 	},
+	ainativeCloud: {
+		...defaultCustomSettings,
+		...defaultProviderSettings.ainativeCloud,
+		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.ainativeCloud),
+		_didFillInProviderSettings: undefined,
+	},
 }
 
 
