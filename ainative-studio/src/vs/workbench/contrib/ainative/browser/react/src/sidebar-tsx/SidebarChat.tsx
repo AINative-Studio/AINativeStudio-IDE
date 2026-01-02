@@ -3126,10 +3126,18 @@ export const SidebarChat = () => {
 		</div>
 	</div>
 
+	const welcomeMessage = <div className='pt-8 pb-4 text-center'>
+		<div className='text-2xl font-semibold text-void-fg-2 mb-2'>Hi I'm Cody</div>
+		<div className='text-void-fg-3'>How can I help you?</div>
+	</div>
+
 	const landingPageContent = <div
 		ref={sidebarRef}
 		className='w-full h-full max-h-full flex flex-col overflow-auto px-4'
 	>
+		<ErrorBoundary>
+			{welcomeMessage}
+		</ErrorBoundary>
 		<ErrorBoundary>
 			{landingPageInput}
 		</ErrorBoundary>
