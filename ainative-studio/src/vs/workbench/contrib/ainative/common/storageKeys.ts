@@ -18,3 +18,4 @@ export const THREAD_STORAGE_KEY = 'ainative.chatThreadStorageII';
 export const PROMPT_HISTORY_STORAGE_KEY = 'ainative.promptHistory';
 export const OPT_OUT_KEY = 'ainative.app.optOutAll';
 export const MACHINE_ID_KEY = 'ainative.app.machineId';
+export const SKILLS_PREFERENCES_KEY = 'ainative.skillsPreferences';

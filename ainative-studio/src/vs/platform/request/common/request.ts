@@ -14,6 +14,9 @@ import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { ILogService } from '../../log/common/log.js';
 import { Registry } from '../../registry/common/platform.js';
 
+// Re-export types from base parts
+export { IRequestContext, IRequestOptions, IHeaders };
+
 export const IRequestService = createDecorator<IRequestService>('requestService');
 
 export interface AuthInfo {
