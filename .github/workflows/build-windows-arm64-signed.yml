@@ -631,11 +631,36 @@ jobs:
             Write-Host "✅ Created AINativeStudio-SystemSetup.zip"
           }
 
+      - name: Generate SHA256 checksums for installers
+        working-directory: ainative-studio
+        shell: pwsh
+        run: |
+          Write-Host "Generating SHA256 checksums for installer artifacts..."
+
+          $files = @(
+            ".build\win32-arm64\user-setup\AINativeStudio-UserSetup.exe",
+            ".build\win32-arm64\user-setup\AINativeStudio-UserSetup.zip",
+            ".build\win32-arm64\system-setup\AINativeStudio-SystemSetup.exe",
+            ".build\win32-arm64\system-setup\AINativeStudio-SystemSetup.zip"
+          )
+
+          foreach ($file in $files) {
+            if (Test-Path $file) {
+              $hash = (Get-FileHash -Path $file -Algorithm SHA256).Hash
+              $filename = Split-Path $file -Leaf
+              "$hash  $filename" | Out-File -FilePath "$file.sha256" -Encoding ascii
+              Write-Host "Generated SHA256 for: $filename"
+              Get-Content "$file.sha256"
+            }
+          }
+
       - name: Upload User Setup Installer
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-win32-arm64-user-setup-signed
-          path: ainative-studio/.build/win32-arm64/user-setup/AINativeStudio-UserSetup.exe
+          path: |
+            ainative-studio/.build/win32-arm64/user-setup/AINativeStudio-UserSetup.exe
+            ainative-studio/.build/win32-arm64/user-setup/AINativeStudio-UserSetup.exe.sha256
           if-no-files-found: warn
           retention-days: 30
 
@@ -643,7 +668,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-win32-arm64-user-setup-zip-signed
-          path: ainative-studio/.build/win32-arm64/user-setup/AINativeStudio-UserSetup.zip
+          path: |
+            ainative-studio/.build/win32-arm64/user-setup/AINativeStudio-UserSetup.zip
+            ainative-studio/.build/win32-arm64/user-setup/AINativeStudio-UserSetup.zip.sha256
           if-no-files-found: warn
           retention-days: 30
 
@@ -651,7 +678,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-win32-arm64-system-setup-signed
-          path: ainative-studio/.build/win32-arm64/system-setup/AINativeStudio-SystemSetup.exe
+          path: |
+            ainative-studio/.build/win32-arm64/system-setup/AINativeStudio-SystemSetup.exe
+            ainative-studio/.build/win32-arm64/system-setup/AINativeStudio-SystemSetup.exe.sha256
           if-no-files-found: warn
           retention-days: 30
 
@@ -659,6 +688,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-win32-arm64-system-setup-zip-signed
-          path: ainative-studio/.build/win32-arm64/system-setup/AINativeStudio-SystemSetup.zip
+          path: |
+            ainative-studio/.build/win32-arm64/system-setup/AINativeStudio-SystemSetup.zip
+            ainative-studio/.build/win32-arm64/system-setup/AINativeStudio-SystemSetup.zip.sha256
           if-no-files-found: warn
           retention-days: 30
