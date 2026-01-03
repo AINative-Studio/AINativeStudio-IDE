@@ -30,26 +30,26 @@ import { toDisposable } from '../../../../base/common/lifecycle.js';
 
 // refer to preferences.contribution.ts keybindings editor
 
-class VoidSettingsInput extends EditorInput {
+class AINativeSettingsInput extends EditorInput {
 
-	static readonly ID: string = 'workbench.input.void.settings';
+	static readonly ID: string = 'workbench.input.ainative.settings';
 
 	static readonly RESOURCE = URI.from({ // I think this scheme is invalid, it just shuts up TS
-		scheme: 'void',  // Custom scheme for our editor (try Schemas.https)
+		scheme: 'ainative',  // Custom scheme for our editor (try Schemas.https)
 		path: 'settings'
 	})
-	readonly resource = VoidSettingsInput.RESOURCE;
+	readonly resource = AINativeSettingsInput.RESOURCE;
 
 	constructor() {
 		super();
 	}
 
 	override get typeId(): string {
-		return VoidSettingsInput.ID;
+		return AINativeSettingsInput.ID;
 	}
 
 	override getName(): string {
-		return nls.localize('voidSettingsInputsName', 'AINative Studio Settings');
+		return nls.localize('ainativeSettingsInputsName', 'AINative Studio Settings');
 	}
 
 	override getIcon() {
@@ -59,7 +59,7 @@ class VoidSettingsInput extends EditorInput {
 }
 
 
-class VoidSettingsPane extends EditorPane {
+class AINativeSettingsPane extends EditorPane {
 	static readonly ID = 'workbench.test.myCustomPane';
 
 	// private _scrollbar: DomScrollableElement | undefined;
@@ -71,7 +71,7 @@ class VoidSettingsPane extends EditorPane {
 		@IStorageService storageService: IStorageService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService
 	) {
-		super(VoidSettingsPane.ID, group, telemetryService, themeService, storageService);
+		super(AINativeSettingsPane.ID, group, telemetryService, themeService, storageService);
 	}
 
 	protected createEditor(parent: HTMLElement): void {
@@ -112,8 +112,8 @@ class VoidSettingsPane extends EditorPane {
 
 // register Settings pane
 Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane(
-	EditorPaneDescriptor.create(VoidSettingsPane, VoidSettingsPane.ID, nls.localize('VoidSettingsPane', "AINative Studio Settings Pane")),
-	[new SyncDescriptor(VoidSettingsInput)]
+	EditorPaneDescriptor.create(AINativeSettingsPane, AINativeSettingsPane.ID, nls.localize('AINativeSettingsPane', "AINative Studio Settings Pane")),
+	[new SyncDescriptor(AINativeSettingsInput)]
 );
 
 
@@ -146,7 +146,7 @@ registerAction2(class extends Action2 {
 		const instantiationService = accessor.get(IInstantiationService);
 
 		// if is open, close it
-		const openEditors = editorService.findEditors(VoidSettingsInput.RESOURCE); // should only have 0 or 1 elements...
+		const openEditors = editorService.findEditors(AINativeSettingsInput.RESOURCE); // should only have 0 or 1 elements...
 		if (openEditors.length !== 0) {
 			const openEditor = openEditors[0].editor
 			const isCurrentlyOpen = editorService.activeEditor?.resource?.fsPath === openEditor.resource?.fsPath
@@ -159,7 +159,7 @@ registerAction2(class extends Action2 {
 
 
 		// else open it
-		const input = instantiationService.createInstance(VoidSettingsInput);
+		const input = instantiationService.createInstance(AINativeSettingsInput);
 
 		await editorGroupService.activeGroup.openEditor(input);
 	}
@@ -182,13 +182,13 @@ registerAction2(class extends Action2 {
 		const instantiationService = accessor.get(IInstantiationService);
 
 		// close all instances if found
-		const openEditors = editorService.findEditors(VoidSettingsInput.RESOURCE);
+		const openEditors = editorService.findEditors(AINativeSettingsInput.RESOURCE);
 		if (openEditors.length > 0) {
 			await editorService.closeEditors(openEditors);
 		}
 
 		// then, open one single editor
-		const input = instantiationService.createInstance(VoidSettingsInput);
+		const input = instantiationService.createInstance(AINativeSettingsInput);
 		await editorService.openEditor(input);
 	}
 })

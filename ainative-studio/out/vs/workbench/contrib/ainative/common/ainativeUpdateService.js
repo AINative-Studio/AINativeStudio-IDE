@@ -15,9 +15,9 @@ import { ProxyChannel } from '../../../../base/parts/ipc/common/ipc.js';
 import { registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { IMainProcessService } from '../../../../platform/ipc/common/mainProcessService.js';
-export const IVoidUpdateService = createDecorator('VoidUpdateService');
+export const IAINativeUpdateService = createDecorator('AINativeUpdateService');
 // implemented by calling channel
-let VoidUpdateService = class VoidUpdateService {
+let AINativeUpdateService = class AINativeUpdateService {
     constructor(mainProcessService) {
         // anything transmitted over a channel must be async even if it looks like it doesn't have to be
         this.check = async (explicit) => {
@@ -25,12 +25,12 @@ let VoidUpdateService = class VoidUpdateService {
             return res;
         };
         // creates an IPC proxy to use metricsMainService.ts
-        this.voidUpdateService = ProxyChannel.toService(mainProcessService.getChannel('void-channel-update'));
+        this.voidUpdateService = ProxyChannel.toService(mainProcessService.getChannel('ainative-channel-update'));
     }
 };
-VoidUpdateService = __decorate([
+AINativeUpdateService = __decorate([
     __param(0, IMainProcessService)
-], VoidUpdateService);
-export { VoidUpdateService };
-registerSingleton(IVoidUpdateService, VoidUpdateService, 0 /* InstantiationType.Eager */);
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYWluYXRpdmVVcGRhdGVTZXJ2aWNlLmpzIiwic291cmNlUm9vdCI6ImZpbGU6Ly8vVXNlcnMvYWlkZXZlbG9wZXIvQUlOYXRpdmVTdHVkaW8tSURFL2FpbmF0aXZlLXN0dWRpby9zcmMvIiwic291cmNlcyI6WyJ2cy93b3JrYmVuY2gvY29udHJpYi9haW5hdGl2ZS9jb21tb24vYWluYXRpdmVVcGRhdGVTZXJ2aWNlLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBOzs7MEZBRzBGOzs7Ozs7Ozs7O0FBRTFGLE9BQU8sRUFBRSxZQUFZLEVBQUUsTUFBTSwwQ0FBMEMsQ0FBQztBQUN4RSxPQUFPLEVBQUUsaUJBQWlCLEVBQXFCLE1BQU0seURBQXlELENBQUM7QUFDL0csT0FBTyxFQUFFLGVBQWUsRUFBRSxNQUFNLDREQUE0RCxDQUFDO0FBQzdGLE9BQU8sRUFBRSxtQkFBbUIsRUFBRSxNQUFNLHVEQUF1RCxDQUFDO0FBVzVGLE1BQU0sQ0FBQyxNQUFNLGtCQUFrQixHQUFHLGVBQWUsQ0FBcUIsbUJBQW1CLENBQUMsQ0FBQztBQUczRixpQ0FBaUM7QUFDMUIsSUFBTSxpQkFBaUIsR0FBdkIsTUFBTSxpQkFBaUI7SUFLN0IsWUFDc0Isa0JBQXVDO1FBTzdELGdHQUFnRztRQUNoRyxVQUFLLEdBQWdDLEtBQUssRUFBRSxRQUFRLEVBQUUsRUFBRTtZQUN2RCxNQUFNLEdBQUcsR0FBRyxNQUFNLElBQUksQ0FBQyxpQkFBaUIsQ0FBQyxLQUFLLENBQUMsUUFBUSxDQUFDLENBQUE7WUFDeEQsT0FBTyxHQUFHLENBQUE7UUFDWCxDQUFDLENBQUE7UUFUQSxvREFBb0Q7UUFDcEQsSUFBSSxDQUFDLGlCQUFpQixHQUFHLFlBQVksQ0FBQyxTQUFTLENBQXFCLGtCQUFrQixDQUFDLFVBQVUsQ0FBQyxxQkFBcUIsQ0FBQyxDQUFDLENBQUM7SUFDM0gsQ0FBQztDQVFELENBQUE7QUFsQlksaUJBQWlCO0lBTTNCLFdBQUEsbUJBQW1CLENBQUE7R0FOVCxpQkFBaUIsQ0FrQjdCOztBQUVELGlCQUFpQixDQUFDLGtCQUFrQixFQUFFLGlCQUFpQixrQ0FBMEIsQ0FBQyJ9
+], AINativeUpdateService);
+export { AINativeUpdateService };
+registerSingleton(IAINativeUpdateService, AINativeUpdateService, 0 /* InstantiationType.Eager */);
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYWluYXRpdmVVcGRhdGVTZXJ2aWNlLmpzIiwic291cmNlUm9vdCI6ImZpbGU6Ly8vVXNlcnMvYWlkZXZlbG9wZXIvQUlOYXRpdmVTdHVkaW8tSURFL2FpbmF0aXZlLXN0dWRpby9zcmMvIiwic291cmNlcyI6WyJ2cy93b3JrYmVuY2gvY29udHJpYi9haW5hdGl2ZS9jb21tb24vYWluYXRpdmVVcGRhdGVTZXJ2aWNlLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBOzs7MEZBRzBGOzs7Ozs7Ozs7O0FBRTFGLE9BQU8sRUFBRSxZQUFZLEVBQUUsTUFBTSwwQ0FBMEMsQ0FBQztBQUN4RSxPQUFPLEVBQUUsaUJBQWlCLEVBQXFCLE1BQU0seURBQXlELENBQUM7QUFDL0csT0FBTyxFQUFFLGVBQWUsRUFBRSxNQUFNLDREQUE0RCxDQUFDO0FBQzdGLE9BQU8sRUFBRSxtQkFBbUIsRUFBRSxNQUFNLHVEQUF1RCxDQUFDO0FBVzVGLE1BQU0sQ0FBQyxNQUFNLHNCQUFzQixHQUFHLGVBQWUsQ0FBeUIsdUJBQXVCLENBQUMsQ0FBQztBQUd2RyxpQ0FBaUM7QUFDMUIsSUFBTSxxQkFBcUIsR0FBM0IsTUFBTSxxQkFBcUI7SUFLakMsWUFDc0Isa0JBQXVDO1FBTzdELGdHQUFnRztRQUNoRyxVQUFLLEdBQW9DLEtBQUssRUFBRSxRQUFRLEVBQUUsRUFBRTtZQUMzRCxNQUFNLEdBQUcsR0FBRyxNQUFNLElBQUksQ0FBQyxpQkFBaUIsQ0FBQyxLQUFLLENBQUMsUUFBUSxDQUFDLENBQUE7WUFDeEQsT0FBTyxHQUFHLENBQUE7UUFDWCxDQUFDLENBQUE7UUFUQSxvREFBb0Q7UUFDcEQsSUFBSSxDQUFDLGlCQUFpQixHQUFHLFlBQVksQ0FBQyxTQUFTLENBQXlCLGtCQUFrQixDQUFDLFVBQVUsQ0FBQyx5QkFBeUIsQ0FBQyxDQUFDLENBQUM7SUFDbkksQ0FBQztDQVFELENBQUE7QUFsQlkscUJBQXFCO0lBTS9CLFdBQUEsbUJBQW1CLENBQUE7R0FOVCxxQkFBcUIsQ0FrQmpDOztBQUVELGlCQUFpQixDQUFDLHNCQUFzQixFQUFFLHFCQUFxQixrQ0FBMEIsQ0FBQyJ9

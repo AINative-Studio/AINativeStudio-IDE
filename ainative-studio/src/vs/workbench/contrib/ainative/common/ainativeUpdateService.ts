@@ -11,36 +11,36 @@ import { VoidCheckUpdateRespose } from './voidUpdateServiceTypes.js';
 
 
 
-export interface IVoidUpdateService {
+export interface IAINativeUpdateService {
 	readonly _serviceBrand: undefined;
 	check: (explicit: boolean) => Promise<VoidCheckUpdateRespose>;
 }
 
 
-export const IVoidUpdateService = createDecorator<IVoidUpdateService>('VoidUpdateService');
+export const IAINativeUpdateService = createDecorator<IAINativeUpdateService>('AINativeUpdateService');
 
 
 // implemented by calling channel
-export class VoidUpdateService implements IVoidUpdateService {
+export class AINativeUpdateService implements IAINativeUpdateService {
 
 	readonly _serviceBrand: undefined;
-	private readonly voidUpdateService: IVoidUpdateService;
+	private readonly voidUpdateService: IAINativeUpdateService;
 
 	constructor(
 		@IMainProcessService mainProcessService: IMainProcessService, // (only usable on client side)
 	) {
 		// creates an IPC proxy to use metricsMainService.ts
-		this.voidUpdateService = ProxyChannel.toService<IVoidUpdateService>(mainProcessService.getChannel('void-channel-update'));
+		this.voidUpdateService = ProxyChannel.toService<IAINativeUpdateService>(mainProcessService.getChannel('ainative-channel-update'));
 	}
 
 
 	// anything transmitted over a channel must be async even if it looks like it doesn't have to be
-	check: IVoidUpdateService['check'] = async (explicit) => {
+	check: IAINativeUpdateService['check'] = async (explicit) => {
 		const res = await this.voidUpdateService.check(explicit)
 		return res
 	}
 }
 
-registerSingleton(IVoidUpdateService, VoidUpdateService, InstantiationType.Eager);
+registerSingleton(IAINativeUpdateService, AINativeUpdateService, InstantiationType.Eager);
 
 

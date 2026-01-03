@@ -3,9 +3,9 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { strictEqual, ok, rejects } from 'assert';
-import { DisposableStore } from '../../../base/common/lifecycle.js';
-import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../base/test/common/utils.js';
+import { strictEqual, ok } from 'assert';
+import { DisposableStore } from '../../../vs/base/common/lifecycle.js';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../vs/base/test/common/utils.js';
 import {
 	AINativeAuthService,
 	AuthState,
@@ -13,7 +13,11 @@ import {
 	AINativeAuthErrorCode
 } from '../../../vs/workbench/contrib/ainative/common/ainativeAuthService.js';
 import { IEncryptionService } from '../../../vs/platform/encryption/common/encryptionService.js';
-import { IStorageService, StorageScope, StorageTarget } from '../../../vs/platform/storage/common/storage.js';
+import { IStorageService, IStorageEntry, StorageScope, StorageTarget } from '../../../vs/platform/storage/common/storage.js';
+import { StorageValue } from '../../../vs/base/parts/storage/common/storage.js';
+import { Event, Emitter } from '../../../vs/base/common/event.js';
+import { IAnyWorkspaceIdentifier } from '../../../vs/platform/workspace/common/workspace.js';
+import { IUserDataProfile } from '../../../vs/platform/userDataProfile/common/userDataProfile.js';
 
 /**
  * Mock Encryption Service for error handling tests
@@ -67,6 +71,9 @@ class MockStorageService implements IStorageService {
 	private storage = new Map<string, string>();
 	private shouldThrowOnStore = false;
 	private shouldThrowOnGet = false;
+	private _onDidChangeValue = new Emitter<any>();
+	private _onDidChangeTarget = new Emitter<any>();
+	private _onWillSaveState = new Emitter<any>();
 
 	setShouldThrowOnStore(value: boolean): void {
 		this.shouldThrowOnStore = value;
@@ -76,9 +83,12 @@ class MockStorageService implements IStorageService {
 		this.shouldThrowOnGet = value;
 	}
 
-	onDidChangeValue: any = () => ({ dispose: () => {} });
-	onDidChangeTarget: any = () => ({ dispose: () => {} });
-	onWillSaveState: any = () => ({ dispose: () => {} });
+	onDidChangeValue(scope: StorageScope, key: string | undefined, disposable: DisposableStore): Event<any> {
+		return this._onDidChangeValue.event;
+	}
+
+	readonly onDidChangeTarget: Event<any> = this._onDidChangeTarget.event;
+	readonly onWillSaveState: Event<any> = this._onWillSaveState.event;
 
 	get(key: string, scope: StorageScope, fallbackValue: string): string;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
@@ -107,7 +117,20 @@ class MockStorageService implements IStorageService {
 		return parseInt(value, 10);
 	}
 
-	store(key: string, value: string | boolean | number | undefined | null, scope: StorageScope, target: StorageTarget): void {
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		const value = this.get(key, scope);
+		if (value === undefined) {
+			return fallbackValue;
+		}
+		try {
+			return JSON.parse(value);
+		} catch {
+			return fallbackValue;
+		}
+	}
+
+	store(key: string, value: StorageValue, scope: StorageScope, target: StorageTarget): void {
 		if (this.shouldThrowOnStore) {
 			throw new Error('Storage store failed');
 		}
@@ -116,6 +139,12 @@ class MockStorageService implements IStorageService {
 			this.storage.delete(storageKey);
 		} else {
 			this.storage.set(storageKey, String(value));
+		}
+	}
+
+	storeAll(entries: Array<IStorageEntry>, external: boolean): void {
+		for (const entry of entries) {
+			this.store(entry.key, entry.value, entry.scope, entry.target);
 		}
 	}
 
@@ -131,7 +160,15 @@ class MockStorageService implements IStorageService {
 			.map(key => key.substring(prefix.length));
 	}
 
-	migrate(): Promise<void> {
+	log(): void {
+		// No-op for testing
+	}
+
+	hasScope(scope: IAnyWorkspaceIdentifier | IUserDataProfile): boolean {
+		return true;
+	}
+
+	switch(to: IAnyWorkspaceIdentifier | IUserDataProfile, preserveData: boolean): Promise<void> {
 		return Promise.resolve();
 	}
 
@@ -139,28 +176,12 @@ class MockStorageService implements IStorageService {
 		return false;
 	}
 
+	optimize(scope: StorageScope): Promise<void> {
+		return Promise.resolve();
+	}
+
 	flush(): Promise<void> {
 		return Promise.resolve();
-	}
-
-	log(): Promise<void> {
-		return Promise.resolve();
-	}
-
-	switch(): Promise<void> {
-		return Promise.resolve();
-	}
-
-	hasScope(): boolean {
-		return true;
-	}
-
-	storeAll(): void {
-		// No-op
-	}
-
-	logStorage(): void {
-		// No-op
 	}
 }
 

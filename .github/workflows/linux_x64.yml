@@ -521,11 +521,26 @@ jobs:
           cp rpm-build/RPMS/x86_64/ainative-studio-*.rpm ./ainative-studio-linux-x64.rpm
         working-directory: ainative-studio
 
+      - name: Generate SHA256 checksums
+        working-directory: ainative-studio
+        run: |
+          echo "Generating SHA256 checksums for all Linux x64 artifacts..."
+          for file in ainative-studio-linux-x64.tar.gz ainative-studio-linux-x64.AppImage ainative-studio-linux-x64.deb ainative-studio-linux-x64.rpm; do
+            if [ -f "$file" ]; then
+              echo "Generating SHA256 for: $file"
+              sha256sum "$file" > "$file.sha256"
+              cat "$file.sha256"
+            fi
+          done
+        shell: bash
+
       - name: Upload tar.gz artifact
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-linux-x64-tar
-          path: ainative-studio/ainative-studio-linux-x64.tar.gz
+          path: |
+            ainative-studio/ainative-studio-linux-x64.tar.gz
+            ainative-studio/ainative-studio-linux-x64.tar.gz.sha256
           retention-days: 30
           overwrite: true
 
@@ -533,7 +548,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-linux-x64-appimage
-          path: ainative-studio/ainative-studio-linux-x64.AppImage
+          path: |
+            ainative-studio/ainative-studio-linux-x64.AppImage
+            ainative-studio/ainative-studio-linux-x64.AppImage.sha256
           retention-days: 30
           overwrite: true
 
@@ -541,7 +558,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-linux-x64-deb
-          path: ainative-studio/ainative-studio-linux-x64.deb
+          path: |
+            ainative-studio/ainative-studio-linux-x64.deb
+            ainative-studio/ainative-studio-linux-x64.deb.sha256
           retention-days: 30
           overwrite: true
 
@@ -549,6 +568,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-linux-x64-rpm
-          path: ainative-studio/ainative-studio-linux-x64.rpm
+          path: |
+            ainative-studio/ainative-studio-linux-x64.rpm
+            ainative-studio/ainative-studio-linux-x64.rpm.sha256
           retention-days: 30
           overwrite: true

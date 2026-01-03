@@ -745,6 +745,19 @@ jobs:
           echo ""
           echo "=== END OF REPORT ==="
 
+      - name: Generate SHA256 checksums
+        working-directory: ainative-studio
+        run: |
+          # Find DMG file
+          DMG_FILE=$(find . -name "*-darwin-arm64-signed.dmg" | head -1)
+
+          if [ -n "$DMG_FILE" ]; then
+            echo "Generating SHA256 for: $DMG_FILE"
+            shasum -a 256 "$DMG_FILE" > "$DMG_FILE.sha256"
+            cat "$DMG_FILE.sha256"
+          fi
+        shell: bash
+
       - name: Create signed archive
         working-directory: ainative-studio
         run: |
@@ -773,7 +786,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-darwin-arm64-signed-dmg-temp
-          path: ainative-studio/*-darwin-arm64-signed.dmg
+          path: |
+            ainative-studio/*-darwin-arm64-signed.dmg
+            ainative-studio/*-darwin-arm64-signed.dmg.sha256
           retention-days: 30
 
       - name: Upload verification report
@@ -833,16 +848,33 @@ jobs:
           zip -r -y ainative-studio/${ACTUAL_APP_NAME}-darwin-arm64-signed.zip "${ACTUAL_APP_NAME}.app"
           echo "ZIP archive created successfully"
 
+      - name: Generate SHA256 checksums for final artifacts
+        working-directory: ainative-studio
+        run: |
+          # Generate checksums for ZIP and DMG
+          for file in *.zip *.dmg; do
+            if [ -f "$file" ] && [ ! -f "$file.sha256" ]; then
+              echo "Generating SHA256 for: $file"
+              shasum -a 256 "$file" > "$file.sha256"
+              cat "$file.sha256"
+            fi
+          done
+        shell: bash
+
       - name: Upload ZIP artifact
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-darwin-arm64-signed-checked-zip
-          path: ainative-studio/*-darwin-arm64-signed.zip
+          path: |
+            ainative-studio/*-darwin-arm64-signed.zip
+            ainative-studio/*-darwin-arm64-signed.zip.sha256
           retention-days: 30
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-darwin-arm64-signed-checked-dmg
-          path: ainative-studio/*-darwin-arm64-signed.dmg
+          path: |
+            ainative-studio/*-darwin-arm64-signed.dmg
+            ainative-studio/*-darwin-arm64-signed.dmg.sha256
           retention-days: 30

@@ -24,7 +24,7 @@ const optionsEqual = (m1: ModelOption[], m2: ModelOption[]) => {
 
 const ModelSelectBox = ({ options, featureName, className }: { options: ModelOption[], featureName: FeatureName, className: string }) => {
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 
 	const selection = voidSettingsService.state.modelSelectionOfFeature[featureName]
 	const selectedOption = selection ? voidSettingsService.state._modelOptions.find(v => modelSelectionsEqual(v.selection, selection))! : options[0]

@@ -141,7 +141,7 @@ const getUriBeingApplied = (applyBoxId: string) => {
 
 export const useApplyStreamState = ({ applyBoxId }: { applyBoxId: string }) => {
 	const accessor = useAccessor()
-	const voidCommandBarService = accessor.get('IVoidCommandBarService')
+	const voidCommandBarService = accessor.get('IAINativeCommandBarService')
 
 	const getStreamState = useCallback(() => {
 		const uri = getUriBeingApplied(applyBoxId)
@@ -190,7 +190,7 @@ export const StatusIndicator = ({ indicatorColor, title, className, ...props }: 
 };
 
 const tooltipPropsForApplyBlock = ({ tooltipName, color = undefined, position = 'top', offset = undefined }: { tooltipName: string, color?: IndicatorColor, position?: PlacesType, offset?: number }) => ({
-	'data-tooltip-id': color === 'orange' ? `void-tooltip-orange` : color === 'green' ? 'void-tooltip-green' : 'void-tooltip',
+	'data-tooltip-id': color === 'orange' ? `ainative-tooltip-orange` : color === 'green' ? 'ainative-tooltip-green' : 'ainative-tooltip',
 	'data-tooltip-place': position as PlacesType,
 	'data-tooltip-content': `${tooltipName}`,
 	'data-tooltip-offset': offset,
@@ -198,7 +198,7 @@ const tooltipPropsForApplyBlock = ({ tooltipName, color = undefined, position = 
 
 export const useEditToolStreamState = ({ applyBoxId, uri }: { applyBoxId: string, uri: URI }) => {
 	const accessor = useAccessor()
-	const voidCommandBarService = accessor.get('IVoidCommandBarService')
+	const voidCommandBarService = accessor.get('IAINativeCommandBarService')
 	const [streamState, setStreamState] = useState(voidCommandBarService.getStreamState(uri))
 	// listen for stream updates on this box
 	useCommandBarURIListener(useCallback((uri_) => {

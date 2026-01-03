@@ -16,7 +16,7 @@ import {
 	VOID_SETTINGS_STORAGE_KEY,
 	LEGACY_VOID_SETTINGS_STORAGE_KEY
 } from './storageKeys.js';
-import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, VoidStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './voidSettingsTypes.js';
+import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, VoidStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './ainativeSettingsTypes.js';
 
 
 // name is the name in the dropdown
@@ -55,7 +55,7 @@ export type VoidSettingsState = {
 // type EventProp<T extends RealVoidSettings = RealVoidSettings> = T extends 'globalSettings' ? [T, keyof VoidSettingsState[T]] : T | 'all'
 
 
-export interface IVoidSettingsService {
+export interface IAINativeSettingsService {
 	readonly _serviceBrand: undefined;
 	readonly state: VoidSettingsState; // in order to play nicely with react, you should immutably change state
 	readonly waitForInitState: Promise<void>;
@@ -228,8 +228,8 @@ const defaultState = () => {
 }
 
 
-export const IVoidSettingsService = createDecorator<IVoidSettingsService>('VoidSettingsService');
-class VoidSettingsService extends Disposable implements IVoidSettingsService {
+export const IAINativeSettingsService = createDecorator<IAINativeSettingsService>('AINativeSettingsService');
+class AINativeSettingsService extends Disposable implements IAINativeSettingsService {
 	_serviceBrand: undefined;
 
 	private readonly _onDidChangeState = new Emitter<void>();
@@ -357,14 +357,14 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 	private async _migrateStorageKeys(): Promise<void> {
 		// Check if migration already completed (new key exists)
 		const newKeyData = this._storageService.get(VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
-		if (newKeyData) {
+		if (newKeyData !== undefined) {
 			// Migration already done or new key already has data
 			return;
 		}
 
 		// Read data from legacy key
 		const legacyData = this._storageService.get(LEGACY_VOID_SETTINGS_STORAGE_KEY, StorageScope.APPLICATION);
-		if (!legacyData) {
+		if (legacyData === undefined) {
 			// No legacy data to migrate
 			return;
 		}
@@ -652,4 +652,4 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 }
 
 
-registerSingleton(IVoidSettingsService, VoidSettingsService, InstantiationType.Eager);
+registerSingleton(IAINativeSettingsService, AINativeSettingsService, InstantiationType.Eager);

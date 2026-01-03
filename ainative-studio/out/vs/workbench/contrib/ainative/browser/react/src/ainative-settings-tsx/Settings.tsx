@@ -221,7 +221,7 @@ const SimpleModelSettingsDialog = ({
 	const accessor = useAccessor()
 	const settingsState = useSettingsState()
 	const mouseDownInsideModal = useRef(false); // Ref to track mousedown origin
-	const settingsStateService = accessor.get('IVoidSettingsService')
+	const settingsStateService = accessor.get('IAINativeSettingsService')
 
 	// current overrides and defaults
 	const defaultModelCapabilities = getModelCapabilities(providerName, modelName, undefined);
@@ -374,7 +374,7 @@ const SimpleModelSettingsDialog = ({
 
 export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderName[] }) => {
 	const accessor = useAccessor()
-	const settingsStateService = accessor.get('IVoidSettingsService')
+	const settingsStateService = accessor.get('IAINativeSettingsService')
 	const settingsState = useSettingsState()
 
 	// State to track which model's settings dialog is open
@@ -455,9 +455,9 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 
 
 			const detailAboutModel = type === 'autodetected' ?
-				<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='void-tooltip' data-tooltip-place='right' data-tooltip-content='Detected locally' />
+				<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='ainative-tooltip' data-tooltip-place='right' data-tooltip-content='Detected locally' />
 				: type === 'custom' ?
-					<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='void-tooltip' data-tooltip-place='right' data-tooltip-content='Custom model' />
+					<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='ainative-tooltip' data-tooltip-place='right' data-tooltip-content='Custom model' />
 					: undefined
 
 			const hasOverrides = !!settingsState.overridesOfModel?.[providerName]?.[modelName]
@@ -480,7 +480,7 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 						<div className="w-5 flex items-center justify-center">
 							<button
 								onClick={() => { setOpenSettingsModel({ modelName, providerName, type }) }}
-								data-tooltip-id='void-tooltip'
+								data-tooltip-id='ainative-tooltip'
 								data-tooltip-place='right'
 								data-tooltip-content='Advanced Settings'
 								className={`${hasOverrides ? '' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
@@ -501,7 +501,7 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 						disabled={disabled}
 						size='sm'
 
-						data-tooltip-id='void-tooltip'
+						data-tooltip-id='ainative-tooltip'
 						data-tooltip-place='right'
 						data-tooltip-content={tooltipName}
 					/>
@@ -510,7 +510,7 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 					<div className={`w-5 flex items-center justify-center`}>
 						{type === 'default' || type === 'autodetected' ? null : <button
 							onClick={() => { settingsStateService.deleteModel(providerName, modelName); }}
-							data-tooltip-id='void-tooltip'
+							data-tooltip-id='ainative-tooltip'
 							data-tooltip-place='right'
 							data-tooltip-content='Delete'
 							className={`${hasOverrides ? '' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
@@ -616,7 +616,7 @@ const ProviderSetting = ({ providerName, settingName, subTextMd }: { providerNam
 	const { title: settingTitle, placeholder, isPasswordField } = displayInfoOfSettingName(providerName, settingName)
 
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const settingsState = useSettingsState()
 
 	const settingValue = settingsState.settingsOfProvider[providerName][settingName] as string // this should always be a string in this component
@@ -652,7 +652,7 @@ const ProviderSetting = ({ providerName, settingName, subTextMd }: { providerNam
 // 	const needsModel = isProviderNameDisabled(providerName, voidSettingsState) === 'addModel'
 
 // 	// const accessor = useAccessor()
-// 	// const voidSettingsService = accessor.get('IVoidSettingsService')
+// 	// const voidSettingsService = accessor.get('IAINativeSettingsService')
 
 // 	// const { enabled } = voidSettingsState.settingsOfProvider[providerName]
 // 	const settingNames = customSettingNamesOfProvider(providerName)
@@ -698,7 +698,7 @@ export const SettingsForProvider = ({ providerName, showProviderTitle, showProvi
 	const needsModel = isProviderNameDisabled(providerName, voidSettingsState) === 'addModel'
 
 	// const accessor = useAccessor()
-	// const voidSettingsService = accessor.get('IVoidSettingsService')
+	// const voidSettingsService = accessor.get('IAINativeSettingsService')
 
 	// const { enabled } = voidSettingsState.settingsOfProvider[providerName]
 	const settingNames = customSettingNamesOfProvider(providerName)
@@ -759,7 +759,7 @@ export const AutoDetectLocalModelsToggle = () => {
 	const settingName: GlobalSettingName = 'autoRefreshModels'
 
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const metricsService = accessor.get('IMetricsService')
 
 	const voidSettingsState = useSettingsState()
@@ -784,7 +784,7 @@ export const AutoDetectLocalModelsToggle = () => {
 
 export const AIInstructionsBox = () => {
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const voidSettingsState = useSettingsState()
 	return <VoidInputBox2
 		className='min-h-[81px] p-3 rounded-sm'
@@ -799,7 +799,7 @@ export const AIInstructionsBox = () => {
 
 const FastApplyMethodDropdown = () => {
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 
 	const options = useMemo(() => [true, false], [])
 
@@ -828,7 +828,7 @@ export const OllamaSetupInstructions = ({ sayWeAutoDetect }: { sayWeAutoDetect?:
 		<div className=' pl-6'><ChatMarkdownRender string={`2. Open your terminal.`} chatMessageLocation={undefined} /></div>
 		<div
 			className='pl-6 flex items-center w-fit'
-			data-tooltip-id='void-tooltip-ollama-settings'
+			data-tooltip-id='ainative-tooltip-ollama-settings'
 		>
 			<ChatMarkdownRender string={`3. Run \`ollama pull your_model\` to install a model.`} chatMessageLocation={undefined} />
 		</div>
@@ -839,7 +839,7 @@ export const OllamaSetupInstructions = ({ sayWeAutoDetect }: { sayWeAutoDetect?:
 
 const RedoOnboardingButton = ({ className }: { className?: string }) => {
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	return <div
 		className={`text-void-fg-4 flex flex-nowrap text-nowrap items-center hover:brightness-110 cursor-pointer ${className}`}
 		onClick={() => { voidSettingsService.setGlobalSetting('isOnboardingComplete', false) }}
@@ -857,7 +857,7 @@ const RedoOnboardingButton = ({ className }: { className?: string }) => {
 
 export const ToolApprovalTypeSwitch = ({ approvalType, size, desc }: { approvalType: ToolApprovalType, size: "xxs" | "xs" | "sm" | "sm+" | "md", desc: string }) => {
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const voidSettingsState = useSettingsState()
 	const metricsService = accessor.get('IMetricsService')
 
@@ -969,7 +969,7 @@ const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer 
 									key={tool.name}
 									className="px-2 py-0.5 bg-void-bg-2 text-void-fg-3 rounded-sm text-xs"
 
-									data-tooltip-id='void-tooltip'
+									data-tooltip-id='ainative-tooltip'
 									data-tooltip-content={tool.description || ''}
 									data-tooltip-class-name='void-max-w-[300px]'
 								>
@@ -1054,7 +1054,7 @@ export const Settings = () => {
 	const environmentService = accessor.get('IEnvironmentService')
 	const nativeHostService = accessor.get('INativeHostService')
 	const settingsState = useSettingsState()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const chatThreadsService = accessor.get('IChatThreadService')
 	const notificationService = accessor.get('INotificationService')
 	const mcpService = accessor.get('IMCPService')
@@ -1276,7 +1276,7 @@ export const Settings = () => {
 													</span>
 													<span
 														className='hover:brightness-110'
-														data-tooltip-id='void-tooltip'
+														data-tooltip-id='ainative-tooltip'
 														data-tooltip-content='We recommend using the largest qwen2.5-coder model you can with Ollama (try qwen2.5-coder:3b).'
 														data-tooltip-class-name='void-max-w-[20px]'
 													>

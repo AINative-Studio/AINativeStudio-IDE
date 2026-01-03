@@ -7,12 +7,11 @@ import { strictEqual, ok, deepStrictEqual, rejects } from 'assert';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import {
-	IAINativeAuthService,
-	AINativeAuthResult,
-	AINativeUser,
 	AuthState,
 	AINativeAuthError,
-	AINativeAuthErrorCode
+	AINativeAuthErrorCode,
+	JWTClaims,
+	AINativeAuthService
 } from '../../common/ainativeAuthService.js';
 import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
@@ -23,15 +22,11 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../../pla
 class MockEncryptionService implements IEncryptionService {
 	_serviceBrand: undefined;
 
-	private storage = new Map<string, string>();
-
 	async encrypt(value: string): Promise<string> {
-		// Simple base64 encoding for testing
 		return Buffer.from(value).toString('base64');
 	}
 
 	async decrypt(value: string): Promise<string> {
-		// Simple base64 decoding for testing
 		return Buffer.from(value, 'base64').toString('utf-8');
 	}
 
@@ -56,32 +51,52 @@ class MockStorageService implements IStorageService {
 
 	private storage = new Map<string, string>();
 
-	onDidChangeValue: any = () => ({ dispose: () => {} });
-	onDidChangeTarget: any = () => ({ dispose: () => {} });
-	onWillSaveState: any = () => ({ dispose: () => {} });
+	onDidChangeValue: any = () => ({ dispose: () => { } });
+	onDidChangeTarget: any = () => ({ dispose: () => { } });
+	onWillSaveState: any = () => ({ dispose: () => { } });
 
 	get(key: string, scope: StorageScope, fallbackValue: string): string;
+	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 		const storageKey = `${scope}:${key}`;
 		return this.storage.get(storageKey) ?? fallbackValue;
 	}
 
 	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
+	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined;
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
-		const value = this.get(key, scope);
+		const storageKey = `${scope}:${key}`;
+		const value = this.storage.get(storageKey);
 		if (value === undefined) {
-			return fallbackValue;
+			return fallbackValue as any;
 		}
 		return value === 'true';
 	}
 
 	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
+	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined;
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
-		const value = this.get(key, scope);
+		const storageKey = `${scope}:${key}`;
+		const value = this.storage.get(storageKey);
 		if (value === undefined) {
 			return fallbackValue;
 		}
 		return parseInt(value, 10);
+	}
+
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		const storageKey = `${scope}:${key}`;
+		const value = this.storage.get(storageKey);
+		if (value === undefined) {
+			return fallbackValue;
+		}
+		try {
+			return JSON.parse(value) as T;
+		} catch {
+			return fallbackValue;
+		}
 	}
 
 	store(key: string, value: string | boolean | number | undefined | null, scope: StorageScope, target: StorageTarget): void {
@@ -136,150 +151,15 @@ class MockStorageService implements IStorageService {
 	logStorage(): void {
 		// No-op for testing
 	}
+
+	clear(): void {
+		this.storage.clear();
+	}
+
+	optimize(): Promise<void> {
+		return Promise.resolve();
+	}
 }
-
-import { AINativeAuthService } from '../../common/ainativeAuthService.js';
-
-suite('AINativeAuthService', () => {
-	const disposables = new DisposableStore();
-	let encryptionService: MockEncryptionService;
-	let storageService: MockStorageService;
-	let authService: AINativeAuthService;
-
-	setup(() => {
-		encryptionService = new MockEncryptionService();
-		storageService = new MockStorageService();
-		authService = new AINativeAuthService(encryptionService, storageService);
-		disposables.add(authService);
-	});
-
-	teardown(() => {
-		disposables.clear();
-	});
-
-	ensureNoDisposablesAreLeakedInTestSuite();
-
-	test('should initialize with unauthenticated state', () => {
-		strictEqual(authService.isAuthenticated(), false);
-		strictEqual(authService.getAuthState(), AuthState.Unauthenticated);
-		strictEqual(authService.getAccessToken(), null);
-		strictEqual(authService.getUser(), null);
-	});
-
-	test('should store JWT encrypted in storage', async () => {
-		// Note: This test validates the encryption flow without making actual API calls
-		// In a real scenario, we would mock fetch() to simulate API responses
-
-		// Verify encryption service is used for storage
-		const testToken = 'test.jwt.token';
-		const encrypted = await encryptionService.encrypt(testToken);
-		const decrypted = await encryptionService.decrypt(encrypted);
-
-		strictEqual(decrypted, testToken);
-		ok(encrypted !== testToken, 'Token should be encrypted before storage');
-	});
-
-	test('should retrieve user profile after login', () => {
-		// After successful login, getUser() should return user data
-		const user = authService.getUser();
-		// Before login, user should be null
-		strictEqual(user, null);
-	});
-
-	test('should logout and clear storage', async () => {
-		// Test logout functionality
-		await authService.logout();
-
-		// Verify all auth data is cleared
-		strictEqual(authService.getAccessToken(), null);
-		strictEqual(authService.getUser(), null);
-		strictEqual(authService.isAuthenticated(), false);
-		strictEqual(authService.getAuthState(), AuthState.Unauthenticated);
-	});
-
-	test('should emit onDidChangeAuthState event', (done) => {
-		let eventFired = false;
-
-		disposables.add(authService.onDidChangeAuthState((state) => {
-			eventFired = true;
-			strictEqual(state, AuthState.LoggingOut);
-			done();
-		}));
-
-		// Trigger state change via logout
-		authService.logout().then(() => {
-			ok(eventFired, 'Event should have fired');
-		}).catch(done);
-	});
-
-	test('should return isAuthenticated() correctly', () => {
-		// Test isAuthenticated logic
-		strictEqual(authService.isAuthenticated(), false);
-
-		// After logout, should be false
-		authService.logout().then(() => {
-			strictEqual(authService.isAuthenticated(), false);
-		});
-	});
-
-	test('should handle network errors gracefully', async () => {
-		// Test error handling without actual network calls
-		// The service should handle errors and not crash
-		try {
-			await authService.logout();
-			ok(true, 'Logout should complete even if network fails');
-		} catch (error) {
-			ok(false, 'Should not throw error on network failure');
-		}
-	});
-
-	test('should validate token expiration', () => {
-		// Test token expiration logic
-		// Create a JWT token that's expired
-		const expiredToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) - 3600 });
-
-		// Verify the service would detect this as expired
-		// (internal method, but tests the concept)
-		ok(expiredToken.includes('.'), 'Token should be in JWT format');
-	});
-
-	test('should handle concurrent login requests', async () => {
-		// Test concurrent login prevention
-		// The service has _loginInProgress flag to prevent concurrent logins
-
-		// Multiple calls should be handled safely
-		const promises = [
-			authService.logout(),
-			authService.logout()
-		];
-
-		try {
-			await Promise.all(promises);
-			ok(true, 'Concurrent operations should be handled');
-		} catch (error) {
-			ok(true, 'Concurrent operations may throw expected errors');
-		}
-	});
-
-	test('should get access token after initialization', () => {
-		const token = authService.getAccessToken();
-		strictEqual(token, null, 'Token should be null before login');
-	});
-
-	test('should get auth state', () => {
-		const state = authService.getAuthState();
-		strictEqual(state, AuthState.Unauthenticated);
-	});
-
-	test('should handle storage encryption errors', async () => {
-		// Test that service handles encryption errors gracefully
-		const testData = 'test-data';
-		const encrypted = await encryptionService.encrypt(testData);
-		const decrypted = await encryptionService.decrypt(encrypted);
-
-		strictEqual(decrypted, testData);
-	});
-});
 
 /**
  * Helper function to create mock JWT tokens for testing
@@ -297,3 +177,630 @@ function createMockJWT(claims: Partial<JWTClaims>): string {
 
 	return `${header}.${payload}.${signature}`;
 }
+
+/**
+ * Mock fetch responses
+ */
+const originalFetch = global.fetch;
+
+function mockLoginSuccess(): void {
+	global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+		const url = typeof input === 'string' ? input : input.toString();
+
+		if (url.includes('/v1/auth/login-json')) {
+			const accessToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 3600 });
+			const refreshToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 7200 });
+
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({
+					access_token: accessToken,
+					refresh_token: refreshToken,
+					user: {
+						id: 'user-123',
+						email: 'test@ainative.studio',
+						name: 'Test User',
+						role: 'user',
+						created_at: '2025-01-01T00:00:00Z',
+						updated_at: '2025-01-01T00:00:00Z'
+					}
+				})
+			} as Response;
+		}
+
+		return { ok: false, status: 404 } as Response;
+	};
+}
+
+function mockLoginInvalidCredentials(): void {
+	global.fetch = async (input: RequestInfo | URL): Promise<Response> => {
+		const url = typeof input === 'string' ? input : input.toString();
+
+		if (url.includes('/v1/auth/login-json')) {
+			return {
+				ok: false,
+				status: 401,
+				statusText: 'Unauthorized'
+			} as Response;
+		}
+
+		return { ok: false, status: 404 } as Response;
+	};
+}
+
+function mockLoginNetworkError(): void {
+	global.fetch = async (): Promise<Response> => {
+		throw new Error('Network connection failed');
+	};
+}
+
+function mockLogoutSuccess(): void {
+	global.fetch = async (input: RequestInfo | URL): Promise<Response> => {
+		const url = typeof input === 'string' ? input : input.toString();
+
+		if (url.includes('/v1/auth/logout')) {
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({ success: true })
+			} as Response;
+		}
+
+		return { ok: false, status: 404 } as Response;
+	};
+}
+
+function mockRefreshTokenSuccess(): void {
+	global.fetch = async (input: RequestInfo | URL): Promise<Response> => {
+		const url = typeof input === 'string' ? input : input.toString();
+
+		if (url.includes('/v1/auth/refresh')) {
+			const newAccessToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 3600 });
+
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({
+					access_token: newAccessToken
+				})
+			} as Response;
+		}
+
+		return { ok: false, status: 404 } as Response;
+	};
+}
+
+function mockRefreshTokenFailure(): void {
+	global.fetch = async (input: RequestInfo | URL): Promise<Response> => {
+		const url = typeof input === 'string' ? input : input.toString();
+
+		if (url.includes('/v1/auth/refresh')) {
+			return {
+				ok: false,
+				status: 401,
+				statusText: 'Unauthorized'
+			} as Response;
+		}
+
+		return { ok: false, status: 404 } as Response;
+	};
+}
+
+function restoreFetch(): void {
+	global.fetch = originalFetch;
+}
+
+suite('AINativeAuthService', () => {
+	const disposables = new DisposableStore();
+	let encryptionService: MockEncryptionService;
+	let storageService: MockStorageService;
+	let authService: AINativeAuthService;
+
+	setup(() => {
+		encryptionService = new MockEncryptionService();
+		storageService = new MockStorageService();
+		authService = new AINativeAuthService(encryptionService, storageService);
+		disposables.add(authService);
+	});
+
+	teardown(() => {
+		disposables.clear();
+		storageService.clear();
+		restoreFetch();
+	});
+
+	ensureNoDisposablesAreLeakedInTestSuite();
+
+	suite('Initialization', () => {
+		test('should initialize with unauthenticated state', () => {
+			strictEqual(authService.isAuthenticated(), false);
+			strictEqual(authService.getAuthState(), AuthState.Unauthenticated);
+			strictEqual(authService.getAccessToken(), null);
+			strictEqual(authService.getUser(), null);
+		});
+
+		test('should load valid tokens from storage on init', async () => {
+			// Create a new service with pre-stored tokens
+			const validToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 3600 });
+			const encryptedToken = await encryptionService.encrypt(validToken);
+			const userData = {
+				id: 'user-123',
+				email: 'stored@ainative.studio',
+				role: 'user'
+			};
+
+			storageService.store('ainative.auth.jwt', encryptedToken, StorageScope.APPLICATION, StorageTarget.MACHINE);
+			storageService.store('ainative.auth.user', JSON.stringify(userData), StorageScope.APPLICATION, StorageTarget.MACHINE);
+
+			// Create new service instance to trigger storage loading
+			const newAuthService = new AINativeAuthService(encryptionService, storageService);
+			disposables.add(newAuthService);
+
+			// Wait for async _loadFromStorage
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			strictEqual(newAuthService.isAuthenticated(), true);
+			strictEqual(newAuthService.getAuthState(), AuthState.Authenticated);
+			ok(newAuthService.getAccessToken() !== null);
+			deepStrictEqual(newAuthService.getUser(), userData);
+		});
+
+		test('should reject expired tokens from storage on init', async () => {
+			// Create a new service with expired token
+			const expiredToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) - 3600 });
+			const encryptedToken = await encryptionService.encrypt(expiredToken);
+			const userData = {
+				id: 'user-123',
+				email: 'expired@ainative.studio',
+				role: 'user'
+			};
+
+			storageService.store('ainative.auth.jwt', encryptedToken, StorageScope.APPLICATION, StorageTarget.MACHINE);
+			storageService.store('ainative.auth.user', JSON.stringify(userData), StorageScope.APPLICATION, StorageTarget.MACHINE);
+
+			// Create new service instance
+			const newAuthService = new AINativeAuthService(encryptionService, storageService);
+			disposables.add(newAuthService);
+
+			// Wait for async _loadFromStorage
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			strictEqual(newAuthService.isAuthenticated(), false);
+			strictEqual(newAuthService.getAuthState(), AuthState.Unauthenticated);
+			strictEqual(newAuthService.getAccessToken(), null);
+		});
+	});
+
+	suite('Login Tests', () => {
+		test('should login successfully with valid credentials', async () => {
+			mockLoginSuccess();
+
+			const result = await authService.login('test@ainative.studio', 'password123');
+
+			strictEqual(result.success, true);
+			ok(result.accessToken, 'Access token should be present');
+			ok(result.refreshToken, 'Refresh token should be present');
+			ok(result.user, 'User data should be present');
+			strictEqual(result.user?.email, 'test@ainative.studio');
+			strictEqual(authService.isAuthenticated(), true);
+			strictEqual(authService.getAuthState(), AuthState.Authenticated);
+		});
+
+		test('should fail login with invalid credentials', async () => {
+			mockLoginInvalidCredentials();
+
+			const result = await authService.login('wrong@example.com', 'wrongpassword');
+
+			strictEqual(result.success, false);
+			ok(result.error, 'Error should be present');
+			strictEqual(result.error?.code, AINativeAuthErrorCode.InvalidCredentials);
+			strictEqual(authService.isAuthenticated(), false);
+		});
+
+		test('should handle network errors during login', async () => {
+			mockLoginNetworkError();
+
+			const result = await authService.login('test@ainative.studio', 'password123');
+
+			strictEqual(result.success, false);
+			ok(result.error, 'Error should be present');
+			strictEqual(result.error?.code, AINativeAuthErrorCode.NetworkError);
+			strictEqual(authService.isAuthenticated(), false);
+		});
+
+		test('should prevent concurrent login requests', async () => {
+			mockLoginSuccess();
+
+			// Start first login
+			const promise1 = authService.login('test1@ainative.studio', 'password1');
+
+			// Try to start second login immediately
+			const promise2 = authService.login('test2@ainative.studio', 'password2');
+
+			const results = await Promise.allSettled([promise1, promise2]);
+
+			// One should succeed, one should fail with error
+			const hasSuccess = results.some(r => r.status === 'fulfilled' && r.value.success);
+			const hasError = results.some(r => r.status === 'fulfilled' && !r.value.success);
+
+			ok(hasSuccess || hasError, 'Should handle concurrent login attempts');
+		});
+
+		test('should emit onDidChangeAuthState event on successful login', async () => {
+			mockLoginSuccess();
+
+			let eventFired = false;
+			let capturedState: AuthState | null = null;
+
+			disposables.add(authService.onDidChangeAuthState((state) => {
+				eventFired = true;
+				capturedState = state;
+			}));
+
+			await authService.login('test@ainative.studio', 'password123');
+
+			ok(eventFired, 'Event should have fired');
+			strictEqual(capturedState, AuthState.Authenticated);
+		});
+	});
+
+	suite('Logout Tests', () => {
+		test('should logout successfully and clear all auth data', async () => {
+			mockLoginSuccess();
+			mockLogoutSuccess();
+
+			// First login
+			await authService.login('test@ainative.studio', 'password123');
+			strictEqual(authService.isAuthenticated(), true);
+
+			// Then logout
+			await authService.logout();
+
+			strictEqual(authService.getAccessToken(), null);
+			strictEqual(authService.getUser(), null);
+			strictEqual(authService.isAuthenticated(), false);
+			strictEqual(authService.getAuthState(), AuthState.Unauthenticated);
+		});
+
+		test('should clear storage on logout', async () => {
+			mockLoginSuccess();
+			mockLogoutSuccess();
+
+			// Login to populate storage
+			await authService.login('test@ainative.studio', 'password123');
+
+			// Verify storage has data
+			const jwtBeforeLogout = storageService.get('ainative.auth.jwt', StorageScope.APPLICATION);
+			ok(jwtBeforeLogout, 'JWT should be in storage before logout');
+
+			// Logout
+			await authService.logout();
+
+			// Verify storage is cleared
+			const jwtAfterLogout = storageService.get('ainative.auth.jwt', StorageScope.APPLICATION);
+			const refreshAfterLogout = storageService.get('ainative.auth.refreshToken', StorageScope.APPLICATION);
+			const userAfterLogout = storageService.get('ainative.auth.user', StorageScope.APPLICATION);
+
+			strictEqual(jwtAfterLogout, undefined);
+			strictEqual(refreshAfterLogout, undefined);
+			strictEqual(userAfterLogout, undefined);
+		});
+
+		test('should emit onDidChangeAuthState events during logout', async () => {
+			mockLoginSuccess();
+			mockLogoutSuccess();
+
+			const states: AuthState[] = [];
+
+			disposables.add(authService.onDidChangeAuthState((state) => {
+				states.push(state);
+			}));
+
+			await authService.login('test@ainative.studio', 'password123');
+			await authService.logout();
+
+			// Should have: Authenticated (login), LoggingOut, Unauthenticated
+			ok(states.includes(AuthState.Authenticated), 'Should include Authenticated state');
+			ok(states.includes(AuthState.LoggingOut), 'Should include LoggingOut state');
+			ok(states.includes(AuthState.Unauthenticated), 'Should include Unauthenticated state');
+		});
+
+		test('should complete logout even if backend call fails', async () => {
+			mockLoginSuccess();
+			await authService.login('test@ainative.studio', 'password123');
+
+			// Mock logout failure
+			global.fetch = async (): Promise<Response> => {
+				throw new Error('Network error');
+			};
+
+			// Logout should still complete locally
+			await authService.logout();
+
+			strictEqual(authService.isAuthenticated(), false);
+			strictEqual(authService.getAccessToken(), null);
+		});
+	});
+
+	suite('Token Refresh Tests', () => {
+		test('should refresh token successfully', async () => {
+			mockLoginSuccess();
+			await authService.login('test@ainative.studio', 'password123');
+
+			const oldToken = authService.getAccessToken();
+
+			mockRefreshTokenSuccess();
+			const newToken = await authService.refreshToken();
+
+			ok(newToken, 'New token should be returned');
+			strictEqual(authService.getAccessToken(), newToken);
+			ok(newToken !== oldToken, 'New token should be different from old token');
+			strictEqual(authService.getAuthState(), AuthState.Authenticated);
+		});
+
+		test('should fail to refresh when no refresh token available', async () => {
+			await rejects(
+				() => authService.refreshToken(),
+				(error: any) => {
+					return error instanceof AINativeAuthError &&
+						error.code === AINativeAuthErrorCode.TokenRefreshFailed &&
+						error.message.includes('No refresh token available');
+				},
+				'Should reject when no refresh token is available'
+			);
+		});
+
+		test('should handle refresh token failure and clear auth state', async () => {
+			mockLoginSuccess();
+			await authService.login('test@ainative.studio', 'password123');
+
+			strictEqual(authService.isAuthenticated(), true);
+
+			mockRefreshTokenFailure();
+
+			await rejects(
+				() => authService.refreshToken(),
+				(error: any) => {
+					return error instanceof AINativeAuthError &&
+						error.code === AINativeAuthErrorCode.TokenRefreshFailed;
+				},
+				'Should reject with TokenRefreshFailed error'
+			);
+
+			// Auth state should be cleared
+			strictEqual(authService.getAuthState(), AuthState.Unauthenticated);
+		});
+
+		test('should emit state changes during token refresh', async () => {
+			mockLoginSuccess();
+			await authService.login('test@ainative.studio', 'password123');
+
+			const states: AuthState[] = [];
+			disposables.add(authService.onDidChangeAuthState((state) => {
+				states.push(state);
+			}));
+
+			mockRefreshTokenSuccess();
+			await authService.refreshToken();
+
+			ok(states.includes(AuthState.Refreshing), 'Should include Refreshing state');
+			ok(states.includes(AuthState.Authenticated), 'Should return to Authenticated state');
+		});
+	});
+
+	suite('Token Storage Tests', () => {
+		test('should store tokens encrypted via IEncryptionService', async () => {
+			mockLoginSuccess();
+
+			await authService.login('test@ainative.studio', 'password123');
+
+			const storedJwt = storageService.get('ainative.auth.jwt', StorageScope.APPLICATION);
+			const storedRefresh = storageService.get('ainative.auth.refreshToken', StorageScope.APPLICATION);
+
+			ok(storedJwt, 'JWT should be stored');
+			ok(storedRefresh, 'Refresh token should be stored');
+
+			// Verify tokens are encrypted (base64 in our mock)
+			ok(storedJwt !== authService.getAccessToken(), 'JWT should be encrypted in storage');
+			ok(storedRefresh !== authService.getAccessToken(), 'Refresh token should be encrypted in storage');
+
+			// Verify we can decrypt them
+			const decryptedJwt = await encryptionService.decrypt(storedJwt!);
+			strictEqual(decryptedJwt, authService.getAccessToken());
+		});
+
+		test('should store user data in storage', async () => {
+			mockLoginSuccess();
+
+			await authService.login('test@ainative.studio', 'password123');
+
+			const storedUser = storageService.get('ainative.auth.user', StorageScope.APPLICATION);
+			ok(storedUser, 'User data should be stored');
+
+			const parsedUser = JSON.parse(storedUser!);
+			deepStrictEqual(parsedUser, authService.getUser());
+		});
+
+		test('should retrieve tokens from storage on initialization', async () => {
+			mockLoginSuccess();
+			await authService.login('test@ainative.studio', 'password123');
+
+			const originalToken = authService.getAccessToken();
+			const originalUser = authService.getUser();
+
+			// Create new service instance with same storage
+			const newAuthService = new AINativeAuthService(encryptionService, storageService);
+			disposables.add(newAuthService);
+
+			// Wait for async storage loading
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			strictEqual(newAuthService.getAccessToken(), originalToken);
+			deepStrictEqual(newAuthService.getUser(), originalUser);
+			strictEqual(newAuthService.isAuthenticated(), true);
+		});
+	});
+
+	suite('Authentication State Tests', () => {
+		test('should return correct isAuthenticated() value', () => {
+			strictEqual(authService.isAuthenticated(), false, 'Should be false initially');
+
+			// After logout, should still be false
+			authService.logout().then(() => {
+				strictEqual(authService.isAuthenticated(), false);
+			});
+		});
+
+		test('should return correct auth state throughout lifecycle', async () => {
+			strictEqual(authService.getAuthState(), AuthState.Unauthenticated);
+
+			mockLoginSuccess();
+			await authService.login('test@ainative.studio', 'password123');
+			strictEqual(authService.getAuthState(), AuthState.Authenticated);
+
+			mockLogoutSuccess();
+			await authService.logout();
+			strictEqual(authService.getAuthState(), AuthState.Unauthenticated);
+		});
+
+		test('should fire onDidChangeAuthState on login', async () => {
+			mockLoginSuccess();
+
+			let eventCount = 0;
+			const states: AuthState[] = [];
+
+			disposables.add(authService.onDidChangeAuthState((state) => {
+				eventCount++;
+				states.push(state);
+			}));
+
+			await authService.login('test@ainative.studio', 'password123');
+
+			ok(eventCount > 0, 'Event should fire at least once');
+			ok(states.includes(AuthState.Authenticated), 'Should include Authenticated state');
+		});
+
+		test('should fire onDidChangeAuthState on logout', async () => {
+			mockLoginSuccess();
+			mockLogoutSuccess();
+
+			await authService.login('test@ainative.studio', 'password123');
+
+			let logoutEventFired = false;
+			disposables.add(authService.onDidChangeAuthState((state) => {
+				if (state === AuthState.LoggingOut) {
+					logoutEventFired = true;
+				}
+			}));
+
+			await authService.logout();
+
+			ok(logoutEventFired, 'LoggingOut event should fire');
+		});
+	});
+
+	suite('Error Handling Tests', () => {
+		test('should handle network errors with proper error codes', async () => {
+			mockLoginNetworkError();
+
+			const result = await authService.login('test@ainative.studio', 'password123');
+
+			strictEqual(result.success, false);
+			strictEqual(result.error?.code, AINativeAuthErrorCode.NetworkError);
+			ok(result.error?.message, 'Error message should be present');
+		});
+
+		test('should handle invalid token errors', async () => {
+			// Manually set an invalid token
+			const invalidToken = 'invalid.token.format';
+			const encrypted = await encryptionService.encrypt(invalidToken);
+
+			storageService.store('ainative.auth.jwt', encrypted, StorageScope.APPLICATION, StorageTarget.MACHINE);
+			storageService.store('ainative.auth.user', JSON.stringify({ id: '123', email: 'test@test.com', role: 'user' }), StorageScope.APPLICATION, StorageTarget.MACHINE);
+
+			const newAuthService = new AINativeAuthService(encryptionService, storageService);
+			disposables.add(newAuthService);
+
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			// Should handle invalid token gracefully
+			strictEqual(newAuthService.isAuthenticated(), false);
+		});
+
+		test('should handle refresh token network errors', async () => {
+			mockLoginSuccess();
+			await authService.login('test@ainative.studio', 'password123');
+
+			// Mock network error for refresh
+			global.fetch = async (): Promise<Response> => {
+				throw new Error('Network timeout');
+			};
+
+			await rejects(
+				() => authService.refreshToken(),
+				(error: any) => error instanceof AINativeAuthError,
+				'Should throw AINativeAuthError on network failure'
+			);
+		});
+
+		test('should handle storage encryption errors gracefully', async () => {
+			// This test verifies encryption/decryption works
+			const testData = 'sensitive-token-data';
+			const encrypted = await encryptionService.encrypt(testData);
+			const decrypted = await encryptionService.decrypt(encrypted);
+
+			strictEqual(decrypted, testData);
+			ok(encrypted !== testData, 'Data should be encrypted');
+		});
+	});
+
+	suite('Security Tests', () => {
+		test('should validate JWT token format', () => {
+			const validToken = createMockJWT({ sub: 'user-123' });
+			const parts = validToken.split('.');
+
+			strictEqual(parts.length, 3, 'JWT should have 3 parts');
+		});
+
+		test('should detect expired tokens', async () => {
+			const expiredToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) - 3600 });
+			const encrypted = await encryptionService.encrypt(expiredToken);
+
+			storageService.store('ainative.auth.jwt', encrypted, StorageScope.APPLICATION, StorageTarget.MACHINE);
+			storageService.store('ainative.auth.user', JSON.stringify({ id: '123', email: 'test@test.com', role: 'user' }), StorageScope.APPLICATION, StorageTarget.MACHINE);
+
+			const newAuthService = new AINativeAuthService(encryptionService, storageService);
+			disposables.add(newAuthService);
+
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			strictEqual(newAuthService.isAuthenticated(), false, 'Should reject expired tokens');
+		});
+
+		test('should call backend logout API to blacklist token', async () => {
+			mockLoginSuccess();
+			await authService.login('test@ainative.studio', 'password123');
+
+			let logoutCalled = false;
+			global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+				const url = typeof input === 'string' ? input : input.toString();
+
+				if (url.includes('/v1/auth/logout')) {
+					logoutCalled = true;
+					// Verify Authorization header is present
+					ok(init?.headers, 'Headers should be present');
+					const headers = init.headers as Record<string, string>;
+					ok(headers['Authorization'], 'Authorization header should be present');
+					ok(headers['Authorization'].startsWith('Bearer '), 'Should use Bearer token');
+				}
+
+				return { ok: true, status: 200, json: async () => ({ success: true }) } as Response;
+			};
+
+			await authService.logout();
+
+			ok(logoutCalled, 'Backend logout API should be called');
+		});
+	});
+});

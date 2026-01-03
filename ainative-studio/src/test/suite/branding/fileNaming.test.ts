@@ -8,7 +8,10 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { glob } from 'glob';
+import { glob as globCallback } from 'glob';
+import { promisify } from 'util';
+
+const glob = promisify(globCallback);
 
 suite('Branding - File Naming Tests', () => {
 	const rootDir = path.join(__dirname, '../../../../');
@@ -107,7 +110,6 @@ suite('Branding - File Naming Tests', () => {
 		const ainativeDir = path.join(contribDir, 'ainative');
 
 		// Search for icon directories
-		const ainativeIconsPath = path.join(ainativeDir, 'browser/media/ainative_icons');
 		const voidIconsPath = path.join(ainativeDir, 'browser/media/void_icons');
 
 		// Check if we can find any icon directory

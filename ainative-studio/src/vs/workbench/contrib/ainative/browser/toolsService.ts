@@ -9,15 +9,15 @@ import { ISearchService } from '../../../services/search/common/search.js'
 import { IEditCodeService } from './editCodeServiceInterface.js'
 import { ITerminalToolService } from './terminalToolService.js'
 import { LintErrorItem, BuiltinToolCallParams, BuiltinToolResultType, BuiltinToolName } from '../common/toolsServiceTypes.js'
-import { IVoidModelService } from '../common/voidModelService.js'
+import { IAINativeModelService } from '../common/ainativeModelService.js'
 import { EndOfLinePreference } from '../../../../editor/common/model.js'
-import { IVoidCommandBarService } from './voidCommandBarService.js'
+import { IAINativeCommandBarService } from './ainativeCommandBarService.js'
 import { computeDirectoryTree1Deep, IDirectoryStrService, stringifyDirectoryTree1Deep } from '../common/directoryStrService.js'
 import { IMarkerService, MarkerSeverity } from '../../../../platform/markers/common/markers.js'
 import { timeout } from '../../../../base/common/async.js'
 import { RawToolParamsObj } from '../common/sendLLMMessageTypes.js'
 import { MAX_CHILDREN_URIs_PAGE, MAX_FILE_CHARS_PAGE, MAX_TERMINAL_BG_COMMAND_TIME, MAX_TERMINAL_INACTIVE_TIME } from '../common/prompt/prompts.js'
-import { IVoidSettingsService } from '../common/voidSettingsService.js'
+import { IAINativeSettingsService } from '../common/ainativeSettingsService.js'
 import { generateUuid } from '../../../../base/common/uuid.js'
 
 
@@ -146,13 +146,13 @@ export class ToolsService implements IToolsService {
 		@IWorkspaceContextService workspaceContextService: IWorkspaceContextService,
 		@ISearchService searchService: ISearchService,
 		@IInstantiationService instantiationService: IInstantiationService,
-		@IVoidModelService voidModelService: IVoidModelService,
+		@IAINativeModelService voidModelService: IAINativeModelService,
 		@IEditCodeService editCodeService: IEditCodeService,
 		@ITerminalToolService private readonly terminalToolService: ITerminalToolService,
-		@IVoidCommandBarService private readonly commandBarService: IVoidCommandBarService,
+		@IAINativeCommandBarService private readonly commandBarService: IAINativeCommandBarService,
 		@IDirectoryStrService private readonly directoryStrService: IDirectoryStrService,
 		@IMarkerService private readonly markerService: IMarkerService,
-		@IVoidSettingsService private readonly voidSettingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly voidSettingsService: IAINativeSettingsService,
 	) {
 		const queryBuilder = instantiationService.createInstance(QueryBuilder);
 

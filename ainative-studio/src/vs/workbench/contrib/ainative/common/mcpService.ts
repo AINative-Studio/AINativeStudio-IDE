@@ -17,8 +17,8 @@ import { IMainProcessService } from '../../../../platform/ipc/common/mainProcess
 import { MCPServerOfName, MCPConfigFileJSON, MCPServer, MCPToolCallParams, RawMCPToolCall, MCPServerEventResponse } from './mcpServiceTypes.js';
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { InternalToolInfo } from './prompt/prompts.js';
-import { IVoidSettingsService } from './voidSettingsService.js';
-import { MCPUserStateOfName } from './voidSettingsTypes.js';
+import { IAINativeSettingsService } from './ainativeSettingsService.js';
+import { MCPUserStateOfName } from './ainativeSettingsTypes.js';
 
 
 type MCPServiceState = {
@@ -81,10 +81,10 @@ class MCPService extends Disposable implements IMCPService {
 		@IProductService private readonly productService: IProductService,
 		@IEditorService private readonly editorService: IEditorService,
 		@IMainProcessService private readonly mainProcessService: IMainProcessService,
-		@IVoidSettingsService private readonly voidSettingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly voidSettingsService: IAINativeSettingsService,
 	) {
 		super();
-		this.channel = this.mainProcessService.getChannel('void-channel-mcp')
+		this.channel = this.mainProcessService.getChannel('ainative-channel-mcp')
 
 
 		const onEvent = (e: MCPServerEventResponse) => {

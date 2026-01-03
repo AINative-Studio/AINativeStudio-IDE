@@ -12,7 +12,7 @@ import { IMainProcessService } from '../../../../platform/ipc/common/mainProcess
 import { generateUuid } from '../../../../base/common/uuid.js';
 import { Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { IVoidSettingsService } from './voidSettingsService.js';
+import { IAINativeSettingsService } from './voidSettingsService.js';
 import { IMCPService } from './mcpService.js';
 
 // calls channel to implement features
@@ -60,15 +60,15 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 
 	constructor(
 		@IMainProcessService private readonly mainProcessService: IMainProcessService, // used as a renderer (only usable on client side)
-		@IVoidSettingsService private readonly voidSettingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly voidSettingsService: IAINativeSettingsService,
 		// @INotificationService private readonly notificationService: INotificationService,
 		@IMCPService private readonly mcpService: IMCPService,
 	) {
 		super()
 
-		// const service = ProxyChannel.toService<LLMMessageChannel>(mainProcessService.getChannel('void-channel-sendLLMMessage')); // lets you call it like a service
+		// const service = ProxyChannel.toService<LLMMessageChannel>(mainProcessService.getChannel('ainative-channel-sendLLMMessage')); // lets you call it like a service
 		// see llmMessageChannel.ts
-		this.channel = this.mainProcessService.getChannel('void-channel-llmMessage')
+		this.channel = this.mainProcessService.getChannel('ainative-channel-llmMessage')
 
 		// .listen sets up an IPC channel and takes a few ms, so we set up listeners immediately and add hooks to them instead
 		// llm

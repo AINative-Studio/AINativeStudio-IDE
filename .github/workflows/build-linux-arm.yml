@@ -424,26 +424,45 @@ jobs:
           # Build RPM
           rpmbuild --define "_topdir $(pwd)/rpm-build" --define "_binaries_in_noarch_packages_terminate_build 0" -ba rpm-build/SPECS/ainative-studio.spec
           cp rpm-build/RPMS/noarch/ainative-studio-*.rpm ./ainative-studio-linux-armhf.rpm
-      
+
+      - name: Generate SHA256 checksums
+        working-directory: ainative-studio
+        run: |
+          echo "Generating SHA256 checksums for all Linux ARM artifacts..."
+          for file in ainative-studio-linux-armhf.tar.gz ainative-studio-linux-armhf.deb ainative-studio-linux-armhf.rpm; do
+            if [ -f "$file" ]; then
+              echo "Generating SHA256 for: $file"
+              sha256sum "$file" > "$file.sha256"
+              cat "$file.sha256"
+            fi
+          done
+        shell: bash
+
       - name: Upload tar.gz artifact
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-linux-armhf-tar
-          path: ainative-studio/ainative-studio-linux-armhf.tar.gz
+          path: |
+            ainative-studio/ainative-studio-linux-armhf.tar.gz
+            ainative-studio/ainative-studio-linux-armhf.tar.gz.sha256
           retention-days: 30
       
       - name: Upload DEB package
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-linux-armhf-deb
-          path: ainative-studio/ainative-studio-linux-armhf.deb
+          path: |
+            ainative-studio/ainative-studio-linux-armhf.deb
+            ainative-studio/ainative-studio-linux-armhf.deb.sha256
           retention-days: 30
       
       - name: Upload RPM package
         uses: actions/upload-artifact@v4
         with:
           name: ainative-studio-linux-armhf-rpm
-          path: ainative-studio/ainative-studio-linux-armhf.rpm
+          path: |
+            ainative-studio/ainative-studio-linux-armhf.rpm
+            ainative-studio/ainative-studio-linux-armhf.rpm.sha256
           retention-days: 30
       
       - name: Upload packages to release
@@ -455,10 +474,19 @@ jobs:
           echo "Uploading Linux ARM packages to release..."
           if [ -f "ainative-studio-linux-armhf.tar.gz" ]; then
             gh release upload ${{ github.event.release.tag_name }} ainative-studio-linux-armhf.tar.gz --clobber
+            if [ -f "ainative-studio-linux-armhf.tar.gz.sha256" ]; then
+              gh release upload ${{ github.event.release.tag_name }} ainative-studio-linux-armhf.tar.gz.sha256 --clobber
+            fi
           fi
           if [ -f "ainative-studio-linux-armhf.deb" ]; then
             gh release upload ${{ github.event.release.tag_name }} ainative-studio-linux-armhf.deb --clobber
+            if [ -f "ainative-studio-linux-armhf.deb.sha256" ]; then
+              gh release upload ${{ github.event.release.tag_name }} ainative-studio-linux-armhf.deb.sha256 --clobber
+            fi
           fi
           if [ -f "ainative-studio-linux-armhf.rpm" ]; then
             gh release upload ${{ github.event.release.tag_name }} ainative-studio-linux-armhf.rpm --clobber
+            if [ -f "ainative-studio-linux-armhf.rpm.sha256" ]; then
+              gh release upload ${{ github.event.release.tag_name }} ainative-studio-linux-armhf.rpm.sha256 --clobber
+            fi
           fi

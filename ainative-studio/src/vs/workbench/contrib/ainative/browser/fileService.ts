@@ -7,7 +7,7 @@ import { IFileService } from '../../../../platform/files/common/files.js';
 import { IClipboardService } from '../../../../platform/clipboard/common/clipboardService.js';
 import { IDirectoryStrService } from '../common/directoryStrService.js';
 import { messageOfSelection } from '../common/prompt/prompts.js';
-import { IVoidModelService } from '../common/voidModelService.js';
+import { IAINativeModelService } from '../common/ainativeModelService.js';
 
 
 
@@ -31,7 +31,7 @@ class FilePromptActionService extends Action2 {
 			const fileService = accessor.get(IFileService);
 			const clipboardService = accessor.get(IClipboardService)
 			const directoryStrService = accessor.get(IDirectoryStrService)
-			const voidModelService = accessor.get(IVoidModelService)
+			const voidModelService = accessor.get(IAINativeModelService)
 
 			const stat = await fileService.stat(uri)
 

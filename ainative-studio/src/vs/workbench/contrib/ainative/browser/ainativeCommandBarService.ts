@@ -11,7 +11,7 @@ import { Widget } from '../../../../base/browser/ui/widget.js';
 import { IOverlayWidget, ICodeEditor, OverlayWidgetPositionPreference } from '../../../../editor/browser/editorBrowser.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { ICodeEditorService } from '../../../../editor/browser/services/codeEditorService.js';
-import { mountVoidCommandBar } from './react/out/void-editor-widgets-tsx/index.js'
+import { mountVoidCommandBar } from './react/out/ainative-editor-widgets-tsx/index.js'
 import { deepClone } from '../../../../base/common/objects.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { IEditCodeService } from './editCodeServiceInterface.js';
@@ -27,11 +27,11 @@ import { IMetricsService } from '../common/metricsService.js';
 import { KeyMod } from '../../../../editor/common/services/editorBaseApi.js';
 import { KeyCode } from '../../../../base/common/keyCodes.js';
 import { ScrollType } from '../../../../editor/common/editorCommon.js';
-import { IVoidModelService } from '../common/voidModelService.js';
+import { IAINativeModelService } from '../common/ainativeModelService.js';
 
 
 
-export interface IVoidCommandBarService {
+export interface IAINativeCommandBarService {
 	readonly _serviceBrand: undefined;
 	stateOfURI: { [uri: string]: CommandBarStateType };
 	sortedURIs: URI[];
@@ -54,7 +54,7 @@ export interface IVoidCommandBarService {
 }
 
 
-export const IVoidCommandBarService = createDecorator<IVoidCommandBarService>('VoidCommandBarService');
+export const IAINativeCommandBarService = createDecorator<IAINativeCommandBarService>('AINativeCommandBarService');
 
 
 export type CommandBarStateType = undefined | {
@@ -75,10 +75,10 @@ const defaultState: NonNullable<CommandBarStateType> = {
 }
 
 
-export class VoidCommandBarService extends Disposable implements IVoidCommandBarService {
+export class AINativeCommandBarService extends Disposable implements IAINativeCommandBarService {
 	_serviceBrand: undefined;
 
-	static readonly ID: 'void.VoidCommandBarService'
+	static readonly ID: 'void.AINativeCommandBarService'
 
 	// depends on uri -> diffZone -> {streaming, diffs}
 	public stateOfURI: { [uri: string]: CommandBarStateType } = {}
@@ -100,7 +100,7 @@ export class VoidCommandBarService extends Disposable implements IVoidCommandBar
 		@ICodeEditorService private readonly _codeEditorService: ICodeEditorService,
 		@IModelService private readonly _modelService: IModelService,
 		@IEditCodeService private readonly _editCodeService: IEditCodeService,
-		@IVoidModelService private readonly _voidModelService: IVoidModelService,
+		@IAINativeModelService private readonly _voidModelService: IAINativeModelService,
 	) {
 		super();
 
@@ -488,7 +488,7 @@ export class VoidCommandBarService extends Disposable implements IVoidCommandBar
 
 }
 
-registerSingleton(IVoidCommandBarService, VoidCommandBarService, InstantiationType.Delayed); // delayed is needed here :(
+registerSingleton(IAINativeCommandBarService, AINativeCommandBarService, InstantiationType.Delayed); // delayed is needed here :(
 
 
 export type VoidCommandBarProps = {
@@ -583,7 +583,7 @@ registerAction2(class extends Action2 {
 
 	async run(accessor: ServicesAccessor): Promise<void> {
 		const editCodeService = accessor.get(IEditCodeService);
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const metricsService = accessor.get(IMetricsService);
 
 
@@ -626,7 +626,7 @@ registerAction2(class extends Action2 {
 
 	async run(accessor: ServicesAccessor): Promise<void> {
 		const editCodeService = accessor.get(IEditCodeService);
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const metricsService = accessor.get(IMetricsService);
 
 		const activeURI = commandBarService.activeURI;
@@ -666,7 +666,7 @@ registerAction2(class extends Action2 {
 	}
 
 	async run(accessor: ServicesAccessor): Promise<void> {
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const metricsService = accessor.get(IMetricsService);
 
 		const nextDiffIdx = commandBarService.getNextDiffIdx(1);
@@ -693,7 +693,7 @@ registerAction2(class extends Action2 {
 	}
 
 	async run(accessor: ServicesAccessor): Promise<void> {
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const metricsService = accessor.get(IMetricsService);
 
 		const prevDiffIdx = commandBarService.getNextDiffIdx(-1);
@@ -720,7 +720,7 @@ registerAction2(class extends Action2 {
 	}
 
 	async run(accessor: ServicesAccessor): Promise<void> {
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const metricsService = accessor.get(IMetricsService);
 
 		const nextUriIdx = commandBarService.getNextUriIdx(1);
@@ -747,7 +747,7 @@ registerAction2(class extends Action2 {
 	}
 
 	async run(accessor: ServicesAccessor): Promise<void> {
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const metricsService = accessor.get(IMetricsService);
 
 		const prevUriIdx = commandBarService.getNextUriIdx(-1);
@@ -773,7 +773,7 @@ registerAction2(class extends Action2 {
 	}
 
 	async run(accessor: ServicesAccessor): Promise<void> {
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const editCodeService = accessor.get(IEditCodeService);
 		const metricsService = accessor.get(IMetricsService);
 
@@ -804,7 +804,7 @@ registerAction2(class extends Action2 {
 	}
 
 	async run(accessor: ServicesAccessor): Promise<void> {
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const editCodeService = accessor.get(IEditCodeService);
 		const metricsService = accessor.get(IMetricsService);
 
@@ -835,7 +835,7 @@ registerAction2(class extends Action2 {
 	}
 
 	async run(accessor: ServicesAccessor): Promise<void> {
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const metricsService = accessor.get(IMetricsService);
 
 		if (commandBarService.anyFileIsStreaming()) return;
@@ -860,7 +860,7 @@ registerAction2(class extends Action2 {
 	}
 
 	async run(accessor: ServicesAccessor): Promise<void> {
-		const commandBarService = accessor.get(IVoidCommandBarService);
+		const commandBarService = accessor.get(IAINativeCommandBarService);
 		const metricsService = accessor.get(IMetricsService);
 
 		if (commandBarService.anyFileIsStreaming()) return;

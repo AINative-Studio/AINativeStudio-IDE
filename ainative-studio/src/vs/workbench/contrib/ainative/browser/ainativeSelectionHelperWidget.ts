@@ -11,9 +11,9 @@ import { IEditorContribution } from '../../../../editor/common/editorCommon.js';
 import { Selection } from '../../../../editor/common/core/selection.js';
 import { RunOnceScheduler } from '../../../../base/common/async.js';
 import * as dom from '../../../../base/browser/dom.js';
-import { mountVoidSelectionHelper } from './react/out/void-editor-widgets-tsx/index.js';
+import { mountVoidSelectionHelper } from './react/out/ainative-editor-widgets-tsx/index.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
-import { IVoidSettingsService } from '../common/voidSettingsService.js';
+import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
 import { EditorOption } from '../../../../editor/common/config/editorOptions.js';
 import { getLengthOfTextPx } from './editCodeService.js';
 
@@ -43,7 +43,7 @@ export class SelectionHelperContribution extends Disposable implements IEditorCo
 	constructor(
 		private readonly _editor: ICodeEditor,
 		@IInstantiationService private readonly _instantiationService: IInstantiationService,
-		@IVoidSettingsService private readonly _voidSettingsService: IVoidSettingsService
+		@IAINativeSettingsService private readonly _voidSettingsService: IAINativeSettingsService
 	) {
 		super();
 
