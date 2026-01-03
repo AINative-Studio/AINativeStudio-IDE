@@ -7,12 +7,12 @@ import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IEnvironmentMainService } from '../../../../platform/environment/electron-main/environmentMainService.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IUpdateService, StateType } from '../../../../platform/update/common/update.js';
-import { IVoidUpdateService } from '../common/voidUpdateService.js';
+import { IAINativeUpdateService } from '../common/ainativeUpdateService.js';
 import { VoidCheckUpdateRespose } from '../common/voidUpdateServiceTypes.js';
 
 
 
-export class VoidMainUpdateService extends Disposable implements IVoidUpdateService {
+export class AINativeMainUpdateService extends Disposable implements IAINativeUpdateService {
 	_serviceBrand: undefined;
 
 	constructor(

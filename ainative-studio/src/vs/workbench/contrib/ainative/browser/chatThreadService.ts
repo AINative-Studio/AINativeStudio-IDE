@@ -15,7 +15,7 @@ import { chat_userMessageContent, isABuiltinToolName } from '../common/prompt/pr
 import { AnthropicReasoning, getErrorMessage, RawToolCallObj, RawToolParamsObj } from '../common/sendLLMMessageTypes.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
 import { FeatureName, ModelSelection, ModelSelectionOptions } from '../common/voidSettingsTypes.js';
-import { IVoidSettingsService } from '../common/voidSettingsService.js';
+import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, ToolCallParams, ToolName, ToolResult } from '../common/toolsServiceTypes.js';
 import { IToolsService } from './toolsService.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
@@ -24,7 +24,7 @@ import { ChatMessage, CheckpointEntry, CodespanLocationLink, StagingSelectionIte
 import { Position } from '../../../../editor/common/core/position.js';
 import { IMetricsService } from '../common/metricsService.js';
 import { shorten } from '../../../../base/common/labels.js';
-import { IVoidModelService } from '../common/voidModelService.js';
+import { IAINativeModelService } from '../common/ainativeModelService.js';
 import { findLast, findLastIdx } from '../../../../base/common/arraysFind.js';
 import { IEditCodeService } from './editCodeServiceInterface.js';
 import { VoidFileSnapshot } from '../common/editCodeServiceTypes.js';
@@ -314,10 +314,10 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 
 	constructor(
 		@IStorageService private readonly _storageService: IStorageService,
-		@IVoidModelService private readonly _voidModelService: IVoidModelService,
+		@IAINativeModelService private readonly _voidModelService: IAINativeModelService,
 		@ILLMMessageService private readonly _llmMessageService: ILLMMessageService,
 		@IToolsService private readonly _toolsService: IToolsService,
-		@IVoidSettingsService private readonly _settingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly _settingsService: IAINativeSettingsService,
 		@ILanguageFeaturesService private readonly _languageFeaturesService: ILanguageFeaturesService,
 		@IMetricsService private readonly _metricsService: IMetricsService,
 		@IEditCodeService private readonly _editCodeService: IEditCodeService,
@@ -408,13 +408,13 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 	private _migrateChatThreads(): void {
 		// Check if new key already exists
 		const newKeyData = this._storageService.get(THREAD_STORAGE_KEY, StorageScope.APPLICATION);
-		if (newKeyData) {
+		if (newKeyData !== undefined) {
 			return; // Already migrated
 		}
 
 		// Read from legacy key
 		const legacyData = this._storageService.get(LEGACY_THREAD_STORAGE_KEY, StorageScope.APPLICATION);
-		if (!legacyData) {
+		if (legacyData === undefined) {
 			return; // No legacy data to migrate
 		}
 

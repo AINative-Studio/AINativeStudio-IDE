@@ -153,7 +153,7 @@ export const IconLoading = ({ className = '' }: { className?: string }) => {
 const ReasoningOptionSlider = ({ featureName }: { featureName: FeatureName }) => {
 	const accessor = useAccessor()
 
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const voidSettingsState = useSettingsState()
 
 	const modelSelection = voidSettingsState.modelSelectionOfFeature[featureName]
@@ -263,7 +263,7 @@ const detailOfChatMode = {
 const ChatModeDropdown = ({ className }: { className: string }) => {
 	const accessor = useAccessor()
 
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const settingsState = useSettingsState()
 
 	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent'], [])
@@ -585,7 +585,7 @@ export const SelectedFiles = (
 
 	const accessor = useAccessor()
 	const commandService = accessor.get('ICommandService')
-	const modelReferenceService = accessor.get('IVoidModelService')
+	const modelReferenceService = accessor.get('IAINativeModelService')
 
 
 
@@ -1574,7 +1574,7 @@ const ToolRequestAcceptRejectButtons = ({ toolName }: { toolName: ToolName }) =>
 	const accessor = useAccessor()
 	const chatThreadsService = accessor.get('IChatThreadService')
 	const metricsService = accessor.get('IMetricsService')
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const voidSettingsState = useSettingsState()
 
 	const onAccept = useCallback(() => {

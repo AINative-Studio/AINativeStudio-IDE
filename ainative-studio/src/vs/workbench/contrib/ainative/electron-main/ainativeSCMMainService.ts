@@ -5,7 +5,7 @@
 
 import { promisify } from 'util'
 import { exec as _exec } from 'child_process'
-import { IVoidSCMService } from '../common/voidSCMTypes.js'
+import { IAINativeSCMService } from '../common/ainativeSCMTypes.js'
 
 interface NumStat {
 	file: string
@@ -53,7 +53,7 @@ const hasStagedChanges = async (path: string): Promise<boolean> => {
 	return output.length > 0
 }
 
-export class VoidSCMService implements IVoidSCMService {
+export class AINativeSCMService implements IAINativeSCMService {
 	readonly _serviceBrand: undefined
 
 	async gitStat(path: string): Promise<string> {

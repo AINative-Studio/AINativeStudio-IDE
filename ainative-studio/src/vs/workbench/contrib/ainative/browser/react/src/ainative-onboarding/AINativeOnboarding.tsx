@@ -471,7 +471,7 @@ const VoidOnboardingContent = () => {
 
 
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const voidMetricsService = accessor.get('IMetricsService')
 
 	const voidSettingsState = useSettingsState()

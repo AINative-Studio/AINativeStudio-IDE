@@ -18,7 +18,7 @@ import { extractCodeFromRegular } from '../common/helpers/extractCodeFromResult.
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import { ILLMMessageService } from '../common/sendLLMMessageService.js';
 import { isWindows } from '../../../../base/common/platform.js';
-import { IVoidSettingsService } from '../common/voidSettingsService.js';
+import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
 import { FeatureName } from '../common/voidSettingsTypes.js';
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
 // import { IContextGatheringService } from './contextGatheringService.js';
@@ -893,7 +893,7 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 		@ILLMMessageService private readonly _llmMessageService: ILLMMessageService,
 		@IEditorService private readonly _editorService: IEditorService,
 		@IModelService private readonly _modelService: IModelService,
-		@IVoidSettingsService private readonly _settingsService: IVoidSettingsService,
+		@IAINativeSettingsService private readonly _settingsService: IAINativeSettingsService,
 		@IConvertToLLMMessageService private readonly _convertToLLMMessageService: IConvertToLLMMessageService
 		// @IContextGatheringService private readonly _contextGatheringService: IContextGatheringService,
 	) {

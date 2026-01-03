@@ -91,13 +91,13 @@ export class MetricsMainService extends Disposable implements IMetricsService {
 	private _migrateMachineId(): void {
 		// Check if new key already exists
 		const newKeyData = this._appStorage.get(MACHINE_ID_KEY, StorageScope.APPLICATION);
-		if (newKeyData) {
+		if (newKeyData !== undefined) {
 			return; // Already migrated
 		}
 
 		// Read from legacy key
 		const legacyData = this._appStorage.get(LEGACY_MACHINE_ID_KEY, StorageScope.APPLICATION);
-		if (!legacyData) {
+		if (legacyData === undefined) {
 			return; // No legacy data to migrate
 		}
 
@@ -137,7 +137,7 @@ export class MetricsMainService extends Disposable implements IMetricsService {
 
 		// Read from legacy key
 		const legacyData = this._appStorage.get(LEGACY_OPT_OUT_KEY, StorageScope.APPLICATION);
-		if (!legacyData) {
+		if (legacyData === undefined) {
 			return; // No legacy data to migrate
 		}
 

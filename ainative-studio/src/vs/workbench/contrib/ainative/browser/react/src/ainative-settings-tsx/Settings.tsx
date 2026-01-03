@@ -221,7 +221,7 @@ const SimpleModelSettingsDialog = ({
 	const accessor = useAccessor()
 	const settingsState = useSettingsState()
 	const mouseDownInsideModal = useRef(false); // Ref to track mousedown origin
-	const settingsStateService = accessor.get('IVoidSettingsService')
+	const settingsStateService = accessor.get('IAINativeSettingsService')
 
 	// current overrides and defaults
 	const defaultModelCapabilities = getModelCapabilities(providerName, modelName, undefined);
@@ -374,7 +374,7 @@ const SimpleModelSettingsDialog = ({
 
 export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderName[] }) => {
 	const accessor = useAccessor()
-	const settingsStateService = accessor.get('IVoidSettingsService')
+	const settingsStateService = accessor.get('IAINativeSettingsService')
 	const settingsState = useSettingsState()
 
 	// State to track which model's settings dialog is open
@@ -616,7 +616,7 @@ const ProviderSetting = ({ providerName, settingName, subTextMd }: { providerNam
 	const { title: settingTitle, placeholder, isPasswordField } = displayInfoOfSettingName(providerName, settingName)
 
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const settingsState = useSettingsState()
 
 	const settingValue = settingsState.settingsOfProvider[providerName][settingName] as string // this should always be a string in this component
@@ -652,7 +652,7 @@ const ProviderSetting = ({ providerName, settingName, subTextMd }: { providerNam
 // 	const needsModel = isProviderNameDisabled(providerName, voidSettingsState) === 'addModel'
 
 // 	// const accessor = useAccessor()
-// 	// const voidSettingsService = accessor.get('IVoidSettingsService')
+// 	// const voidSettingsService = accessor.get('IAINativeSettingsService')
 
 // 	// const { enabled } = voidSettingsState.settingsOfProvider[providerName]
 // 	const settingNames = customSettingNamesOfProvider(providerName)
@@ -698,7 +698,7 @@ export const SettingsForProvider = ({ providerName, showProviderTitle, showProvi
 	const needsModel = isProviderNameDisabled(providerName, voidSettingsState) === 'addModel'
 
 	// const accessor = useAccessor()
-	// const voidSettingsService = accessor.get('IVoidSettingsService')
+	// const voidSettingsService = accessor.get('IAINativeSettingsService')
 
 	// const { enabled } = voidSettingsState.settingsOfProvider[providerName]
 	const settingNames = customSettingNamesOfProvider(providerName)
@@ -759,7 +759,7 @@ export const AutoDetectLocalModelsToggle = () => {
 	const settingName: GlobalSettingName = 'autoRefreshModels'
 
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const metricsService = accessor.get('IMetricsService')
 
 	const voidSettingsState = useSettingsState()
@@ -784,7 +784,7 @@ export const AutoDetectLocalModelsToggle = () => {
 
 export const AIInstructionsBox = () => {
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const voidSettingsState = useSettingsState()
 	return <VoidInputBox2
 		className='min-h-[81px] p-3 rounded-sm'
@@ -799,7 +799,7 @@ export const AIInstructionsBox = () => {
 
 const FastApplyMethodDropdown = () => {
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 
 	const options = useMemo(() => [true, false], [])
 
@@ -839,7 +839,7 @@ export const OllamaSetupInstructions = ({ sayWeAutoDetect }: { sayWeAutoDetect?:
 
 const RedoOnboardingButton = ({ className }: { className?: string }) => {
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	return <div
 		className={`text-void-fg-4 flex flex-nowrap text-nowrap items-center hover:brightness-110 cursor-pointer ${className}`}
 		onClick={() => { voidSettingsService.setGlobalSetting('isOnboardingComplete', false) }}
@@ -857,7 +857,7 @@ const RedoOnboardingButton = ({ className }: { className?: string }) => {
 
 export const ToolApprovalTypeSwitch = ({ approvalType, size, desc }: { approvalType: ToolApprovalType, size: "xxs" | "xs" | "sm" | "sm+" | "md", desc: string }) => {
 	const accessor = useAccessor()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const voidSettingsState = useSettingsState()
 	const metricsService = accessor.get('IMetricsService')
 
@@ -1054,7 +1054,7 @@ export const Settings = () => {
 	const environmentService = accessor.get('IEnvironmentService')
 	const nativeHostService = accessor.get('INativeHostService')
 	const settingsState = useSettingsState()
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const chatThreadsService = accessor.get('IChatThreadService')
 	const notificationService = accessor.get('INotificationService')
 	const mcpService = accessor.get('IMCPService')

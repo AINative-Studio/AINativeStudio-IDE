@@ -24,7 +24,7 @@ import { Widget } from '../../../../base/browser/ui/widget.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IConsistentEditorItemService, IConsistentItemService } from './helperServices/consistentItemService.js';
 import { voidPrefixAndSuffix, ctrlKStream_userMessage, ctrlKStream_systemMessage, defaultQuickEditFimTags, rewriteCode_systemMessage, rewriteCode_userMessage, searchReplaceGivenDescription_systemMessage, searchReplaceGivenDescription_userMessage, tripleTick, } from '../common/prompt/prompts.js';
-import { IAINativeCommandBarService } from './ainativeCommandBarService.js';
+import { IVoidCommandBarService } from './voidCommandBarService.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { VOID_ACCEPT_DIFF_ACTION_ID, VOID_REJECT_DIFF_ACTION_ID } from './actionIDs.js';
 
@@ -39,9 +39,9 @@ import { ILLMMessageService } from '../common/sendLLMMessageService.js';
 import { LLMChatMessage } from '../common/sendLLMMessageTypes.js';
 import { IMetricsService } from '../common/metricsService.js';
 import { IEditCodeService, AddCtrlKOpts, StartApplyingOpts, CallBeforeStartApplyingOpts, } from './editCodeServiceInterface.js';
-import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
+import { IVoidSettingsService } from '../common/voidSettingsService.js';
 import { FeatureName } from '../common/voidSettingsTypes.js';
-import { IAINativeModelService } from '../common/ainativeModelService.js';
+import { IVoidModelService } from '../common/voidModelService.js';
 import { deepClone } from '../../../../base/common/objects.js';
 import { acceptBg, acceptBorder, buttonFontSize, buttonTextColor, rejectBg, rejectBorder } from '../common/helpers/colors.js';
 import { DiffArea, Diff, CtrlKZone, VoidFileSnapshot, DiffAreaSnapshotEntry, diffAreaSnapshotKeys, DiffZone, TrackingZone, ComputedDiff } from '../common/editCodeServiceTypes.js';
@@ -192,9 +192,9 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		@IMetricsService private readonly _metricsService: IMetricsService,
 		@INotificationService private readonly _notificationService: INotificationService,
 		// @ICommandService private readonly _commandService: ICommandService,
-		@IAINativeSettingsService private readonly _settingsService: IAINativeSettingsService,
+		@IVoidSettingsService private readonly _settingsService: IVoidSettingsService,
 		// @IFileService private readonly _fileService: IFileService,
-		@IAINativeModelService private readonly _voidModelService: IAINativeModelService,
+		@IVoidModelService private readonly _voidModelService: IVoidModelService,
 		@IConvertToLLMMessageService private readonly _convertToLLMMessageService: IConvertToLLMMessageService,
 	) {
 		super();
@@ -2305,7 +2305,7 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 			startLine: number,
 			offsetLines: number
 		},
-		@IAINativeCommandBarService private readonly _voidCommandBarService: IAINativeCommandBarService,
+		@IVoidCommandBarService private readonly _voidCommandBarService: IVoidCommandBarService,
 		@IKeybindingService private readonly _keybindingService: IKeybindingService,
 		@IEditCodeService private readonly _editCodeService: IEditCodeService,
 	) {

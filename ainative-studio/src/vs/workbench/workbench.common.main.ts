@@ -12,8 +12,8 @@ import './browser/workbench.contribution.js';
 
 //#endregion
 
-//#region --- Void
-import './contrib/void/browser/void.contribution.js'; // Void added this
+//#region --- AINative
+import './contrib/ainative/browser/ainative.contribution.js'; // AINative added this
 //#endregion
 
 //#region --- workbench actions

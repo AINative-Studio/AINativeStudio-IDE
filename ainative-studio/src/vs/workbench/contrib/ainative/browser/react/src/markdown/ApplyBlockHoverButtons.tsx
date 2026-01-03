@@ -141,7 +141,7 @@ const getUriBeingApplied = (applyBoxId: string) => {
 
 export const useApplyStreamState = ({ applyBoxId }: { applyBoxId: string }) => {
 	const accessor = useAccessor()
-	const voidCommandBarService = accessor.get('IVoidCommandBarService')
+	const voidCommandBarService = accessor.get('IAINativeCommandBarService')
 
 	const getStreamState = useCallback(() => {
 		const uri = getUriBeingApplied(applyBoxId)
@@ -198,7 +198,7 @@ const tooltipPropsForApplyBlock = ({ tooltipName, color = undefined, position = 
 
 export const useEditToolStreamState = ({ applyBoxId, uri }: { applyBoxId: string, uri: URI }) => {
 	const accessor = useAccessor()
-	const voidCommandBarService = accessor.get('IVoidCommandBarService')
+	const voidCommandBarService = accessor.get('IAINativeCommandBarService')
 	const [streamState, setStreamState] = useState(voidCommandBarService.getStreamState(uri))
 	// listen for stream updates on this box
 	useCommandBarURIListener(useCallback((uri_) => {
