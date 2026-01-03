@@ -1,0 +1,88 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+import * as assert from 'assert';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
+import { TestId } from '../../common/testId.js';
+import { simplifyTestsToExecute } from '../../common/testService.js';
+import { getInitializedMainTestCollection, makeSimpleStubTree } from './testStubs.js';
+suite('Workbench - Test Service', () => {
+    ensureNoDisposablesAreLeakedInTestSuite();
+    suite('simplifyTestsToExecute', () => {
+        const tree1 = {
+            a: {
+                b1: {
+                    c1: {
+                        d: undefined
+                    },
+                    c2: {
+                        d: undefined
+                    },
+                },
+                b2: undefined,
+            }
+        };
+        test('noop on single item', async () => {
+            const c = await getInitializedMainTestCollection(makeSimpleStubTree(tree1));
+            const t = simplifyTestsToExecute(c, [
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b1']).toString())
+            ]);
+            assert.deepStrictEqual(t.map(t => t.item.extId.toString()), [
+                new TestId(['ctrlId', 'a', 'b1']).toString()
+            ]);
+        });
+        test('goes to common root 1', async () => {
+            const c = await getInitializedMainTestCollection(makeSimpleStubTree(tree1));
+            const t = simplifyTestsToExecute(c, [
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b1', 'c1', 'd']).toString()),
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b1', 'c2']).toString()),
+            ]);
+            assert.deepStrictEqual(t.map(t => t.item.extId.toString()), [
+                new TestId(['ctrlId', 'a', 'b1']).toString()
+            ]);
+        });
+        test('goes to common root 2', async () => {
+            const c = await getInitializedMainTestCollection(makeSimpleStubTree(tree1));
+            const t = simplifyTestsToExecute(c, [
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b1', 'c1']).toString()),
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b1']).toString()),
+            ]);
+            assert.deepStrictEqual(t.map(t => t.item.extId.toString()), [
+                new TestId(['ctrlId', 'a', 'b1']).toString()
+            ]);
+        });
+        test('goes to common root 3', async () => {
+            const c = await getInitializedMainTestCollection(makeSimpleStubTree(tree1));
+            const t = simplifyTestsToExecute(c, [
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b1', 'c1', 'd']).toString()),
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b1', 'c2']).toString()),
+            ]);
+            assert.deepStrictEqual(t.map(t => t.item.extId.toString()), [
+                new TestId(['ctrlId', 'a', 'b1']).toString()
+            ]);
+        });
+        test('goes to common root 4', async () => {
+            const c = await getInitializedMainTestCollection(makeSimpleStubTree(tree1));
+            const t = simplifyTestsToExecute(c, [
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b2']).toString()),
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b1']).toString()),
+            ]);
+            assert.deepStrictEqual(t.map(t => t.item.extId.toString()), [
+                new TestId(['ctrlId']).toString()
+            ]);
+        });
+        test('no-op divergent trees', async () => {
+            const c = await getInitializedMainTestCollection(makeSimpleStubTree(tree1));
+            const t = simplifyTestsToExecute(c, [
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b1', 'c2']).toString()),
+                c.getNodeById(new TestId(['ctrlId', 'a', 'b2']).toString()),
+            ]);
+            assert.deepStrictEqual(t.map(t => t.item.extId.toString()), [
+                new TestId(['ctrlId', 'a', 'b1', 'c2']).toString(),
+                new TestId(['ctrlId', 'a', 'b2']).toString(),
+            ]);
+        });
+    });
+});
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidGVzdFNlcnZpY2UudGVzdC5qcyIsInNvdXJjZVJvb3QiOiJmaWxlOi8vL1VzZXJzL2FpZGV2ZWxvcGVyL0FJTmF0aXZlU3R1ZGlvLUlERS9haW5hdGl2ZS1zdHVkaW8vc3JjLyIsInNvdXJjZXMiOlsidnMvd29ya2JlbmNoL2NvbnRyaWIvdGVzdGluZy90ZXN0L2NvbW1vbi90ZXN0U2VydmljZS50ZXN0LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBOzs7Z0dBR2dHO0FBRWhHLE9BQU8sS0FBSyxNQUFNLE1BQU0sUUFBUSxDQUFDO0FBQ2pDLE9BQU8sRUFBRSx1Q0FBdUMsRUFBRSxNQUFNLDBDQUEwQyxDQUFDO0FBQ25HLE9BQU8sRUFBRSxNQUFNLEVBQUUsTUFBTSx3QkFBd0IsQ0FBQztBQUNoRCxPQUFPLEVBQUUsc0JBQXNCLEVBQUUsTUFBTSw2QkFBNkIsQ0FBQztBQUNyRSxPQUFPLEVBQUUsZ0NBQWdDLEVBQUUsa0JBQWtCLEVBQUUsTUFBTSxnQkFBZ0IsQ0FBQztBQUV0RixLQUFLLENBQUMsMEJBQTBCLEVBQUUsR0FBRyxFQUFFO0lBQ3RDLHVDQUF1QyxFQUFFLENBQUM7SUFFMUMsS0FBSyxDQUFDLHdCQUF3QixFQUFFLEdBQUcsRUFBRTtRQUNwQyxNQUFNLEtBQUssR0FBRztZQUNiLENBQUMsRUFBRTtnQkFDRixFQUFFLEVBQUU7b0JBQ0gsRUFBRSxFQUFFO3dCQUNILENBQUMsRUFBRSxTQUFTO3FCQUNaO29CQUNELEVBQUUsRUFBRTt3QkFDSCxDQUFDLEVBQUUsU0FBUztxQkFDWjtpQkFDRDtnQkFDRCxFQUFFLEVBQUUsU0FBUzthQUNiO1NBQ1EsQ0FBQztRQUVYLElBQUksQ0FBQyxxQkFBcUIsRUFBRSxLQUFLLElBQUksRUFBRTtZQUN0QyxNQUFNLENBQUMsR0FBRyxNQUFNLGdDQUFnQyxDQUFDLGtCQUFrQixDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUM7WUFFNUUsTUFBTSxDQUFDLEdBQUcsc0JBQXNCLENBQUMsQ0FBQyxFQUFFO2dCQUNu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

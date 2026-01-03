@@ -1,0 +1,44 @@
+{
+  "name": "@ainative/skill-testing-patterns",
+  "version": "1.0.0",
+  "description": "TDD/BDD workflows for FastAPI + React stack with pytest, vitest, and integration testing",
+  "main": "SKILL.md",
+  "keywords": [
+    "testing",
+    "tdd",
+    "bdd",
+    "pytest",
+    "vitest",
+    "fastapi",
+    "react",
+    "unit-testing",
+    "integration-testing",
+    "mock",
+    "coverage",
+    "ainative",
+    "skill"
+  ],
+  "author": "AINative Studio",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ainative/skills.git",
+    "directory": "testing-patterns"
+  },
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "references/"
+  ],
+  "ainative": {
+    "skillType": "testing",
+    "framework": ["fastapi", "react"],
+    "languages": ["python", "typescript"],
+    "tools": ["pytest", "vitest", "playwright"],
+    "compatibleWith": [
+      "@ainative/skill-mandatory-tdd",
+      "@ainative/skill-code-quality",
+      "@ainative/skill-ci-cd-compliance"
+    ]
+  }
+}
