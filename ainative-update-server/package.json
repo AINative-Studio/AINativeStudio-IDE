@@ -1,0 +1,20 @@
+{
+  "name": "ainative-update-server",
+  "version": "1.0.0",
+  "description": "Update server for AINative Studio IDE",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.0",
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
