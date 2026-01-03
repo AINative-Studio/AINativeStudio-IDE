@@ -1,0 +1,53 @@
+{
+  "name": "@ainative/skill-railway-deployment",
+  "version": "1.0.0",
+  "description": "Railway deployment workflows, nixpacks configuration, environment management, and production troubleshooting",
+  "main": "SKILL.md",
+  "keywords": [
+    "railway",
+    "deployment",
+    "nixpacks",
+    "devops",
+    "production",
+    "ci-cd",
+    "infrastructure",
+    "platform-as-a-service"
+  ],
+  "author": "AINative Studio",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ainative/official-skills.git",
+    "directory": "railway-deployment"
+  },
+  "files": [
+    "SKILL.md",
+    "references/*.md",
+    "README.md"
+  ],
+  "ainative": {
+    "skill": {
+      "name": "railway-deployment",
+      "version": "1.0.0",
+      "type": "deployment",
+      "capabilities": [
+        "nixpacks-configuration",
+        "environment-management",
+        "deployment-troubleshooting",
+        "production-readiness",
+        "rollback-procedures"
+      ],
+      "tags": [
+        "railway",
+        "deployment",
+        "nixpacks",
+        "devops",
+        "production"
+      ]
+    }
+  },
+  "scripts": {
+    "validate": "node -e \"require('fs').readFileSync('SKILL.md', 'utf8')\"",
+    "test": "npm run validate"
+  }
+}

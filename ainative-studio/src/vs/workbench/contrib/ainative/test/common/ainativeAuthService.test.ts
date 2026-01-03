@@ -56,23 +56,28 @@ class MockStorageService implements IStorageService {
 	onWillSaveState: any = () => ({ dispose: () => { } });
 
 	get(key: string, scope: StorageScope, fallbackValue: string): string;
+	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 		const storageKey = `${scope}:${key}`;
 		return this.storage.get(storageKey) ?? fallbackValue;
 	}
 
 	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
+	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined;
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
-		const value = this.get(key, scope, undefined);
+		const storageKey = `${scope}:${key}`;
+		const value = this.storage.get(storageKey);
 		if (value === undefined) {
-			return fallbackValue;
+			return fallbackValue as any;
 		}
 		return value === 'true';
 	}
 
 	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
+	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined;
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
-		const value = this.get(key, scope, undefined);
+		const storageKey = `${scope}:${key}`;
+		const value = this.storage.get(storageKey);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -80,8 +85,10 @@ class MockStorageService implements IStorageService {
 	}
 
 	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined;
 	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
-		const value = this.get(key, scope, undefined);
+		const storageKey = `${scope}:${key}`;
+		const value = this.storage.get(storageKey);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -464,16 +471,16 @@ suite('AINativeAuthService', () => {
 			await authService.login('test@ainative.studio', 'password123');
 
 			// Verify storage has data
-			const jwtBeforeLogout = storageService.get('ainative.auth.jwt', StorageScope.APPLICATION, undefined);
+			const jwtBeforeLogout = storageService.get('ainative.auth.jwt', StorageScope.APPLICATION);
 			ok(jwtBeforeLogout, 'JWT should be in storage before logout');
 
 			// Logout
 			await authService.logout();
 
 			// Verify storage is cleared
-			const jwtAfterLogout = storageService.get('ainative.auth.jwt', StorageScope.APPLICATION, undefined);
-			const refreshAfterLogout = storageService.get('ainative.auth.refreshToken', StorageScope.APPLICATION, undefined);
-			const userAfterLogout = storageService.get('ainative.auth.user', StorageScope.APPLICATION, undefined);
+			const jwtAfterLogout = storageService.get('ainative.auth.jwt', StorageScope.APPLICATION);
+			const refreshAfterLogout = storageService.get('ainative.auth.refreshToken', StorageScope.APPLICATION);
+			const userAfterLogout = storageService.get('ainative.auth.user', StorageScope.APPLICATION);
 
 			strictEqual(jwtAfterLogout, undefined);
 			strictEqual(refreshAfterLogout, undefined);
@@ -588,8 +595,8 @@ suite('AINativeAuthService', () => {
 
 			await authService.login('test@ainative.studio', 'password123');
 
-			const storedJwt = storageService.get('ainative.auth.jwt', StorageScope.APPLICATION, undefined);
-			const storedRefresh = storageService.get('ainative.auth.refreshToken', StorageScope.APPLICATION, undefined);
+			const storedJwt = storageService.get('ainative.auth.jwt', StorageScope.APPLICATION);
+			const storedRefresh = storageService.get('ainative.auth.refreshToken', StorageScope.APPLICATION);
 
 			ok(storedJwt, 'JWT should be stored');
 			ok(storedRefresh, 'Refresh token should be stored');
@@ -608,7 +615,7 @@ suite('AINativeAuthService', () => {
 
 			await authService.login('test@ainative.studio', 'password123');
 
-			const storedUser = storageService.get('ainative.auth.user', StorageScope.APPLICATION, undefined);
+			const storedUser = storageService.get('ainative.auth.user', StorageScope.APPLICATION);
 			ok(storedUser, 'User data should be stored');
 
 			const parsedUser = JSON.parse(storedUser!);

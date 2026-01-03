@@ -77,6 +77,9 @@ function isPlatformSupported(platform) {
  * getPlatformCategory('win32-x64-user') // Returns: 'win32'
  */
 function getPlatformCategory(platform) {
+  if (!platform || typeof platform !== 'string') {
+    return null;
+  }
   if (platform.startsWith('darwin')) return 'darwin';
   if (platform.startsWith('win32')) return 'win32';
   if (platform.startsWith('linux')) return 'linux';

@@ -17,8 +17,8 @@ import { IMainProcessService } from '../../../../platform/ipc/common/mainProcess
 import { MCPServerOfName, MCPConfigFileJSON, MCPServer, MCPToolCallParams, RawMCPToolCall, MCPServerEventResponse } from './mcpServiceTypes.js';
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { InternalToolInfo } from './prompt/prompts.js';
-import { IAINativeSettingsService } from './voidSettingsService.js';
-import { MCPUserStateOfName } from './voidSettingsTypes.js';
+import { IAINativeSettingsService } from './ainativeSettingsService.js';
+import { MCPUserStateOfName } from './ainativeSettingsTypes.js';
 
 
 type MCPServiceState = {

@@ -14,7 +14,7 @@ import { IMainProcessService } from '../../../../platform/ipc/common/mainProcess
 import { IAINativeSettingsService } from '../common/ainativeSettingsService.js'
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js'
 import { ILLMMessageService } from '../common/sendLLMMessageService.js'
-import { ModelSelection, OverridesOfModel, ModelSelectionOptions } from '../common/voidSettingsTypes.js'
+import { ModelSelection, OverridesOfModel, ModelSelectionOptions } from '../common/ainativeSettingsTypes.js'
 import { gitCommitMessage_systemMessage, gitCommitMessage_userMessage } from '../common/prompt/prompts.js'
 import { LLMChatMessage } from '../common/sendLLMMessageTypes.js'
 import { generateUuid } from '../../../../base/common/uuid.js'

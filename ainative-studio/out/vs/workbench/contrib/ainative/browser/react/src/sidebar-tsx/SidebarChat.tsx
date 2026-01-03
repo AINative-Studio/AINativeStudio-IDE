@@ -14,13 +14,13 @@ import { URI } from '../../../../../../../base/common/uri.js';
 import { IDisposable } from '../../../../../../../base/common/lifecycle.js';
 import { ErrorDisplay } from './ErrorDisplay.js';
 import { BlockCode, TextAreaFns, VoidCustomDropdownBox, VoidInputBox2, VoidSlider, VoidSwitch, VoidDiffEditor } from '../util/inputs.js';
-import { ModelDropdown, } from '../void-settings-tsx/ModelDropdown.js';
+import { ModelDropdown, } from '../ainative-settings-tsx/ModelDropdown.js';
 import { PastThreadsList } from './SidebarThreadSelector.js';
 import { VOID_CTRL_L_ACTION_ID } from '../../../actionIDs.js';
 import { VOID_OPEN_SETTINGS_ACTION_ID } from '../../../voidSettingsPane.js';
 import { ChatMode, displayInfoOfProviderName, FeatureName, isFeatureNameDisabled } from '../../../../../../../workbench/contrib/void/common/voidSettingsTypes.js';
 import { ICommandService } from '../../../../../../../platform/commands/common/commands.js';
-import { WarningBox } from '../void-settings-tsx/WarningBox.js';
+import { WarningBox } from '../ainative-settings-tsx/WarningBox.js';
 import { getModelCapabilities, getIsReasoningEnabledState } from '../../../../common/modelCapabilities.js';
 import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text } from 'lucide-react';
 import { ChatMessage, CheckpointEntry, StagingSelectionItem, ToolMessage } from '../../../../common/chatThreadServiceTypes.js';
@@ -31,7 +31,7 @@ import { acceptAllBg, acceptBorder, buttonFontSize, buttonTextColor, rejectAllBg
 import { builtinToolNames, isABuiltinToolName, MAX_FILE_CHARS_PAGE, MAX_TERMINAL_INACTIVE_TIME } from '../../../../common/prompt/prompts.js';
 import { RawToolCallObj } from '../../../../common/sendLLMMessageTypes.js';
 import ErrorBoundary from './ErrorBoundary.js';
-import { ToolApprovalTypeSwitch } from '../void-settings-tsx/Settings.js';
+import { ToolApprovalTypeSwitch } from '../ainative-settings-tsx/Settings.js';
 
 import { persistentTerminalNameOfId } from '../../../terminalToolService.js';
 import { removeMCPToolNamePrefix } from '../../../../common/mcpServiceTypes.js';
@@ -153,7 +153,7 @@ export const IconLoading = ({ className = '' }: { className?: string }) => {
 const ReasoningOptionSlider = ({ featureName }: { featureName: FeatureName }) => {
 	const accessor = useAccessor()
 
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const voidSettingsState = useSettingsState()
 
 	const modelSelection = voidSettingsState.modelSelectionOfFeature[featureName]
@@ -263,7 +263,7 @@ const detailOfChatMode = {
 const ChatModeDropdown = ({ className }: { className: string }) => {
 	const accessor = useAccessor()
 
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const settingsState = useSettingsState()
 
 	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent'], [])
@@ -425,7 +425,7 @@ export const ButtonSubmit = ({ className, disabled, ...props }: ButtonProps & Re
 			${disabled ? 'bg-vscode-disabled-fg cursor-default' : 'bg-white cursor-pointer'}
 			${className}
 		`}
-		// data-tooltip-id='void-tooltip'
+		// data-tooltip-id='ainative-tooltip'
 		// data-tooltip-content={'Send'}
 		// data-tooltip-place='left'
 		{...props}
@@ -585,7 +585,7 @@ export const SelectedFiles = (
 
 	const accessor = useAccessor()
 	const commandService = accessor.get('ICommandService')
-	const modelReferenceService = accessor.get('IVoidModelService')
+	const modelReferenceService = accessor.get('IAINativeModelService')
 
 
 
@@ -666,7 +666,7 @@ export const SelectedFiles = (
 				>
 					{/* tooltip for file path */}
 					<span className="truncate overflow-hidden text-ellipsis"
-						data-tooltip-id='void-tooltip'
+						data-tooltip-id='ainative-tooltip'
 						data-tooltip-content={getRelative(selection.uri, accessor)}
 						data-tooltip-place='top'
 						data-tooltip-delay-show={3000}
@@ -812,7 +812,7 @@ const ToolHeaderWrapper = ({
 		`}
 		onClick={desc1OnClick}
 		{...desc1Info ? {
-			'data-tooltip-id': 'void-tooltip',
+			'data-tooltip-id': 'ainative-tooltip',
 			'data-tooltip-content': desc1Info,
 			'data-tooltip-place': 'top',
 			'data-tooltip-delay-show': 1000,
@@ -857,7 +857,7 @@ const ToolHeaderWrapper = ({
 						{info && <CircleEllipsis
 							className='ml-2 text-void-fg-4 opacity-60 flex-shrink-0'
 							size={14}
-							data-tooltip-id='void-tooltip'
+							data-tooltip-id='ainative-tooltip'
 							data-tooltip-content={info}
 							data-tooltip-place='top-end'
 						/>}
@@ -865,14 +865,14 @@ const ToolHeaderWrapper = ({
 						{isError && <AlertTriangle
 							className='text-void-warning opacity-90 flex-shrink-0'
 							size={14}
-							data-tooltip-id='void-tooltip'
+							data-tooltip-id='ainative-tooltip'
 							data-tooltip-content={'Error running tool'}
 							data-tooltip-place='top'
 						/>}
 						{isRejected && <Ban
 							className='text-void-fg-4 opacity-90 flex-shrink-0'
 							size={14}
-							data-tooltip-id='void-tooltip'
+							data-tooltip-id='ainative-tooltip'
 							data-tooltip-content={'Canceled'}
 							data-tooltip-place='top'
 						/>}
@@ -1201,7 +1201,7 @@ const UserMessageComponent = ({ chatMessage, messageIdx, isCheckpointGhost, curr
 
 		<div
 			className="absolute -top-1 -right-1 translate-x-0 -translate-y-0 z-1"
-		// data-tooltip-id='void-tooltip'
+		// data-tooltip-id='ainative-tooltip'
 		// data-tooltip-content='Edit message'
 		// data-tooltip-place='left'
 		>
@@ -1574,7 +1574,7 @@ const ToolRequestAcceptRejectButtons = ({ toolName }: { toolName: ToolName }) =>
 	const accessor = useAccessor()
 	const chatThreadsService = accessor.get('IChatThreadService')
 	const metricsService = accessor.get('IMetricsService')
-	const voidSettingsService = accessor.get('IVoidSettingsService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
 	const voidSettingsState = useSettingsState()
 
 	const onAccept = useCallback(() => {
@@ -2481,7 +2481,7 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
 				})
 			}}
 			{...isDisabled ? {
-				'data-tooltip-id': 'void-tooltip',
+				'data-tooltip-id': 'ainative-tooltip',
 				'data-tooltip-content': `Disabled ${isRunning ? 'when running' : 'because another thread is running'}`,
 				'data-tooltip-place': 'top',
 			} : {}}
@@ -2594,7 +2594,7 @@ const CommandBarInChat = () => {
 	// 	<IconShell1
 	// 		Icon={CopyIcon}
 	// 		onClick={copyChatToClipboard}
-	// 		data-tooltip-id='void-tooltip'
+	// 		data-tooltip-id='ainative-tooltip'
 	// 		data-tooltip-place='top'
 	// 		data-tooltip-content='Copy chat JSON'
 	// 	/>
@@ -2672,7 +2672,7 @@ const CommandBarInChat = () => {
 					});
 				});
 			}}
-			data-tooltip-id='void-tooltip'
+			data-tooltip-id='ainative-tooltip'
 			data-tooltip-place='top'
 			data-tooltip-content='Reject all'
 		/>
@@ -2691,7 +2691,7 @@ const CommandBarInChat = () => {
 					});
 				});
 			}}
-			data-tooltip-id='void-tooltip'
+			data-tooltip-id='ainative-tooltip'
 			data-tooltip-place='top'
 			data-tooltip-content='Accept all'
 		/>
@@ -2739,14 +2739,14 @@ const CommandBarInChat = () => {
 			>
 				{/* <JumpToFileButton
 					uri={uri}
-					data-tooltip-id='void-tooltip'
+					data-tooltip-id='ainative-tooltip'
 					data-tooltip-place='top'
 					data-tooltip-content='Go to file'
 				/> */}
 				<IconShell1 // RejectAllButtonWrapper
 					Icon={X}
 					onClick={() => { editCodeService.acceptOrRejectAllDiffAreas({ uri, removeCtrlKs: true, behavior: "reject", _addToHistory: true, }); }}
-					data-tooltip-id='void-tooltip'
+					data-tooltip-id='ainative-tooltip'
 					data-tooltip-place='top'
 					data-tooltip-content='Reject file'
 
@@ -2754,7 +2754,7 @@ const CommandBarInChat = () => {
 				<IconShell1 // AcceptAllButtonWrapper
 					Icon={Check}
 					onClick={() => { editCodeService.acceptOrRejectAllDiffAreas({ uri, removeCtrlKs: true, behavior: "accept", _addToHistory: true, }); }}
-					data-tooltip-id='void-tooltip'
+					data-tooltip-id='ainative-tooltip'
 					data-tooltip-place='top'
 					data-tooltip-content='Accept file'
 				/>

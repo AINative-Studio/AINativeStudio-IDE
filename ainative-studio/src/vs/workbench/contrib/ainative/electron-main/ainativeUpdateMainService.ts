@@ -8,7 +8,7 @@ import { IEnvironmentMainService } from '../../../../platform/environment/electr
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IUpdateService, StateType } from '../../../../platform/update/common/update.js';
 import { IAINativeUpdateService } from '../common/ainativeUpdateService.js';
-import { VoidCheckUpdateRespose } from '../common/voidUpdateServiceTypes.js';
+import { VoidCheckUpdateRespose } from '../common/ainativeUpdateServiceTypes.js';
 
 
 

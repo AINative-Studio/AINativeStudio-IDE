@@ -1,0 +1,264 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright 2025 AINative Studio. All rights reserved.
+ *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *--------------------------------------------------------------------------------------------*/
+
+/* Modal overlay */
+.ainative-login-modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9999;
+	animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+/* Modal container */
+.ainative-login-modal {
+	background-color: var(--vscode-editor-background, #1e1e1e);
+	border: 1px solid var(--vscode-widget-border, #454545);
+	border-radius: 8px;
+	width: 90%;
+	max-width: 450px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+	animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+	from {
+		transform: translateY(-20px);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+/* Modal header */
+.modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 20px 24px;
+	border-bottom: 1px solid var(--vscode-widget-border, #454545);
+}
+
+.modal-header h2 {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--vscode-foreground, #cccccc);
+}
+
+.close-button {
+	background: none;
+	border: none;
+	font-size: 28px;
+	line-height: 1;
+	color: var(--vscode-foreground, #cccccc);
+	cursor: pointer;
+	padding: 0;
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	transition: background-color 0.15s ease;
+}
+
+.close-button:hover {
+	background-color: var(--vscode-toolbar-hoverBackground, #2a2d2e);
+}
+
+.close-button:focus {
+	outline: 2px solid var(--vscode-focusBorder, #007acc);
+	outline-offset: 2px;
+}
+
+/* Modal body */
+.modal-body {
+	padding: 24px;
+}
+
+/* Error message */
+.error-message {
+	background-color: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+	border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
+	color: var(--vscode-errorForeground, #f48771);
+	padding: 10px 12px;
+	border-radius: 4px;
+	margin-bottom: 16px;
+	font-size: 13px;
+}
+
+/* Form group */
+.form-group {
+	margin-bottom: 16px;
+}
+
+.form-group label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--vscode-foreground, #cccccc);
+}
+
+.form-group input {
+	width: 100%;
+	padding: 10px 12px;
+	font-size: 14px;
+	background-color: var(--vscode-input-background, #3c3c3c);
+	color: var(--vscode-input-foreground, #cccccc);
+	border: 1px solid var(--vscode-input-border, #454545);
+	border-radius: 4px;
+	transition: border-color 0.15s ease;
+	box-sizing: border-box;
+}
+
+.form-group input:focus {
+	outline: none;
+	border-color: var(--vscode-focusBorder, #007acc);
+	box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+}
+
+.form-group input::placeholder {
+	color: var(--vscode-input-placeholderForeground, #717171);
+}
+
+/* Submit button */
+.submit-button {
+	width: 100%;
+	padding: 10px 16px;
+	font-size: 14px;
+	font-weight: 500;
+	color: white;
+	background-color: #0e70c0;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+	margin-top: 8px;
+}
+
+.submit-button:hover:not(:disabled) {
+	background-color: #1177cb;
+}
+
+.submit-button:active:not(:disabled) {
+	background-color: #0c5fa0;
+}
+
+.submit-button:focus {
+	outline: 2px solid var(--vscode-focusBorder, #007acc);
+	outline-offset: 2px;
+}
+
+.submit-button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Divider */
+.divider {
+	text-align: center;
+	margin: 20px 0;
+	position: relative;
+	color: var(--vscode-descriptionForeground, #999999);
+	font-size: 13px;
+}
+
+.divider::before,
+.divider::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	width: 40%;
+	height: 1px;
+	background-color: var(--vscode-widget-border, #454545);
+}
+
+.divider::before {
+	left: 0;
+}
+
+.divider::after {
+	right: 0;
+}
+
+/* GitHub sign-in button */
+.github-signin-button {
+	width: 100%;
+	padding: 10px 16px;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--vscode-button-foreground, #ffffff);
+	background-color: var(--vscode-button-secondaryBackground, #3c3c3c);
+	border: 1px solid var(--vscode-button-border, #454545);
+	border-radius: 4px;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.github-signin-button:hover:not(:disabled) {
+	background-color: var(--vscode-button-secondaryHoverBackground, #45494d);
+}
+
+.github-signin-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Sign-up link */
+.signup-link {
+	text-align: center;
+	margin-top: 20px;
+	font-size: 13px;
+	color: var(--vscode-descriptionForeground, #999999);
+}
+
+.signup-link a {
+	color: var(--vscode-textLink-foreground, #3794ff);
+	text-decoration: none;
+	font-weight: 500;
+	margin-left: 4px;
+}
+
+.signup-link a:hover {
+	text-decoration: underline;
+}
+
+.signup-link a:focus {
+	outline: 2px solid var(--vscode-focusBorder, #007acc);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* Responsive design */
+@media (max-width: 500px) {
+	.ainative-login-modal {
+		width: 95%;
+		margin: 0 auto;
+	}
+
+	.modal-header,
+	.modal-body {
+		padding: 16px;
+	}
+}

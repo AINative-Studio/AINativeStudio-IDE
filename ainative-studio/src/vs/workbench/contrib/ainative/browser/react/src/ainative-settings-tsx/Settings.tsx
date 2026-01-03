@@ -455,9 +455,9 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 
 
 			const detailAboutModel = type === 'autodetected' ?
-				<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='void-tooltip' data-tooltip-place='right' data-tooltip-content='Detected locally' />
+				<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='ainative-tooltip' data-tooltip-place='right' data-tooltip-content='Detected locally' />
 				: type === 'custom' ?
-					<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='void-tooltip' data-tooltip-place='right' data-tooltip-content='Custom model' />
+					<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='ainative-tooltip' data-tooltip-place='right' data-tooltip-content='Custom model' />
 					: undefined
 
 			const hasOverrides = !!settingsState.overridesOfModel?.[providerName]?.[modelName]
@@ -480,7 +480,7 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 						<div className="w-5 flex items-center justify-center">
 							<button
 								onClick={() => { setOpenSettingsModel({ modelName, providerName, type }) }}
-								data-tooltip-id='void-tooltip'
+								data-tooltip-id='ainative-tooltip'
 								data-tooltip-place='right'
 								data-tooltip-content='Advanced Settings'
 								className={`${hasOverrides ? '' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
@@ -501,7 +501,7 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 						disabled={disabled}
 						size='sm'
 
-						data-tooltip-id='void-tooltip'
+						data-tooltip-id='ainative-tooltip'
 						data-tooltip-place='right'
 						data-tooltip-content={tooltipName}
 					/>
@@ -510,7 +510,7 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 					<div className={`w-5 flex items-center justify-center`}>
 						{type === 'default' || type === 'autodetected' ? null : <button
 							onClick={() => { settingsStateService.deleteModel(providerName, modelName); }}
-							data-tooltip-id='void-tooltip'
+							data-tooltip-id='ainative-tooltip'
 							data-tooltip-place='right'
 							data-tooltip-content='Delete'
 							className={`${hasOverrides ? '' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
@@ -828,7 +828,7 @@ export const OllamaSetupInstructions = ({ sayWeAutoDetect }: { sayWeAutoDetect?:
 		<div className=' pl-6'><ChatMarkdownRender string={`2. Open your terminal.`} chatMessageLocation={undefined} /></div>
 		<div
 			className='pl-6 flex items-center w-fit'
-			data-tooltip-id='void-tooltip-ollama-settings'
+			data-tooltip-id='ainative-tooltip-ollama-settings'
 		>
 			<ChatMarkdownRender string={`3. Run \`ollama pull your_model\` to install a model.`} chatMessageLocation={undefined} />
 		</div>
@@ -969,7 +969,7 @@ const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer 
 									key={tool.name}
 									className="px-2 py-0.5 bg-void-bg-2 text-void-fg-3 rounded-sm text-xs"
 
-									data-tooltip-id='void-tooltip'
+									data-tooltip-id='ainative-tooltip'
 									data-tooltip-content={tool.description || ''}
 									data-tooltip-class-name='void-max-w-[300px]'
 								>
@@ -1276,7 +1276,7 @@ export const Settings = () => {
 													</span>
 													<span
 														className='hover:brightness-110'
-														data-tooltip-id='void-tooltip'
+														data-tooltip-id='ainative-tooltip'
 														data-tooltip-content='We recommend using the largest qwen2.5-coder model you can with Ollama (try qwen2.5-coder:3b).'
 														data-tooltip-class-name='void-max-w-[20px]'
 													>

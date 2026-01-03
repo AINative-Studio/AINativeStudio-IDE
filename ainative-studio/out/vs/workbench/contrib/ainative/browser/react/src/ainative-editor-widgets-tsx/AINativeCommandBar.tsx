@@ -89,8 +89,8 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 	const editorService = accessor.get('ICodeEditorService')
 	const metricsService = accessor.get('IMetricsService')
 	const commandService = accessor.get('ICommandService')
-	const commandBarService = accessor.get('IVoidCommandBarService')
-	const voidModelService = accessor.get('IVoidModelService')
+	const commandBarService = accessor.get('IAINativeCommandBarService')
+	const voidModelService = accessor.get('IAINativeModelService')
 	const keybindingService = accessor.get('IKeybindingService')
 	const { stateOfURI: commandBarState, sortedURIs: sortedCommandBarURIs } = useCommandBarState()
 	const [showAcceptRejectAllButtons, setShowAcceptRejectAllButtons] = useState(false)
@@ -231,7 +231,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 							<AcceptAllButtonWrapper
 								// text={`Accept All${acceptAllKeybindLabel ? ` ${acceptAllKeybindLabel}` : ''}`}
 								text={`Accept All`}
-								data-tooltip-id='void-tooltip'
+								data-tooltip-id='ainative-tooltip'
 								data-tooltip-content={acceptAllKeybindLabel}
 								data-tooltip-delay-show={500}
 								onClick={onAcceptAll}
@@ -239,7 +239,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 							<RejectAllButtonWrapper
 								// text={`Reject All${rejectAllKeybindLabel ? ` ${rejectAllKeybindLabel}` : ''}`}
 								text={`Reject All`}
-								data-tooltip-id='void-tooltip'
+								data-tooltip-id='ainative-tooltip'
 								data-tooltip-content={rejectAllKeybindLabel}
 								data-tooltip-delay-show={500}
 								onClick={onRejectAll}
@@ -263,7 +263,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 								commandBarService.goToDiffIdx(prevDiffIdx);
 							}
 						}}
-						data-tooltip-id="void-tooltip"
+						data-tooltip-id="ainative-tooltip"
 						data-tooltip-content={`${upKeybindLabel ? `${upKeybindLabel}` : ''}`}
 						data-tooltip-delay-show={500}
 					>
@@ -288,7 +288,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 								commandBarService.goToDiffIdx(nextDiffIdx);
 							}
 						}}
-						data-tooltip-id="void-tooltip"
+						data-tooltip-id="ainative-tooltip"
 						data-tooltip-content={`${downKeybindLabel ? `${downKeybindLabel}` : ''}`}
 						data-tooltip-delay-show={500}
 					>
@@ -310,7 +310,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 								commandBarService.goToURIIdx(prevURIIdx);
 							}
 						}}
-						data-tooltip-id="void-tooltip"
+						data-tooltip-id="ainative-tooltip"
 						data-tooltip-content={`${leftKeybindLabel ? `${leftKeybindLabel}` : ''}`}
 						data-tooltip-delay-show={500}
 					>
@@ -332,7 +332,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 								commandBarService.goToURIIdx(nextURIIdx);
 							}
 						}}
-						data-tooltip-id="void-tooltip"
+						data-tooltip-id="ainative-tooltip"
 						data-tooltip-content={`${rightKeybindLabel ? `${rightKeybindLabel}` : ''}`}
 						data-tooltip-delay-show={500}
 					>
@@ -347,7 +347,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 						<AcceptAllButtonWrapper
 							// text={`Accept File${acceptFileKeybindLabel ? ` ${acceptFileKeybindLabel}` : ''}`}
 							text={`Accept File`}
-							data-tooltip-id='void-tooltip'
+							data-tooltip-id='ainative-tooltip'
 							data-tooltip-content={acceptFileKeybindLabel}
 							data-tooltip-delay-show={500}
 							onClick={onAcceptFile}
@@ -355,7 +355,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 						<RejectAllButtonWrapper
 							// text={`Reject File${rejectFileKeybindLabel ? ` ${rejectFileKeybindLabel}` : ''}`}
 							text={`Reject File`}
-							data-tooltip-id='void-tooltip'
+							data-tooltip-id='ainative-tooltip'
 							data-tooltip-content={rejectFileKeybindLabel}
 							data-tooltip-delay-show={500}
 							onClick={onRejectFile}

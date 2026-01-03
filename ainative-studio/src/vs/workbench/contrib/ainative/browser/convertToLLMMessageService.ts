@@ -10,7 +10,7 @@ import { getIsReasoningEnabledState, getReservedOutputTokenSpace, getModelCapabi
 import { reParsedToolXMLString, chat_systemMessage } from '../common/prompt/prompts.js';
 import { AnthropicLLMChatMessage, AnthropicReasoning, GeminiLLMChatMessage, LLMChatMessage, LLMFIMMessage, OpenAILLMChatMessage, RawToolParamsObj } from '../common/sendLLMMessageTypes.js';
 import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
-import { ChatMode, FeatureName, ModelSelection, ProviderName } from '../common/voidSettingsTypes.js';
+import { ChatMode, FeatureName, ModelSelection, ProviderName } from '../common/ainativeSettingsTypes.js';
 import { IDirectoryStrService } from '../common/directoryStrService.js';
 import { ITerminalToolService } from './terminalToolService.js';
 import { IAINativeModelService } from '../common/ainativeModelService.js';
