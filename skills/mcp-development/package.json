@@ -1,0 +1,38 @@
+{
+  "name": "@ainative/skill-mcp-development",
+  "version": "1.0.0",
+  "description": "MCP server development patterns extending Anthropic's mcp-builder with AINative-specific conventions for building tool-based AI systems",
+  "keywords": [
+    "ainative",
+    "skill",
+    "mcp",
+    "model-context-protocol",
+    "zerodb",
+    "tools",
+    "server-development",
+    "ai-agents"
+  ],
+  "author": "AINative Studio",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ainative/ainative-studio.git",
+    "directory": "skills/mcp-development"
+  },
+  "homepage": "https://github.com/ainative/ainative-studio/tree/main/skills/mcp-development",
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "references/"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}
