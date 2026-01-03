@@ -1,0 +1,1 @@
+{"version":3,"sources":["completions/upstream/rmdir.ts"],"names":[],"mappings":";;AAAA,MAAM,cAAc,GAAa;IAChC,IAAI,EAAE,OAAO;IACb,WAAW,EAAE,oBAAoB;IACjC,IAAI,EAAE;QACL,UAAU,EAAE,IAAI;QAChB,QAAQ,EAAE,SAAS;KACnB;IAED,OAAO,EAAE;QACR;YACC,IAAI,EAAE,IAAI;YACV,WAAW,EAAE,+BAA+B;YAC5C,WAAW,EAAE,IAAI;SACjB;KACD;CACD,CAAC;AAEF,kBAAe,cAAc,CAAC","file":"rmdir.js","sourceRoot":"../../../src/"}

@@ -108,13 +108,13 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 
 			if (options.enabled !== undefined) {
 				filteredSkills = filteredSkills.filter(skill =>
-					!preferences.disabledSkills?.includes(skill.name || '')
+					!preferences.disabledSkills?.includes(skill.name || "")
 				);
 			}
 
 			if (options.disabled !== undefined) {
 				filteredSkills = filteredSkills.filter(skill =>
-					preferences.disabledSkills?.includes(skill.name || '')
+					preferences.disabledSkills?.includes(skill.name || "")
 				);
 			}
 
@@ -126,7 +126,7 @@ export class SkillCommandService extends Disposable implements ISkillCommandServ
 
 			if (options.tag) {
 				filteredSkills = filteredSkills.filter(skill =>
-					skill.tags?.includes(options.tag || '')
+					skill.tags?.includes(options.tag || "")
 				);
 			}
 
@@ -558,7 +558,7 @@ version: 1.0.0
 description: Description of ${skillName}
 author: ${options.author || 'Your Name'}
 category: ${options.category || 'general'}
-tags: [${options.tags?.join(', ') || ''}]
+tags: [${options.tags?.join(', ') || ""}]
 created: ${now}
 updated: ${now}
 ---
@@ -596,7 +596,7 @@ See [SKILL.md](./SKILL.md) for details.
 		const lines: string[] = ['Installed Skills:\n'];
 
 		for (const skill of skills) {
-			const isEnabled = !preferences.disabledSkills?.includes(skill.name || '');
+			const isEnabled = !preferences.disabledSkills?.includes(skill.name || "");
 			const status = isEnabled ? '✅' : '❌';
 			const disabled = isEnabled ? '' : ' [DISABLED]';
 

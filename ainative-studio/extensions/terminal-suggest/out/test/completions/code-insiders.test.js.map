@@ -1,0 +1,1 @@
+{"version":3,"sources":["test/completions/code-insiders.test.ts"],"names":[],"mappings":";AAAA;;;gGAGgG;;;;;;AAEhG,oFAAyE;AAEzE,2CAAkD;AAErC,QAAA,qBAAqB,GAAe;IAChD,IAAI,EAAE,eAAe;IACrB,eAAe,EAAE,uBAA0B;IAC3C,iBAAiB,EAAE,eAAe;IAClC,SAAS,EAAE,IAAA,+BAAmB,EAAC,eAAe,CAAC;CAC/C,CAAC","file":"code-insiders.test.js","sourceRoot":"../../../src/"}
