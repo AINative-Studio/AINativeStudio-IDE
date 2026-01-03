@@ -92,3 +92,6 @@ import '../common/githubOAuthService.js'
 
 // GitHub OAuth URL handler
 import './githubOAuthUrlHandler.js'
+
+// Skills configuration service
+import '../common/skills/skillsModule.js'
