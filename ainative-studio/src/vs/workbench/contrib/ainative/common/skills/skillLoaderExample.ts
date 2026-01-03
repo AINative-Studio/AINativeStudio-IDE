@@ -8,7 +8,7 @@
  * This file demonstrates the progressive disclosure pattern for skill loading
  */
 
-import { ISkillLoader, SkillSummary, LoadedSkill } from './skillLoaderTypes.js';
+import { ISkillLoader } from './skillLoaderTypes.js';
 
 /**
  * Example 1: Load metadata for all skills (always in context)
