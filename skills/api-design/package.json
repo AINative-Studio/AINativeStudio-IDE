@@ -1,0 +1,53 @@
+{
+  "name": "@ainative/skill-api-design",
+  "version": "1.0.0",
+  "description": "FastAPI best practices, Pydantic models, RESTful endpoint design, error handling, and authentication patterns. Use when designing APIs, creating endpoints, or implementing backend logic.",
+  "main": "SKILL.md",
+  "keywords": [
+    "fastapi",
+    "pydantic",
+    "rest-api",
+    "api-design",
+    "authentication",
+    "jwt",
+    "backend",
+    "python",
+    "error-handling",
+    "validation",
+    "ainative",
+    "skill"
+  ],
+  "author": "AINative Studio",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ainative/skills.git",
+    "directory": "api-design"
+  },
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "references/"
+  ],
+  "ainative": {
+    "skillName": "api-design",
+    "category": "backend",
+    "tags": [
+      "fastapi",
+      "pydantic",
+      "rest",
+      "authentication",
+      "backend"
+    ],
+    "triggers": [
+      "api",
+      "endpoint",
+      "fastapi",
+      "pydantic",
+      "authentication",
+      "jwt",
+      "rest",
+      "backend"
+    ]
+  }
+}
