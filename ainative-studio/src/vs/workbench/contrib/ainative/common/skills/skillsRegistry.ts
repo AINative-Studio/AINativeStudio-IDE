@@ -7,12 +7,11 @@ import { URI } from '../../../../../base/common/uri.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { registerSingleton, InstantiationType } from '../../../../../platform/instantiation/common/extensions.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
-import { IEnvironmentService } from '../../../../../platform/environment/common/environment.js';
-import { ISkillsRegistry, RegistryEntry, RegistryFile, SkillSource } from './skillRegistryTypes.js';
+import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
+import { ISkillsRegistry, RegistryEntry, RegistryFile } from './skillRegistryTypes.js';
 import { ISkillParser } from './skillParserTypes.js';
 import { VSBuffer } from '../../../../../base/common/buffer.js';
 import { joinPath } from '../../../../../base/common/resources.js';
-import { basename } from '../../../../../base/common/path.js';
 
 /**
  * Skills Registry Service Implementation
@@ -29,7 +28,7 @@ class SkillsRegistry extends Disposable implements ISkillsRegistry {
 	constructor(
 		@IFileService private readonly fileService: IFileService,
 		@ISkillParser private readonly skillParser: ISkillParser,
-		@IEnvironmentService private readonly envService: IEnvironmentService
+		@INativeEnvironmentService private readonly envService: INativeEnvironmentService
 	) {
 		super();
 
@@ -201,6 +200,9 @@ class SkillsRegistry extends Disposable implements ISkillsRegistry {
 		}
 	}
 }
+
+// Export the class for testing
+export { SkillsRegistry };
 
 // Register the service with dependency injection
 registerSingleton(ISkillsRegistry, SkillsRegistry, InstantiationType.Delayed);

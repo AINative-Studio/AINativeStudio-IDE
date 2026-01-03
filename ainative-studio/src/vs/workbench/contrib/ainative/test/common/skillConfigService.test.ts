@@ -39,9 +39,13 @@ suite('SkillConfigService Tests', () => {
 		await fileService.createFolder(testWorkspaceDir);
 
 		// Mock workspace service
+		const { WorkspaceFolder } = await import('../../../../../platform/workspace/common/workspace.js');
 		const workspace = new Workspace(
 			'test-workspace',
-			[{ uri: testWorkspaceDir, name: 'test', index: 0 }]
+			[new WorkspaceFolder({ uri: testWorkspaceDir, name: 'test', index: 0 }, undefined)],
+			false,
+			null,
+			() => false
 		);
 
 		mockWorkspaceService = {
@@ -189,8 +193,8 @@ suite('SkillConfigService Tests', () => {
 
 			const result = await service.detectProjectType();
 
-			assert.ok(result.metadata.languages.includes('javascript'));
-			assert.ok(result.metadata.languages.includes('typescript'));
+			assert.ok(result.metadata.languages?.includes('javascript'));
+			assert.ok(result.metadata.languages?.includes('typescript'));
 			assert.strictEqual(result.metadata.framework, 'react');
 			assert.strictEqual(result.metadata.projectType, 'frontend');
 			assert.ok(result.confidence > 0.5);
@@ -223,7 +227,7 @@ suite('SkillConfigService Tests', () => {
 
 			const result = await service.detectProjectType();
 
-			assert.ok(result.metadata.languages.includes('python'));
+			assert.ok(result.metadata.languages?.includes('python'));
 			assert.strictEqual(result.metadata.framework, 'fastapi');
 			assert.strictEqual(result.metadata.projectType, 'backend');
 			assert.ok(result.confidence > 0.5);
@@ -249,7 +253,7 @@ suite('SkillConfigService Tests', () => {
 
 			const result = await service.detectProjectType();
 
-			assert.ok(result.metadata.languages.includes('rust'));
+			assert.ok(result.metadata.languages?.includes('rust'));
 			assert.strictEqual(result.metadata.projectType, 'backend');
 		});
 
@@ -261,7 +265,7 @@ suite('SkillConfigService Tests', () => {
 
 			const result = await service.detectProjectType();
 
-			assert.ok(result.metadata.languages.includes('java'));
+			assert.ok(result.metadata.languages?.includes('java'));
 			assert.strictEqual(result.metadata.projectType, 'backend');
 		});
 

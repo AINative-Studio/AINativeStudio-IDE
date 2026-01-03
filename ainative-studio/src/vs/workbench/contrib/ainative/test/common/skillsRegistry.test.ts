@@ -12,10 +12,10 @@ import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskFileSystemProvider.js';
 import { Schemas } from '../../../../../base/common/network.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
-import { ISkillsRegistry, RegistryEntry } from '../../common/skills/skillRegistryTypes.js';
+import { ISkillsRegistry } from '../../common/skills/skillRegistryTypes.js';
 import { Skill, SkillMetadata } from '../../common/skills/skillTypes.js';
 import { ISkillParser } from '../../common/skills/skillParserTypes.js';
-import { IEnvironmentService } from '../../../../../platform/environment/common/environment.js';
+import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
 
 // Import the actual SkillsRegistry class
 // Note: We need to access the class directly since it's not exported by default
@@ -71,7 +71,7 @@ suite('SkillsRegistry Tests', () => {
 		testHomeDir = URI.file(path.join(tmpdir(), 'ainative-registry-test-' + Date.now()));
 
 		// Mock environment service
-		const mockEnvService: IEnvironmentService = {
+		const mockEnvService: INativeEnvironmentService = {
 			userHome: testHomeDir,
 		} as any;
 
@@ -79,23 +79,8 @@ suite('SkillsRegistry Tests', () => {
 		mockSkillParser = new MockSkillParser();
 
 		// Manually instantiate SkillsRegistry
-		// We need to import it dynamically to avoid circular dependencies
-		const { default: SkillsRegistryModule } = await import('../../common/skills/skillsRegistry.js');
-		const SkillsRegistryClass = (SkillsRegistryModule as any).SkillsRegistry || SkillsRegistryModule;
-
-		if (!SkillsRegistryClass) {
-			// Try to get the class from the module exports
-			const moduleKeys = Object.keys(SkillsRegistryModule);
-			const registryClass = moduleKeys.find(key => key.includes('Registry'));
-			registryImpl = new (SkillsRegistryModule as any)[registryClass || 'SkillsRegistry'](
-				fileService,
-				mockSkillParser,
-				mockEnvService
-			);
-		} else {
-			registryImpl = new SkillsRegistryClass(fileService, mockSkillParser, mockEnvService);
-		}
-
+		const { SkillsRegistry } = await import('../../common/skills/skillsRegistry.js');
+		registryImpl = new SkillsRegistry(fileService, mockSkillParser, mockEnvService);
 		skillsRegistry = registryImpl as ISkillsRegistry;
 	});
 
@@ -305,25 +290,12 @@ suite('SkillsRegistry Tests', () => {
 			await skillsRegistry.install(skillPath);
 
 			// Create a new registry instance (simulating restart)
-			const mockEnvService: IEnvironmentService = {
+			const mockEnvService: INativeEnvironmentService = {
 				userHome: testHomeDir,
 			} as any;
 
-			const { default: SkillsRegistryModule } = await import('../../common/skills/skillsRegistry.js');
-			const SkillsRegistryClass = (SkillsRegistryModule as any).SkillsRegistry || SkillsRegistryModule;
-
-			let newRegistry: ISkillsRegistry;
-			if (!SkillsRegistryClass) {
-				const moduleKeys = Object.keys(SkillsRegistryModule);
-				const registryClass = moduleKeys.find(key => key.includes('Registry'));
-				newRegistry = new (SkillsRegistryModule as any)[registryClass || 'SkillsRegistry'](
-					fileService,
-					mockSkillParser,
-					mockEnvService
-				);
-			} else {
-				newRegistry = new SkillsRegistryClass(fileService, mockSkillParser, mockEnvService);
-			}
+			const { SkillsRegistry } = await import('../../common/skills/skillsRegistry.js');
+			const newRegistry = new SkillsRegistry(fileService, mockSkillParser, mockEnvService);
 
 			// Verify the skill is still listed
 			const isInstalled = await newRegistry.isInstalled('minimal-skill');
@@ -346,28 +318,16 @@ suite('SkillsRegistry Tests', () => {
 			await fileService.createFolder(skillsDir);
 
 			const registryFile = URI.joinPath(skillsDir, 'registry.json');
-			await fileService.writeFile(registryFile, Buffer.from('{ invalid json content }'));
+			const { VSBuffer } = await import('../../../../../base/common/buffer.js');
+			await fileService.writeFile(registryFile, VSBuffer.fromString('{ invalid json content }'));
 
 			// Create a new registry instance
-			const mockEnvService: IEnvironmentService = {
+			const mockEnvService: INativeEnvironmentService = {
 				userHome: testHomeDir,
 			} as any;
 
-			const { default: SkillsRegistryModule } = await import('../../common/skills/skillsRegistry.js');
-			const SkillsRegistryClass = (SkillsRegistryModule as any).SkillsRegistry || SkillsRegistryModule;
-
-			let newRegistry: ISkillsRegistry;
-			if (!SkillsRegistryClass) {
-				const moduleKeys = Object.keys(SkillsRegistryModule);
-				const registryClass = moduleKeys.find(key => key.includes('Registry'));
-				newRegistry = new (SkillsRegistryModule as any)[registryClass || 'SkillsRegistry'](
-					fileService,
-					mockSkillParser,
-					mockEnvService
-				);
-			} else {
-				newRegistry = new SkillsRegistryClass(fileService, mockSkillParser, mockEnvService);
-			}
+			const { SkillsRegistry } = await import('../../common/skills/skillsRegistry.js');
+			const newRegistry = new SkillsRegistry(fileService, mockSkillParser, mockEnvService);
 
 			// Should handle corruption by returning empty list
 			const skills = await newRegistry.list();

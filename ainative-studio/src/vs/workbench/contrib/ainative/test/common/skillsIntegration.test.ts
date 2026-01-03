@@ -17,7 +17,7 @@ import { SkillConfigService } from '../../common/skills/skillConfigService.js';
 import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
 import { Workspace } from '../../../../../platform/workspace/common/workspace.js';
 import { VSBuffer } from '../../../../../base/common/buffer.js';
-import { IEnvironmentService } from '../../../../../platform/environment/common/environment.js';
+import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
 import { ISkillsRegistry } from '../../common/skills/skillRegistryTypes.js';
 
 suite('Skills Manager Integration Tests', () => {
@@ -48,30 +48,22 @@ suite('Skills Manager Integration Tests', () => {
 		// Set up services
 		skillParser = disposables.add(new SkillParser(fileService));
 
-		const mockEnvService: IEnvironmentService = {
+		const mockEnvService: INativeEnvironmentService = {
 			userHome: testHomeDir,
 		} as any;
 
 		// Import and instantiate SkillsRegistry
-		const { default: SkillsRegistryModule } = await import('../../common/skills/skillsRegistry.js');
-		const SkillsRegistryClass = (SkillsRegistryModule as any).SkillsRegistry || SkillsRegistryModule;
-
-		if (!SkillsRegistryClass) {
-			const moduleKeys = Object.keys(SkillsRegistryModule);
-			const registryClass = moduleKeys.find(key => key.includes('Registry'));
-			skillsRegistry = new (SkillsRegistryModule as any)[registryClass || 'SkillsRegistry'](
-				fileService,
-				skillParser,
-				mockEnvService
-			);
-		} else {
-			skillsRegistry = new SkillsRegistryClass(fileService, skillParser, mockEnvService);
-		}
+		const { SkillsRegistry } = await import('../../common/skills/skillsRegistry.js');
+		skillsRegistry = new SkillsRegistry(fileService, skillParser, mockEnvService);
 
 		// Set up workspace service
+		const { WorkspaceFolder } = await import('../../../../../platform/workspace/common/workspace.js');
 		const workspace = new Workspace(
 			'test-workspace',
-			[{ uri: testWorkspaceDir, name: 'test', index: 0 }]
+			[new WorkspaceFolder({ uri: testWorkspaceDir, name: 'test', index: 0 }, undefined)],
+			false,
+			null,
+			() => false
 		);
 
 		mockWorkspaceService = {
