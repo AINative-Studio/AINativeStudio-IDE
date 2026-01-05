@@ -16,7 +16,7 @@ import {
 import { TokenService, ITokenService } from '../../common/tokenService.js';
 import { SessionManager, ISessionManager, SessionState } from '../../common/sessionManager.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
-import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
+import { IEncryptionService, KnownStorageProvider } from '../../../../../platform/encryption/common/encryptionService.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { Emitter } from '../../../../../base/common/event.js';
@@ -100,6 +100,14 @@ class MockEncryptionService implements IEncryptionService {
 
 	isEncryptionAvailable(): Promise<boolean> {
 		return Promise.resolve(true);
+	}
+
+	async setUsePlainTextEncryption(): Promise<void> {
+		// Mock implementation - no-op
+	}
+
+	async getKeyStorageProvider(): Promise<KnownStorageProvider> {
+		return KnownStorageProvider.basicText;
 	}
 
 	getKeyType(): Promise<string> {

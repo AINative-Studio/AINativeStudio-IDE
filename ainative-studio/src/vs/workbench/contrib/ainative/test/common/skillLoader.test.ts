@@ -6,14 +6,12 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import { SkillLoader } from '../../common/skills/skillLoader.js';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { SkillSummary, SkillMetadata, SkillResource, LoadedSkill } from '../../common/skills/skillLoaderTypes.js';
+import { SkillMetadata, SkillResource } from '../../common/skills/skillLoaderTypes.js';
 import { FileService } from '../../../../../platform/files/common/fileService.js';
 import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskFileSystemProvider.js';
 import { Schemas } from '../../../../../base/common/network.js';
-import { URI } from '../../../../../base/common/uri.js';
 
 suite('SkillLoader Tests', () => {
 	let loader: SkillLoader;

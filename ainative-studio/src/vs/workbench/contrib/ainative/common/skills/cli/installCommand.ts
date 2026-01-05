@@ -9,7 +9,7 @@ import { registerSingleton, InstantiationType } from '../../../../../../platform
 import { IFileService } from '../../../../../../platform/files/common/files.js';
 import { INativeEnvironmentService } from '../../../../../../platform/environment/common/environment.js';
 import { IRequestService } from '../../../../../../platform/request/common/request.js';
-import { IProgressService, ProgressLocation } from '../../../../../../platform/progress/common/progress.js';
+import { IProgressService, ProgressLocation, IProgress, IProgressStep } from '../../../../../../platform/progress/common/progress.js';
 import { ISkillsRegistry } from '../skillRegistryTypes.js';
 import { ISkillParser } from '../skillParserTypes.js';
 import { ISkillInstallService, InstallOptions, InstallResult, InstallSource } from './cliTypes.js';
@@ -20,6 +20,7 @@ import { asText } from '../../../../../../platform/request/common/request.js';
 import * as path from '../../../../../../base/common/path.js';
 import { tmpdir } from 'os';
 import { generateUuid } from '../../../../../../base/common/uuid.js';
+import { listenStream } from '../../../../../../base/common/stream.js';
 
 /**
  * Service for installing skills from various sources
@@ -56,7 +57,7 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 				title: `Installing skill from ${sourceType}`,
 				cancellable: true
 			},
-			async (progress: any, token: any) => {
+			async (progress: IProgress<IProgressStep>) => {
 				progress.report({ message: 'Preparing installation...' });
 
 				// Check if already installed (unless force flag is set)
@@ -66,7 +67,7 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 
 				// Download/copy to temporary location
 				progress.report({ message: 'Downloading skill...' });
-				const tempDir = await this.downloadToTemp(options.source, sourceType, token);
+				const tempDir = await this.downloadToTemp(options.source, sourceType, CancellationToken.None);
 
 				try {
 					// Validate skill format
@@ -319,8 +320,19 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 		// Write response to file
 		const writeStream = fs.createWriteStream(tmpFile);
 		await new Promise<void>((resolve, reject) => {
-			response.stream.pipe(writeStream);
-			writeStream.on('finish', () => resolve());
+			listenStream(response.stream, {
+				onData: (chunk) => {
+					writeStream.write(Buffer.from(chunk.buffer));
+				},
+				onError: (err) => {
+					writeStream.end();
+					reject(err);
+				},
+				onEnd: () => {
+					writeStream.end();
+					resolve();
+				}
+			});
 			writeStream.on('error', (err) => reject(err));
 		});
 
@@ -372,8 +384,19 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 		// Write response to file
 		const writeStream = fs.createWriteStream(tmpFile);
 		await new Promise<void>((resolve, reject) => {
-			response.stream.pipe(writeStream);
-			writeStream.on('finish', () => resolve());
+			listenStream(response.stream, {
+				onData: (chunk) => {
+					writeStream.write(Buffer.from(chunk.buffer));
+				},
+				onError: (err) => {
+					writeStream.end();
+					reject(err);
+				},
+				onEnd: () => {
+					writeStream.end();
+					resolve();
+				}
+			});
 			writeStream.on('error', (err) => reject(err));
 		});
 

@@ -14,7 +14,7 @@ import {
 } from '../../common/ainativeCloudAuthTypes.js';
 import { TokenService, ITokenService } from '../../common/tokenService.js';
 import { SessionManager } from '../../common/sessionManager.js';
-import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
+import { IEncryptionService, KnownStorageProvider } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -39,6 +39,14 @@ class MockEncryptionService implements IEncryptionService {
 
 	isEncryptionAvailable(): Promise<boolean> {
 		return Promise.resolve(true);
+	}
+
+	async setUsePlainTextEncryption(): Promise<void> {
+		// Mock implementation - no-op
+	}
+
+	async getKeyStorageProvider(): Promise<KnownStorageProvider> {
+		return KnownStorageProvider.basicText;
 	}
 
 	getKeyType(): Promise<string> {

@@ -119,15 +119,15 @@ suite('Skills Manager Integration Tests', () => {
 
 		test('should detect project type and recommend skills workflow', async () => {
 			// 1. Create a React project
-			const packageJson = {
+			const packageJsonContent = {
 				dependencies: {
 					react: '^18.0.0',
 					'react-dom': '^18.0.0'
 				}
 			};
 
-			// const packageJsonPath = URI.joinPath(testWorkspaceDir, 'package.json');
-			await fileService.writeFile(packageJsonPath, VSBuffer.fromString(JSON.stringify(packageJson, null, 2)));
+			const packageJson = URI.joinPath(testWorkspaceDir, 'package.json');
+			await fileService.writeFile(packageJson, VSBuffer.fromString(JSON.stringify(packageJsonContent, null, 2)));
 
 			// 2. Detect project type
 			const detection = await skillConfigService.detectProjectType();
@@ -337,7 +337,7 @@ suite('Skills Manager Integration Tests', () => {
 
 		test('should handle cache efficiently during detection+recommendation+write', async () => {
 			// Create a complex project
-			const packageJson = {
+			const packageJsonContent = {
 				dependencies: {
 					next: '^14.0.0',
 					react: '^18.0.0',
@@ -345,8 +345,8 @@ suite('Skills Manager Integration Tests', () => {
 				}
 			};
 
-			// const packageJsonPath = URI.joinPath(testWorkspaceDir, 'package.json');
-			await fileService.writeFile(packageJsonPath, VSBuffer.fromString(JSON.stringify(packageJson, null, 2)));
+			const packageJson = URI.joinPath(testWorkspaceDir, 'package.json');
+			await fileService.writeFile(packageJson, VSBuffer.fromString(JSON.stringify(packageJsonContent, null, 2)));
 
 			const startTime = performance.now();
 

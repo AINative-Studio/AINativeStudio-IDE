@@ -163,7 +163,7 @@ suite('SkillSyncCommand Tests', () => {
 			const result = await syncCommand.execute();
 
 			// Should succeed or fail for a different reason than symlink detection
-			assert.ok(!result.error || !result.error.includes('not a symlink'));
+			assert.ok(!result.errorMessage || !result.errorMessage.includes('not a symlink'));
 		});
 
 		test('should provide setup instructions when not symlinked', async () => {

@@ -15,7 +15,7 @@ import {
 	CloudAuthErrorCode,
 	// CloudUser // Unused import
 } from '../../common/ainativeCloudAuthTypes.js';
-import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
+import { IEncryptionService, KnownStorageProvider } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 
 /**
@@ -37,6 +37,14 @@ class MockEncryptionService implements IEncryptionService {
 
 	isEncryptionAvailable(): Promise<boolean> {
 		return Promise.resolve(true);
+	}
+
+	async setUsePlainTextEncryption(): Promise<void> {
+		// Mock implementation - no-op
+	}
+
+	async getKeyStorageProvider(): Promise<KnownStorageProvider> {
+		return KnownStorageProvider.basicText;
 	}
 
 	getKeyType(): Promise<string> {
@@ -258,9 +266,9 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			const result = await authService.login('wrong@example.com', 'wrongpass');
 
-			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
 			assert.ok(result.error);
-			assert.strictEqual(result.error?.code, CloudAuthErrorCode.InvalidCredentials);
+			assert.strictEqual(result.error?.code, CloudAuthErrorCode.InvalidCredentials, 'Error code should be InvalidCredentials');
 		});
 
 		test('should store tokens securely after successful login', async () => {
@@ -290,7 +298,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			// Verify tokens can be decrypted
 			const retrievedToken = await authService.getAccessToken();
-			assert.strictEqual(retrievedToken, accessToken);
+			assert.strictEqual(retrievedToken, accessToken, 'Retrieved token should match the original access token');
 		});
 
 		test('should emit auth state change event on login', async () => {
@@ -480,8 +488,8 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 			await authService.login('test@example.com', 'password123');
 
 			const storedToken = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION);
-			assert.ok(storedToken?.startsWith('encrypted_'));
-			assert.ok(!storedToken?.includes('eyJ')); // Should not contain JWT prefix
+			assert.ok(storedToken?.startsWith('encrypted_'), 'Stored token should be encrypted');
+			assert.ok(!storedToken?.includes('eyJ'), 'Stored token should not contain JWT prefix'); // Should not contain JWT prefix
 		});
 
 		test('should refresh token when expired', async () => {
@@ -570,8 +578,8 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 			await authService.logout();
 
 			const token = await authService.getAccessToken();
-			assert.strictEqual(token, null);
-			assert.strictEqual(authService.isAuthenticated(), false);
+			assert.strictEqual(token, null, 'Access token should be null after logout');
+			assert.strictEqual(authService.isAuthenticated(), false, 'Should not be authenticated after logout');
 		});
 
 		test('should handle concurrent token operations', async () => {
@@ -688,7 +696,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 			const logoutCall = calls.find(c => c.url.includes('/v1/auth/logout'));
 
 			assert.ok(logoutCall);
-			assert.strictEqual(logoutCall.options.method, 'POST');
+			assert.strictEqual(logoutCall.options.method, 'POST', 'Logout call should use POST method');
 		});
 
 		test('should clear tokens on logout', async () => {
@@ -715,7 +723,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 			await authService.logout();
 
 			const token = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION);
-			assert.strictEqual(token, undefined);
+			assert.strictEqual(token, undefined, 'Access token should be removed from storage after logout');
 		});
 
 		test('should redirect to login after logout', async () => {
@@ -746,7 +754,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			await authService.logout();
 
-			assert.strictEqual(stateAfterLogout, CloudAuthState.Unauthenticated);
+			assert.strictEqual(stateAfterLogout, CloudAuthState.Unauthenticated, 'Auth state should be Unauthenticated after logout');
 		});
 
 		test('should cleanup user data on logout', async () => {
@@ -773,7 +781,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 			await authService.logout();
 
 			const user = authService.getUser();
-			assert.strictEqual(user, null);
+			assert.strictEqual(user, null, 'User should be null after logout');
 		});
 	});
 
@@ -857,7 +865,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			// No value should contain the plain password
 			const containsPassword = allValues.some(v => v?.includes('MySecretPassword123'));
-			assert.strictEqual(containsPassword, false);
+			assert.strictEqual(containsPassword, false, 'Password should not be stored in plain text');
 		});
 
 		test('should not log sensitive data', async () => {

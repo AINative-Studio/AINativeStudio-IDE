@@ -6,7 +6,7 @@
 import * as assert from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { TokenService } from '../../common/tokenService.js';
-import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
+import { IEncryptionService, KnownStorageProvider } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 
@@ -31,6 +31,14 @@ class MockEncryptionService implements IEncryptionService {
 
 	isEncryptionAvailable(): Promise<boolean> {
 		return Promise.resolve(true);
+	}
+
+	async setUsePlainTextEncryption(): Promise<void> {
+		// Mock implementation - no-op
+	}
+
+	async getKeyStorageProvider(): Promise<KnownStorageProvider> {
+		return KnownStorageProvider.basicText;
 	}
 
 	getKeyType(): Promise<string> {
@@ -153,8 +161,8 @@ suite('TokenService', () => {
 			const storedAccess = await tokenService.getAccessToken();
 			const storedRefresh = await tokenService.getRefreshToken();
 
-			assert.strictEqual(storedAccess, accessToken);
-			assert.strictEqual(storedRefresh, refreshToken);
+			assert.strictEqual(storedAccess, accessToken, 'Stored access token should match original');
+			assert.strictEqual(storedRefresh, refreshToken, 'Stored refresh token should match original');
 		});
 
 		test('should encrypt tokens before storage', async () => {
@@ -165,7 +173,7 @@ suite('TokenService', () => {
 
 			// Check that stored value is encrypted
 			const rawStored = storageService.get('ainative.token.access', StorageScope.APPLICATION);
-			assert.ok(rawStored?.startsWith('encrypted_'));
+			assert.ok(rawStored?.startsWith('encrypted_'), 'Stored token should be encrypted');
 		});
 
 		test('should store token expiration time', async () => {
@@ -186,7 +194,7 @@ suite('TokenService', () => {
 			await tokenService.storeTokens(accessToken, refreshToken, true);
 
 			const rememberMe = await tokenService.getRememberMe();
-			assert.strictEqual(rememberMe, true);
+			assert.strictEqual(rememberMe, true, 'Remember me flag should be true');
 		});
 
 		test('should use different storage targets based on rememberMe', async () => {

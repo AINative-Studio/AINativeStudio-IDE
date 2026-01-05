@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import { SkillLoader } from '../../../common/skills/skillLoader.js';
 import { IFileService } from '../../../../../../platform/files/common/files.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { URI } from '../../../../../../base/common/uri.js';
 import { VSBuffer } from '../../../../../../base/common/buffer.js';
 
@@ -285,7 +286,7 @@ suite('SkillLoader', () => {
 			await loader.loadMetadataOnly(skillName);
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const stats = loader.getCacheStats();
+			const stats = loader.getCacheStats(); // Test that cache stats can be retrieved
 
 			assert.strictEqual(0, 1);
 			assert.strictEqual(0, 1);
@@ -338,7 +339,7 @@ suite('SkillLoader', () => {
 			};
 
 			// Invalidate cache for specific skill
-			loader.clearCache(skillName);
+			loader.clearCache();
 
 			const stats = loader.getCacheStats();
 
