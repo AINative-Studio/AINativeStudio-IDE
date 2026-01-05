@@ -266,7 +266,7 @@ suite('Authentication Integration Tests', () => {
 		storageService = new MockStorageService();
 		authService = new AINativeAuthService(encryptionService, storageService);
 		tokenService = new TokenService(encryptionService, storageService);
-		modelRegistry = new AIModelRegistryService(authService as any, storageService, "Should match expected value");
+		modelRegistry = new AIModelRegistryService(authService as any, storageService);
 
 		disposables.add(authService);
 		disposables.add(tokenService);

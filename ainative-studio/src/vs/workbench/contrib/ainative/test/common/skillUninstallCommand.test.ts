@@ -58,6 +58,7 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should show confirmation dialog by default', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			const mockDialogService = instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: true }),
 				prompt: async () => ({ result: 0 }),
@@ -81,6 +82,7 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should skip confirmation when skipConfirmation is true', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			const mockDialogService = instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: true }),
 				prompt: async () => ({ result: 0 }),
@@ -103,6 +105,7 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should throw error when user cancels confirmation', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			const mockDialogService = instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: false }),
 				prompt: async () => ({ result: 0 }),
@@ -126,6 +129,7 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should call registry.uninstall', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: true }),
 				prompt: async () => ({ result: 0 }),
@@ -152,6 +156,7 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should handle registry errors', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: true }),
 				prompt: async () => ({ result: 0 }),
@@ -176,6 +181,7 @@ suite('SkillUninstallCommand', () => {
 
 	suite('uninstallMultiple', () => {
 		test('should uninstall multiple skills', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: true }),
 				prompt: async () => ({ result: 0 }),
@@ -202,6 +208,7 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should continue on individual failures', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: true }),
 				prompt: async () => ({ result: 0 }),
@@ -228,6 +235,7 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should respect skipConfirmation flag', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			const mockDialogService = instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: true }),
 				prompt: async () => ({ result: 0 }),
@@ -262,6 +270,7 @@ suite('SkillUninstallCommand', () => {
 
 	suite('confirmation dialog details', () => {
 		test('should include all skill details in confirmation', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			const mockDialogService = instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: true }),
 				prompt: async () => ({ result: 0 }),
@@ -290,6 +299,7 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should use warning severity for confirmation', async () => {
+		// @ts-expect-error - Mock dialog service for testing
 			const mockDialogService = instantiationService.stub(IDialogService, {
 				confirm: async () => ({ confirmed: true }),
 				prompt: async () => ({ result: 0 }),

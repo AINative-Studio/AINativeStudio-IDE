@@ -291,6 +291,7 @@ suite('SkillLoader', () => {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const stats = loader.getCacheStats(); // Test that cache stats can be retrieved
 
 			assert.strictEqual(0, 1);

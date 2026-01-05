@@ -13,6 +13,7 @@ import { VSBuffer } from '../../../../../base/common/buffer.js';
 /**
  * Mock File Service for testing
  */
+// @ts-expect-error - Mock service for testing, return type handled at runtime
 class MockFileService implements Partial<IFileService> {
 	private files: Map<string, string> = new Map();
 	private directories: Set<string> = new Set();

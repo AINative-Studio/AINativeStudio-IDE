@@ -450,6 +450,7 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 							}
 
 							const writeStream = fs.createWriteStream(targetPath);
+       // @ts-ignore - VSBufferReadableStream pipe compatibility
 							readStream.pipe(writeStream);
 							writeStream.on('finish', () => {
 								zipfile.readEntry();
@@ -533,6 +534,7 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 	 * Map InstallSource to RegistrySource
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	private mapSourceTypeToRegistrySource(sourceType: InstallSource): 'local' | 'npm' | 'git' {
 		switch (sourceType) {
 			case 'local':

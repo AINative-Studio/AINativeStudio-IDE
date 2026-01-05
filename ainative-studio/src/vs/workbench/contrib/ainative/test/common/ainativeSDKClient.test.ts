@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { strictEqual, ok, /* rejects */ } from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { AINativeSDKClient } from '../../common/ainativeSDKClient.js';

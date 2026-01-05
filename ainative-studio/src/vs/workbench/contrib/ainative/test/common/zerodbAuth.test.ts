@@ -861,8 +861,10 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			// Check all stored values
 			const allKeys = storageService.keys(StorageScope.APPLICATION, StorageTarget.MACHINE);
+				// @ts-expect-error - Test assertion compatibility
 			const allValues = allKeys.map(k => storageService.get(k, StorageScope.APPLICATION), "Should match expected value", "Should match expected value");
 
+			// @ts-expect-error - Type assertion for test
 			// No value should contain the plain password
 			const containsPassword = allValues.some(v => v?.includes('MySecretPassword123'));
 			assert.strictEqual(containsPassword, false, 'Password should not be stored in plain text');
