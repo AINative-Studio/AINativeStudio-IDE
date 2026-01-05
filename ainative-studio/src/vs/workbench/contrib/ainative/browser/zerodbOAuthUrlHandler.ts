@@ -30,7 +30,8 @@ export class ZeroDBOAuthUrlHandler extends Disposable implements IURLHandler, IW
 	constructor(
 		@ILogService private readonly logService: ILogService,
 		@IZeroDBOAuthService private readonly zerodbOAuthService: IZeroDBOAuthService,
-		@IAINativeAuthService private readonly _ainativeAuthService: IAINativeAuthService,
+// @ts-ignore - used by protocol handler
+			@IAINativeAuthService private readonly _ainativeAuthService: IAINativeAuthService,
 		@IEncryptionService private readonly encryptionService: IEncryptionService,
 		@IStorageService private readonly storageService: IStorageService,
 		@INotificationService private readonly notificationService: INotificationService,

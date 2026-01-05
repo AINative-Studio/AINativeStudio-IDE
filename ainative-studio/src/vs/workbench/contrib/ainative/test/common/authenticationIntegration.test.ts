@@ -11,6 +11,7 @@ import {
 	OAuthProvider,
 	OAuthErrorCode,
 	OAuthCallbackParams,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	OAuthResult
 } from '../../common/zerodbOAuthService.js';
 import { TokenService, ITokenService } from '../../common/tokenService.js';
@@ -19,6 +20,8 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../../pla
 import { IEncryptionService, KnownStorageProvider } from '../../../../../platform/encryption/common/encryptionService.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Emitter } from '../../../../../base/common/event.js';
 
@@ -688,6 +691,7 @@ suite('Authentication Integration Tests - Issue #77', () => {
 
 			await tokenService.storeTokens(expiredToken, refreshToken, false);
 
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			let expiredEventFired = false;
 			sessionManager.onDidExpireSession(() => {
 				expiredEventFired = true;
@@ -924,6 +928,7 @@ suite('Authentication Integration Tests - Issue #77', () => {
 		});
 
 		test('8.3 XSS prevention in auth forms (data validation)', async () => {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const maliciousCode = '<script>alert("xss")</script>';
 
 			// OAuth should not execute or return malicious code

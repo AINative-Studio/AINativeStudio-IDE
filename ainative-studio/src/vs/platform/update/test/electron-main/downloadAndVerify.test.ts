@@ -101,6 +101,8 @@ suite('Update Service - Integration - Download and Verify', () => {
 		});
 
 		test('should download and track progress', async () => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const url = 'http://example.com/update.zip';
 			const destPath = path.join(testDir, 'update.zip');
 			const totalSize = 10 * 1024 * 1024; // 10MB
@@ -275,6 +277,7 @@ suite('Update Service - Integration - Download and Verify', () => {
 			assert.ok(fs.existsSync(destPath), 'Partial download should exist');
 
 			// Resume from 30%
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const remainingSize = totalSize - partialSize;
 			await timeout(50); // Simulate network reconnection
 

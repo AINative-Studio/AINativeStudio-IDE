@@ -56,6 +56,7 @@ suite('AINativeCloudProvider', () => {
 
 	test('should send chat completion request with JWT', async () => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		let errorOccurred = false;
 		const mockAuth = new MockAuthService();
 		const provider = new AINativeCloudProvider(mockAuth);

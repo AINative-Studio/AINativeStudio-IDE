@@ -16,6 +16,7 @@ import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskF
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { URI } from '../../../../../base/common/uri.js';
 
 suite('SkillParser Tests', () => {

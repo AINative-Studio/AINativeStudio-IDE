@@ -18,6 +18,7 @@ import { IEncryptionService, KnownStorageProvider } from '../../../../../platfor
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { OAuthProvider, OAuthResult, SessionManager, OAuthService } from '../../../../platform/ainativeCloud/common/ainativeCloudAuth.js';
 
 /**

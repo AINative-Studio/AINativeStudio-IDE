@@ -7,7 +7,7 @@ import assert from 'assert';
 import { timeout } from '../../../../../base/common/async.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
-import { State, StateType, UpdateType, IUpdate } from '../../common/update.js';
+import { StateType, IUpdate } from '../../common/update.js';
 
 suite('Update Service - Integration - Update Flow', () => {
 
@@ -38,6 +38,7 @@ suite('Update Service - Integration - Update Flow', () => {
 			await timeout(100); // Simulate download
 
 			// Download complete
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const update: IUpdate = {
 				version: '1.5.0',
 				productVersion: '1.5.0',

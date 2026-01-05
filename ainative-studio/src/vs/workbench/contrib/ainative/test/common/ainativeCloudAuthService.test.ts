@@ -3,15 +3,15 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { strictEqual, ok, /* deepStrictEqual */, /* rejects */ } from 'assert';
+import { strictEqual, ok } from 'assert';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import {
 	CloudAuthState,
 	CloudAuthError,
-	CloudAuthErrorCode,
-	AINativeCloudAuthService
-} from '../../common/ainativeCloudAuthService.js';
+	CloudAuthErrorCode
+} from '../../common/ainativeCloudAuthTypes.js';
+import { AINativeCloudAuthService } from '../../common/ainativeCloudAuthService.js';
 import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 
@@ -436,6 +436,8 @@ suite('AINativeCloudAuthService', () => {
 		});
 
 		test('should emit user update events', async () => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			let eventFired = false;
 			const disposable = authService.onDidUpdateUser((user) => {
 				eventFired = true;

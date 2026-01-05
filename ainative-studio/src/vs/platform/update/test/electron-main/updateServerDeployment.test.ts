@@ -146,6 +146,8 @@ suite('Update Server - Production Deployment Validation', () => {
 				assert.ok(addresses1.length > 0 && addresses2.length > 0, 'Both queries should succeed');
 
 				// Results should be consistent (same set of IPs)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const set1 = new Set(addresses1);
 				const set2 = new Set(addresses2);
 
@@ -633,6 +635,7 @@ suite('Update Server - Production Deployment Validation', () => {
 
 			try {
 				// Try HTTP connection
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const httpUrl = UPDATE_SERVER_URL.replace('https://', 'http://');
 				const redirects = await checkHttpRedirect('api.ainative.studio', '/api/update/darwin/stable/test');
 

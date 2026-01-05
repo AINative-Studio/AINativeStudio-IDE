@@ -292,6 +292,8 @@ suite('MarketplaceCommand', () => {
 			// Official skills should come first
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const firstOfficialIndex = result.skills.findIndex(s => s.source === 'official');
 			const lastOfficialIndex = result.skills.map(s => s.source).lastIndexOf('official');
 			const firstAnthropicIndex = result.skills.findIndex(s => s.source === 'anthropic');

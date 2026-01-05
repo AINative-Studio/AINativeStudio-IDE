@@ -160,6 +160,7 @@ suite('ZeroDBOAuthService', () => {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
 
 			assert.strictEqual(oauthService.isOAuthInProgress(), true);
