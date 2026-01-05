@@ -290,7 +290,9 @@ suite('MarketplaceCommand', () => {
 			const result = await command.browse();
 
 			// Official skills should come first
-			const firstOfficialIndex = result.skills.findIndex(s => s.source === 'official');
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const firstOfficialIndex = result.skills.findIndex(s => s.source === 'official');
 			const lastOfficialIndex = result.skills.map(s => s.source).lastIndexOf('official');
 			const firstAnthropicIndex = result.skills.findIndex(s => s.source === 'anthropic');
 			const firstCommunityIndex = result.skills.findIndex(s => s.source === 'community');

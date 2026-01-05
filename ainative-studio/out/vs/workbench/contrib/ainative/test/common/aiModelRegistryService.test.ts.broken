@@ -1,0 +1,529 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) AINative Studio. All rights reserved.
+ *  Licensed under the MIT License.
+ *--------------------------------------------------------------------------------------------*/
+
+import * as assert from 'assert';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
+import { TestStorageService } from '../../../../test/common/workbenchTestServices.js';
+import { AIModelRegistryService, IAIModelRegistryService } from '../../common/aiModelRegistryService.js';
+import { IAINativeCloudAuthService, CloudAuthState } from '../../common/ainativeCloudAuthTypes.js';
+import {
+	ModelFilters,
+	ModelCapability,
+	PricingTier,
+	ModelInvocationRequest,
+	ModelRegistryErrorCode
+} from '../../common/aiModelRegistryTypes.js';
+import { IUsageTrackingService } from '../../common/usageTrackingService.js';
+
+/**
+ * Mock cloud auth service for testing
+ */
+class MockCloudAuthService implements IAINativeCloudAuthService {
+	readonly _serviceBrand: undefined;
+	private _authenticated = false;
+	private _accessToken: string | null = null;
+
+	readonly onDidChangeAuthState = () => ({ dispose: () => { } }) as any;
+	readonly onDidUpdateUser = () => ({ dispose: () => { } }) as any;
+
+	async register() {
+		return { success: true };
+	}
+
+	async login(email: string, password: string) {
+		this._authenticated = true;
+		this._accessToken = 'test-token';
+		return {
+			success: true,
+			accessToken: 'test-token',
+			refreshToken: 'test-refresh',
+		};
+	}
+
+	async logout() {
+		this._authenticated = false;
+		this._accessToken = null;
+	}
+
+	async requestPasswordReset() {
+		return { success: true };
+	}
+
+	async confirmPasswordReset() {
+		return { success: true };
+	}
+
+	async changePassword() {
+		return { success: true };
+	}
+
+	async refreshToken() {
+		return 'new-test-token';
+	}
+
+	async validateToken() {
+		return { valid: true };
+	}
+
+	async getAccessToken() {
+		return this._accessToken;
+	}
+
+	getAccessTokenSync() {
+		return this._accessToken;
+	}
+
+	async getCurrentUser() {
+		return this._authenticated ? {
+			id: 'test-user',
+			email: 'test@example.com',
+			username: 'testuser',
+			role: 'user',
+		} : null;
+	}
+
+	getUser() {
+		return this._authenticated ? {
+			id: 'test-user',
+			email: 'test@example.com',
+			username: 'testuser',
+			role: 'user',
+		} : null;
+	}
+
+	isAuthenticated() {
+		return this._authenticated;
+	}
+
+	getAuthState() {
+		return this._authenticated ? CloudAuthState.Authenticated : CloudAuthState.Unauthenticated;
+	}
+
+	async resendEmailVerification() {
+		return { success: true };
+	}
+
+	async verifyEmail() {
+		return { success: true };
+	}
+
+	// Test helpers
+	setAuthenticated(value: boolean) {
+		this._authenticated = value;
+		this._accessToken = value ? 'test-token' : null;
+	}
+}
+
+/**
+ * Mock usage tracking service for testing
+ */
+class MockUsageTrackingService implements IUsageTrackingService {
+	readonly _serviceBrand: undefined;
+
+	readonly onDidUpdateUsage = () => ({ dispose: () => { } }) as any;
+	readonly onDidUpdateQuota = () => ({ dispose: () => { } }) as any;
+
+	async trackUsage() {
+		// No-op for testing
+	}
+
+	async getUsage() {
+		return {
+			totalCalls: 0,
+			totalTokens: 0,
+			inputTokens: 0,
+			outputTokens: 0,
+			totalCost: 0,
+			byModel: {},
+			periodStart: 0,
+			periodEnd: Date.now(),
+		};
+	}
+
+	async getQuotaStatus() {
+		return {
+			hasQuota: false,
+			totalLimit: 0,
+			used: 0,
+			remaining: 0,
+			exceeded: false,
+			warningThreshold: 0.8,
+			approaching: false,
+		};
+	}
+
+	async calculateCost() {
+		return {
+			inputCost: 0,
+			outputCost: 0,
+			totalCost: 0,
+		};
+	}
+
+	async syncWithCloud() {
+		// No-op for testing
+	}
+
+	async clearLocalUsage() {
+		// No-op for testing
+	}
+
+	reset() {
+		// No-op for testing
+	}
+}
+
+suite('AI Model Registry Service Tests', () => {
+	const disposables = ensureNoDisposablesAreLeakedInTestSuite();
+
+	let storageService: TestStorageService;
+	let cloudAuthService: MockCloudAuthService;
+	let usageTrackingService: MockUsageTrackingService;
+	let registryService: IAIModelRegistryService;
+
+	setup(() => {
+		storageService = new TestStorageService();
+		cloudAuthService = new MockCloudAuthService();
+		usageTrackingService = new MockUsageTrackingService();
+		registryService = disposables.add(new AIModelRegistryService(
+			cloudAuthService as any,
+			storageService,
+			usageTrackingService as any
+		));
+	});
+
+	suite('Model Listing', () => {
+		test('should list all models without filters', async () => {
+			const models = await registryService.listModels();
+
+			assert.ok(Array.isArray(models));
+			assert.ok(models.length > 0);
+			assert.ok(models[0].id);
+			assert.ok(models[0].name);
+			assert.ok(models[0].provider);
+		});
+
+		test('should filter models by provider', async () => {
+			const filters: ModelFilters = {
+				provider: 'anthropic'
+			};
+
+			const models = await registryService.listModels(filters);
+
+			assert.ok(models.every(m => m.provider === 'anthropic'));
+		});
+
+		test('should filter models by capability', async () => {
+			const filters: ModelFilters = {
+				capabilities: [ModelCapability.CodeGeneration]
+			};
+
+			const models = await registryService.listModels(filters);
+
+			assert.ok(models.every(m => m.capabilities.includes(ModelCapability.CodeGeneration)));
+		});
+
+		test('should filter models by pricing tier', async () => {
+			const filters: ModelFilters = {
+				pricingTier: PricingTier.PayAsYouGo
+			};
+
+			const models = await registryService.listModels(filters);
+
+			assert.ok(models.every(m => m.pricing.tier === PricingTier.PayAsYouGo));
+		});
+
+		test('should filter models by availability', async () => {
+			const filters: ModelFilters = {
+				availableOnly: true
+			};
+
+			const models = await registryService.listModels(filters);
+
+			assert.ok(models.every(m => m.available === true));
+		});
+
+		test('should filter models by search query', async () => {
+			const filters: ModelFilters = {
+				search: 'claude'
+			};
+
+			const models = await registryService.listModels(filters);
+
+			assert.ok(models.every(m =>
+				m.name.toLowerCase().includes('claude') ||
+				m.description.toLowerCase().includes('claude')
+			));
+		});
+
+		test('should filter models by tags', async () => {
+			const filters: ModelFilters = {
+				tags: ['code']
+			};
+
+			const models = await registryService.listModels(filters);
+
+			assert.ok(models.every(m => m.tags && m.tags.includes('code')));
+		});
+
+		test('should filter models by max price', async () => {
+			const filters: ModelFilters = {
+				maxPrice: 0.005
+			};
+
+			const models = await registryService.listModels(filters);
+
+			models.forEach(m => {
+				const avgCost = ((m.pricing.inputTokenCost ?? 0) + (m.pricing.outputTokenCost ?? 0)) / 2;
+				assert.ok(avgCost <= 0.005);
+			});
+		});
+
+		test('should filter models by minimum context length', async () => {
+			const filters: ModelFilters = {
+				minContextLength: 100000
+			};
+
+			const models = await registryService.listModels(filters);
+
+			assert.ok(models.every(m => m.maxContextLength && m.maxContextLength >= 100000));
+		});
+
+		test('should apply multiple filters simultaneously', async () => {
+			const filters: ModelFilters = {
+				provider: 'anthropic',
+				capabilities: [ModelCapability.CodeGeneration],
+				availableOnly: true
+			};
+
+			const models = await registryService.listModels(filters);
+
+			assert.ok(models.every(m =>
+				m.provider === 'anthropic' &&
+				m.capabilities.includes(ModelCapability.CodeGeneration) &&
+				m.available === true
+			));
+		});
+	});
+
+	suite('Model Retrieval', () => {
+		test('should get a specific model by ID', async () => {
+			const models = await registryService.listModels();
+			const firstModel = models[0];
+
+			const model = await registryService.getModel(firstModel.id);
+
+			assert.strictEqual(model.id, firstModel.id);
+			assert.strictEqual(model.name, firstModel.name);
+		});
+
+		test('should throw error for non-existent model', async () => {
+			await assert.rejects(
+				async () => await registryService.getModel('non-existent-model'),
+				(error: any) => {
+					assert.strictEqual(error.code, ModelRegistryErrorCode.ModelNotFound);
+					return true;
+				}
+			);
+		});
+	});
+
+	suite('Model Selection', () => {
+		test('should select a model for a project', async () => {
+			const models = await registryService.listModels();
+			const modelId = models[0].id;
+			const projectId = 'test-project';
+
+			await registryService.selectModel(modelId, projectId);
+
+			const selectedModel = await registryService.getSelectedModel(projectId);
+			assert.ok(selectedModel);
+			assert.strictEqual(selectedModel.id, modelId);
+		});
+
+		test('should select a model with custom parameters', async () => {
+			const models = await registryService.listModels();
+			const modelId = models[0].id;
+			const projectId = 'test-project-2';
+			const parameters = {
+				temperature: 0.5,
+				maxTokens: 2048
+			};
+
+			await registryService.selectModel(modelId, projectId, parameters);
+
+			const selectedModel = await registryService.getSelectedModel(projectId);
+			assert.ok(selectedModel);
+			assert.strictEqual(selectedModel.id, modelId);
+		});
+
+		test('should return null for project with no selection', async () => {
+			const selectedModel = await registryService.getSelectedModel('non-existent-project');
+			assert.strictEqual(selectedModel, null);
+		});
+
+		test('should throw error when selecting non-existent model', async () => {
+			await assert.rejects(
+				async () => await registryService.selectModel('non-existent-model', 'test-project'),
+				(error: any) => {
+					assert.strictEqual(error.code, ModelRegistryErrorCode.ModelNotFound);
+					return true;
+				}
+			);
+		});
+
+		test('should fire event when model selection changes', async () => {
+			const models = await registryService.listModels();
+			const modelId = models[0].id;
+			const projectId = 'test-project-3';
+
+			let eventFired = false;
+			registryService.onDidChangeModelSelection(() => {
+				eventFired = true;
+			});
+
+			await registryService.selectModel(modelId, projectId);
+
+			assert.strictEqual(eventFired, true);
+		});
+	});
+
+	suite('Model Invocation', () => {
+		test('should require authentication for invocation', async () => {
+			authService.setAuthenticated(false);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'test-model',
+				prompt: 'Hello, world!'
+			};
+
+			await assert.rejects(
+				async () => await registryService.invokeModel(request),
+				(error: any) => {
+					assert.strictEqual(error.code, ModelRegistryErrorCode.AuthenticationRequired);
+					return true;
+				}
+			);
+		});
+
+		test('should invoke model when authenticated', async () => {
+			authService.setAuthenticated(true);
+
+			// This test would need a mock fetch implementation to fully test
+			// For now, we verify the authentication check passes
+			assert.ok(authService.isAuthenticated());
+		});
+
+		test('should require authentication for streaming', async () => {
+			authService.setAuthenticated(false);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'test-model',
+				prompt: 'Hello, world!',
+				stream: true
+			};
+
+			await assert.rejects(
+				async () => await registryService.streamModel(request, () => { }),
+				(error: any) => {
+					assert.strictEqual(error.code, ModelRegistryErrorCode.AuthenticationRequired);
+					return true;
+				}
+			);
+		});
+	});
+
+	suite('Usage and Quota', () => {
+		test('should require authentication for usage stats', async () => {
+			authService.setAuthenticated(false);
+
+			await assert.rejects(
+				async () => await registryService.getUsageStats(),
+				(error: any) => {
+					assert.strictEqual(error.code, ModelRegistryErrorCode.AuthenticationRequired);
+					return true;
+				}
+			);
+		});
+
+		test('should require authentication for quota info', async () => {
+			authService.setAuthenticated(false);
+
+			await assert.rejects(
+				async () => await registryService.getQuota(),
+				(error: any) => {
+					assert.strictEqual(error.code, ModelRegistryErrorCode.AuthenticationRequired);
+					return true;
+				}
+			);
+		});
+	});
+
+	suite('Model Refresh', () => {
+		test('should refresh models', async () => {
+			let eventFired = false;
+			registryService.onDidUpdateModels(() => {
+				eventFired = true;
+			});
+
+			await registryService.refreshModels();
+
+			assert.strictEqual(eventFired, true);
+		});
+
+		test('should cache models for 5 minutes', async () => {
+			// First call should load models
+			const models1 = await registryService.listModels();
+
+			// Second call within cache duration should return cached models
+			const models2 = await registryService.listModels();
+
+			assert.strictEqual(models1.length, models2.length);
+		});
+	});
+
+	suite('Integration Tests', () => {
+		test('should handle complete workflow: list, select, invoke', async () => {
+			authService.setAuthenticated(true);
+
+			// List models
+			const models = await registryService.listModels({
+				capabilities: [ModelCapability.CodeGeneration]
+			});
+			assert.ok(models.length > 0);
+
+			// Select a model
+			const modelId = models[0].id;
+			const projectId = 'integration-test-project';
+			await registryService.selectModel(modelId, projectId, {
+				temperature: 0.3
+			});
+
+			// Verify selection
+			const selectedModel = await registryService.getSelectedModel(projectId);
+			assert.ok(selectedModel);
+			assert.strictEqual(selectedModel.id, modelId);
+		});
+
+		test('should handle model filtering and selection', async () => {
+			// Filter for Claude models
+			const claudeModels = await registryService.listModels({
+				search: 'claude',
+				availableOnly: true
+			});
+
+			assert.ok(claudeModels.length > 0);
+
+			// Select the first Claude model
+			const projectId = 'claude-test-project';
+			await registryService.selectModel(claudeModels[0].id, projectId);
+
+			// Verify it's selected
+			const selected = await registryService.getSelectedModel(projectId);
+			assert.ok(selected);
+			assert.ok(selected.name.toLowerCase().includes('claude'));
+		});
+	});
+});

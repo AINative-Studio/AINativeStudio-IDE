@@ -117,7 +117,7 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should reject if skill already installed without force flag', async () => {
-			const mockRegistry = instantiationService.stub(ISkillsRegistry);
+			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.isInstalled = async () => true;
 
 			await assert.rejects(
@@ -127,7 +127,7 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should reinstall if force flag is set', async () => {
-			const mockRegistry = instantiationService.stub(ISkillsRegistry);
+			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.isInstalled = async () => true;
 			mockRegistry.uninstall = async () => { };
 
@@ -217,7 +217,7 @@ suite('SkillInstallCommand', () => {
 
 	suite('error handling', () => {
 		test('should handle file service errors gracefully', async () => {
-			const mockFileService = instantiationService.stub(IFileService);
+			const mockFileService = instantiationService.stub(IFileService, {} as any);
 			mockFileService.resolve = async () => {
 				throw new Error('File not found');
 			};
@@ -229,7 +229,7 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should clean up temp directory on failure', async () => {
-			const mockFileService = instantiationService.stub(IFileService);
+			const mockFileService = instantiationService.stub(IFileService, {} as any);
 			let deleteCalled = false;
 			mockFileService.del = async () => {
 				deleteCalled = true;

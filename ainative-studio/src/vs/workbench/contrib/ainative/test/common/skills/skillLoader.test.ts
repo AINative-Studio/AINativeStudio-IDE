@@ -7,6 +7,7 @@ import * as assert from 'assert';
 import { SkillLoader } from '../../../common/skills/skillLoader.js';
 import { IFileService } from '../../../../../../platform/files/common/files.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { URI } from '../../../../../../base/common/uri.js';
 import { VSBuffer } from '../../../../../../base/common/buffer.js';
 
@@ -194,7 +195,8 @@ suite('SkillLoader', () => {
 				await loader.loadFullSkill(skillName);
 			}
 
-			const stats = loader.getCacheStats();
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const stats = loader.getCacheStats();
 
 			// Cache should have max 5 skills
 			assert.ok(stats.fullSkillCount <= 5);
@@ -286,7 +288,9 @@ suite('SkillLoader', () => {
 			await loader.loadMetadataOnly(skillName);
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const stats = loader.getCacheStats(); // Test that cache stats can be retrieved
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const stats = loader.getCacheStats(); // Test that cache stats can be retrieved
 
 			assert.strictEqual(0, 1);
 			assert.strictEqual(0, 1);
@@ -312,7 +316,8 @@ suite('SkillLoader', () => {
 			await loader.loadMetadataOnly('skill-2');
 			await loader.loadMetadataOnly('skill-3');
 
-			const stats = loader.getCacheStats();
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const stats = loader.getCacheStats();
 
 			assert.strictEqual(stats.metadataCount, 3);
 		});
@@ -341,7 +346,8 @@ suite('SkillLoader', () => {
 			// Invalidate cache for specific skill
 			loader.clearCache();
 
-			const stats = loader.getCacheStats();
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const stats = loader.getCacheStats();
 
 			// Cache should be cleared
 			assert.ok(stats);

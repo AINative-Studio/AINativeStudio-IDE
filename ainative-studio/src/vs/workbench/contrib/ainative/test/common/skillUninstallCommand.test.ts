@@ -133,7 +133,7 @@ suite('SkillUninstallCommand', () => {
 				input: async () => ({ result: '' }),
 				about: async () => {}
 			});
-			const mockRegistry = instantiationService.stub(ISkillsRegistry);
+			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			let uninstallCalled = false;
 			let uninstalledSkillName = '';
 
@@ -159,7 +159,7 @@ suite('SkillUninstallCommand', () => {
 				input: async () => ({ result: '' }),
 				about: async () => {}
 			});
-			const mockRegistry = instantiationService.stub(ISkillsRegistry);
+			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.uninstall = async () => {
 				throw new Error('Permission denied');
 			};
@@ -183,7 +183,7 @@ suite('SkillUninstallCommand', () => {
 				input: async () => ({ result: '' }),
 				about: async () => {}
 			});
-			const mockRegistry = instantiationService.stub(ISkillsRegistry);
+			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.get = async (skillName: string) => {
 				if (skillName === 'skill1' || skillName === 'skill2') {
 					return { ...mockSkill, name: skillName };
@@ -209,7 +209,7 @@ suite('SkillUninstallCommand', () => {
 				input: async () => ({ result: '' }),
 				about: async () => {}
 			});
-			const mockRegistry = instantiationService.stub(ISkillsRegistry);
+			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.get = async (skillName: string) => {
 				if (skillName === 'skill1') {
 					return { ...mockSkill, name: skillName };
@@ -241,7 +241,7 @@ suite('SkillUninstallCommand', () => {
 				return { confirmed: true };
 			};
 
-			const mockRegistry = instantiationService.stub(ISkillsRegistry);
+			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.get = async (skillName: string) => {
 				return { ...mockSkill, name: skillName };
 			};

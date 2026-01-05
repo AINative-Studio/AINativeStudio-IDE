@@ -1,0 +1,70 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.chat-welcome-view .chat-setup-view {
+
+	text-align: center;
+}
+
+.chat-welcome-view .chat-setup-view .chat-features-container {
+		display: flex;
+		justify-content: center;
+		text-align: initial;
+		border-radius: 2px;
+		border: 1px solid var(--vscode-chat-requestBorder);
+		background-color: var(--vscode-chat-requestBackground);
+	}
+
+.dialog-message-body .chat-setup-view p {
+		margin-top: 0;
+		margin-bottom: 0;
+	}
+
+.dialog-message-body .chat-setup-view p.setup-legal {
+		font-size: 12px;
+		color: var(--vscode-descriptionForeground);
+		margin-top: 2em;
+	}
+
+.dialog-message-body .chat-setup-view p.setup-settings {
+		font-size: 12px;
+		color: var(--vscode-descriptionForeground);
+		margin-top: 1em;
+	}
+
+.dialog-message-body .chat-setup-view p, .chat-welcome-view .chat-setup-view p {
+		width: 100%;
+	}
+
+.dialog-message-body .chat-setup-view .chat-feature-container, .chat-welcome-view .chat-setup-view .chat-feature-container {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 5px 10px 5px 10px;
+	}
+
+.dialog-message-body .chat-setup-view .chat-feature-container .codicon[class*='codicon-'], .chat-welcome-view .chat-setup-view .chat-feature-container .codicon[class*='codicon-'] {
+		font-size: 16px;
+	}
+
+.dialog-message-body .chat-setup-view .codicon[class*='codicon-'], .chat-welcome-view .chat-setup-view .codicon[class*='codicon-'] {
+		font-size: 13px;
+		line-height: 1.4em;
+		vertical-align: bottom;
+	}
+
+.dialog-message-body .chat-setup-view .button-container, .chat-welcome-view .chat-setup-view .button-container {
+		padding-top: 20px;
+	}
+
+/** Dropdown Button */
+
+.dialog-message-body .chat-setup-view .monaco-button-dropdown, .chat-welcome-view .chat-setup-view .monaco-button-dropdown {
+		width: 100%;
+	}
+
+.dialog-message-body .chat-setup-view .monaco-button-dropdown .monaco-text-button, .chat-welcome-view .chat-setup-view .monaco-button-dropdown .monaco-text-button {
+		width: 100%;
+	}

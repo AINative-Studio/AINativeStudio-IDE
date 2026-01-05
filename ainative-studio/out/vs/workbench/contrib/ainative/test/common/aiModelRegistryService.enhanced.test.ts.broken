@@ -1,0 +1,686 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) AINative Studio. All rights reserved.
+ *  Licensed under the MIT License.
+ *--------------------------------------------------------------------------------------------*/
+
+import { strictEqual, ok, rejects } from 'assert';
+import * as sinon from 'sinon';
+import { DisposableStore } from '../../../../../base/common/lifecycle.js';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
+import { TestStorageService } from '../../../../test/common/workbenchTestServices.js';
+import { AIModelRegistryService, IAIModelRegistryService } from '../../common/aiModelRegistryService.js';
+import { IAINativeCloudAuthService, CloudAuthState } from '../../common/ainativeCloudAuthTypes.js';
+import {
+	ModelFilters,
+	ModelCapability,
+	PricingTier,
+	ModelInvocationRequest,
+	ModelRegistryErrorCode,
+	AIModel,
+	ModelParameterType
+} from '../../common/aiModelRegistryTypes.js';
+import { IUsageTrackingService, AggregatedUsage, QuotaStatus } from '../../common/usageTrackingService.js';
+import { Emitter } from '../../../../../base/common/event.js';
+
+/**
+ * Mock cloud auth service for testing
+ */
+class MockCloudAuthService implements IAINativeCloudAuthService {
+	readonly _serviceBrand: undefined;
+	private _authenticated = false;
+	private _accessToken: string | null = null;
+	private readonly _onDidChangeAuthState = new Emitter<CloudAuthState>();
+	readonly onDidChangeAuthState = this._onDidChangeAuthState.event;
+	readonly onDidUpdateUser = () => ({ dispose: () => { } }) as any;
+
+	async register() {
+		return { success: true };
+	}
+
+	async login(email: string, password: string) {
+		this._authenticated = true;
+		this._accessToken = 'test-token';
+		return {
+			success: true,
+			accessToken: 'test-token',
+			refreshToken: 'test-refresh',
+		};
+	}
+
+	async logout() {
+		this._authenticated = false;
+		this._accessToken = null;
+		this._onDidChangeAuthState.fire(CloudAuthState.Unauthenticated);
+	}
+
+	async requestPasswordReset() {
+		return { success: true };
+	}
+
+	async confirmPasswordReset() {
+		return { success: true };
+	}
+
+	async changePassword() {
+		return { success: true };
+	}
+
+	async refreshToken() {
+		return 'new-test-token';
+	}
+
+	async validateToken() {
+		return { valid: true };
+	}
+
+	async getAccessToken() {
+		return this._accessToken;
+	}
+
+	getAccessTokenSync() {
+		return this._accessToken;
+	}
+
+	async getCurrentUser() {
+		return this._authenticated ? {
+			id: 'test-user',
+			email: 'test@example.com',
+			username: 'testuser',
+			role: 'user',
+		} : null;
+	}
+
+	getUser() {
+		return this._authenticated ? {
+			id: 'test-user',
+			email: 'test@example.com',
+			username: 'testuser',
+			role: 'user',
+		} : null;
+	}
+
+	isAuthenticated() {
+		return this._authenticated;
+	}
+
+	getAuthState() {
+		return this._authenticated ? CloudAuthState.Authenticated : CloudAuthState.Unauthenticated;
+	}
+
+	async resendEmailVerification() {
+		return { success: true };
+	}
+
+	async verifyEmail() {
+		return { success: true };
+	}
+
+	setAuthenticated(value: boolean) {
+		this._authenticated = value;
+		this._accessToken = value ? 'test-token' : null;
+		this._onDidChangeAuthState.fire(value ? CloudAuthState.Authenticated : CloudAuthState.Unauthenticated);
+	}
+}
+
+/**
+ * Mock usage tracking service for testing
+ */
+class MockUsageTrackingService implements IUsageTrackingService {
+	readonly _serviceBrand: undefined;
+
+	readonly onDidUpdateUsage = () => ({ dispose: () => { } }) as any;
+	readonly onDidUpdateQuota = () => ({ dispose: () => { } }) as any;
+
+	trackUsageCalled = false;
+	lastTrackedModel: string | null = null;
+	lastInputTokens = 0;
+	lastOutputTokens = 0;
+
+	async trackUsage(modelId: string, inputTokens: number, outputTokens: number) {
+		this.trackUsageCalled = true;
+		this.lastTrackedModel = modelId;
+		this.lastInputTokens = inputTokens;
+		this.lastOutputTokens = outputTokens;
+	}
+
+	async getUsage(): Promise<AggregatedUsage> {
+		return {
+			totalCalls: 0,
+			totalTokens: 0,
+			inputTokens: 0,
+			outputTokens: 0,
+			totalCost: 0,
+			byModel: {},
+			periodStart: 0,
+			periodEnd: Date.now(),
+		};
+	}
+
+	async getQuotaStatus(): Promise<QuotaStatus> {
+		return {
+			hasQuota: false,
+			totalLimit: 0,
+			used: 0,
+			remaining: 0,
+			exceeded: false,
+			warningThreshold: 0.8,
+			approaching: false,
+		};
+	}
+
+	async calculateCost() {
+		return {
+			inputCost: 0,
+			outputCost: 0,
+			totalCost: 0,
+		};
+	}
+
+	async syncWithCloud() {
+		// No-op for testing
+	}
+
+	async clearLocalUsage() {
+		// No-op for testing
+	}
+
+	reset() {
+		this.trackUsageCalled = false;
+		this.lastTrackedModel = null;
+		this.lastInputTokens = 0;
+		this.lastOutputTokens = 0;
+	}
+}
+
+/**
+ * Create mock AI models for testing
+ */
+function createMockModels(): AIModel[] {
+	return [
+		{
+			id: 'claude-3-sonnet',
+			name: 'Claude 3 Sonnet',
+			description: 'Anthropic Claude 3 Sonnet model for balanced performance',
+			provider: 'anthropic',
+			version: '3.0',
+			capabilities: [ModelCapability.TextGeneration, ModelCapability.CodeGeneration, ModelCapability.Chat],
+			pricing: {
+				tier: PricingTier.PayAsYouGo,
+				inputTokenCost: 0.003,
+				outputTokenCost: 0.015,
+				currency: 'USD'
+			},
+			parameters: [
+				{
+					name: 'temperature',
+					type: ModelParameterType.Number,
+					description: 'Controls randomness',
+					defaultValue: 1.0,
+					min: 0.0,
+					max: 2.0,
+					required: false
+				}
+			],
+			maxContextLength: 200000,
+			maxOutputLength: 4096,
+			createdAt: '2024-01-01T00:00:00Z',
+			updatedAt: '2024-01-15T00:00:00Z',
+			available: true,
+			tags: ['code', 'chat', 'general'],
+			metadata: {}
+		},
+		{
+			id: 'gpt-4-turbo',
+			name: 'GPT-4 Turbo',
+			description: 'OpenAI GPT-4 Turbo with vision',
+			provider: 'openai',
+			version: '4.0',
+			capabilities: [ModelCapability.TextGeneration, ModelCapability.Vision, ModelCapability.FunctionCalling],
+			pricing: {
+				tier: PricingTier.PayAsYouGo,
+				inputTokenCost: 0.01,
+				outputTokenCost: 0.03,
+				currency: 'USD'
+			},
+			parameters: [],
+			maxContextLength: 128000,
+			maxOutputLength: 4096,
+			available: true,
+			tags: ['vision', 'chat']
+		}
+	];
+}
+
+suite('AI Model Registry Service - Enhanced Tests', () => {
+	const disposables = new DisposableStore();
+	let storageService: TestStorageService;
+	let cloudAuthService: MockCloudAuthService;
+	let usageTrackingService: MockUsageTrackingService;
+	let registryService: AIModelRegistryService;
+	let fetchStub: sinon.SinonStub;
+
+	setup(() => {
+		storageService = new TestStorageService();
+		cloudAuthService = new MockCloudAuthService();
+		usageTrackingService = new MockUsageTrackingService();
+		registryService = disposables.add(new AIModelRegistryService(
+			cloudAuthService as any,
+			storageService,
+			usageTrackingService as any
+		));
+
+		// Stub global fetch
+		fetchStub = sinon.stub(globalThis, 'fetch' as any);
+	});
+
+	teardown(() => {
+		disposables.clear();
+		fetchStub.restore();
+		usageTrackingService.reset();
+	});
+
+	ensureNoDisposablesAreLeakedInTestSuite();
+
+	suite('Live API Integration (Mocked)', () => {
+		test('should fetch models from live API', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			const mockModels = createMockModels();
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ models: mockModels })
+			} as any);
+
+			await registryService.refreshModels();
+			const models = await registryService.listModels();
+
+			ok(models.length > 0);
+			strictEqual(models[0].id, 'claude-3-sonnet');
+		});
+
+		test('should handle API error gracefully', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: false,
+				status: 500,
+				statusText: 'Internal Server Error',
+				json: async () => ({ error: 'Server error' })
+			} as any);
+
+			await rejects(
+				async () => await registryService.refreshModels(),
+				(error: any) => error.code === ModelRegistryErrorCode.NetworkError
+			);
+		});
+
+		test('should handle network timeout', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.rejects(new Error('Network timeout'));
+
+			await rejects(
+				async () => await registryService.refreshModels(),
+				(error: any) => error.code === ModelRegistryErrorCode.NetworkError
+			);
+		});
+
+		test('should retry on transient failures', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			// First two calls fail, third succeeds
+			fetchStub.onCall(0).rejects(new Error('Network error'));
+			fetchStub.onCall(1).rejects(new Error('Network error'));
+			fetchStub.onCall(2).resolves({
+				ok: true,
+				json: async () => ({ models: createMockModels() })
+			} as any);
+
+			await registryService.refreshModels();
+			strictEqual(fetchStub.callCount, 3);
+		});
+
+		test('should handle rate limiting with retry after', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			const clock = sinon.useFakeTimers();
+			try {
+				fetchStub.onCall(0).resolves({
+					ok: false,
+					status: 429,
+					headers: {
+						get: (key: string) => key === 'Retry-After' ? '1' : null
+					},
+					json: async () => ({ error: 'Rate limited' })
+				} as any);
+
+				fetchStub.onCall(1).resolves({
+					ok: true,
+					json: async () => ({ models: createMockModels() })
+				} as any);
+
+				const promise = registryService.refreshModels();
+				await clock.tickAsync(1000);
+				await promise;
+
+				strictEqual(fetchStub.callCount, 2);
+			} finally {
+				clock.restore();
+			}
+		});
+	});
+
+	suite('Model Invocation Tracking', () => {
+		test('should track usage after successful invocation', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			const mockResponse = {
+				id: 'inv-123',
+				text: 'Hello, world!',
+				finish_reason: 'stop',
+				usage: {
+					input_tokens: 10,
+					output_tokens: 5,
+					total_tokens: 15
+				}
+			};
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => mockResponse
+			} as any);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'claude-3-sonnet',
+				prompt: 'Say hello'
+			};
+
+			await registryService.invokeModel(request);
+
+			ok(usageTrackingService.trackUsageCalled);
+			strictEqual(usageTrackingService.lastTrackedModel, 'claude-3-sonnet');
+			strictEqual(usageTrackingService.lastInputTokens, 10);
+			strictEqual(usageTrackingService.lastOutputTokens, 5);
+		});
+
+		test('should not track usage if invocation fails', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: false,
+				status: 400,
+				statusText: 'Bad Request',
+				json: async () => ({ error: 'Invalid prompt' })
+			} as any);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'claude-3-sonnet',
+				prompt: ''
+			};
+
+			await rejects(
+				async () => await registryService.invokeModel(request)
+			);
+
+			strictEqual(usageTrackingService.trackUsageCalled, false);
+		});
+
+		test('should track usage after streaming completes', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(new TextEncoder().encode('data: {"delta": "Hello"}\n'));
+					controller.enqueue(new TextEncoder().encode('data: {"delta": " world", "done": true, "usage": {"input_tokens": 10, "output_tokens": 5}}\n'));
+					controller.close();
+				}
+			});
+
+			fetchStub.resolves({
+				ok: true,
+				body: stream
+			} as any);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'claude-3-sonnet',
+				prompt: 'Say hello',
+				stream: true
+			};
+
+			await registryService.streamModel(request, () => { });
+
+			ok(usageTrackingService.trackUsageCalled);
+			strictEqual(usageTrackingService.lastInputTokens, 10);
+			strictEqual(usageTrackingService.lastOutputTokens, 5);
+		});
+	});
+
+	suite('Auth State Changes', () => {
+		test('should clear cache on logout', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ models: createMockModels() })
+			} as any);
+
+			await registryService.refreshModels();
+			const models1 = await registryService.listModels();
+			ok(models1.length > 0);
+
+			// Logout
+			await cloudAuthService.logout();
+
+			// Cache should be cleared
+			const models2 = await registryService.listModels();
+			strictEqual(models2.length, 0);
+		});
+
+		test('should return empty models when not authenticated', async () => {
+			cloudAuthService.setAuthenticated(false);
+
+			const models = await registryService.listModels();
+			strictEqual(models.length, 0);
+		});
+	});
+
+	suite('Error Handling', () => {
+		test('should handle 401 unauthorized', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: false,
+				status: 401,
+				statusText: 'Unauthorized',
+				json: async () => ({ error: 'Invalid token' })
+			} as any);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'test-model',
+				prompt: 'test'
+			};
+
+			await rejects(
+				async () => await registryService.invokeModel(request),
+				(error: any) => error.code === ModelRegistryErrorCode.AuthenticationRequired
+			);
+		});
+
+		test('should handle quota exceeded', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: false,
+				status: 402,
+				statusText: 'Payment Required',
+				json: async () => ({ error: 'Quota exceeded' })
+			} as any);
+
+			await rejects(
+				async () => await registryService.getUsageStats(),
+				(error: any) => error.code === ModelRegistryErrorCode.QuotaExceeded
+			);
+		});
+
+		test('should handle model not found', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: false,
+				status: 404,
+				statusText: 'Not Found',
+				json: async () => ({ error: 'Model not found' })
+			} as any);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'non-existent',
+				prompt: 'test'
+			};
+
+			await rejects(
+				async () => await registryService.invokeModel(request),
+				(error: any) => error.code === ModelRegistryErrorCode.ModelNotFound
+			);
+		});
+
+		test('should handle invalid parameters', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: false,
+				status: 400,
+				statusText: 'Bad Request',
+				json: async () => ({ error: 'Invalid parameters' })
+			} as any);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'test-model',
+				prompt: 'test',
+				parameters: { invalid: 'param' }
+			};
+
+			await rejects(
+				async () => await registryService.invokeModel(request),
+				(error: any) => error.code === ModelRegistryErrorCode.InvalidParameters
+			);
+		});
+	});
+
+	suite('Model Filtering', () => {
+		test('should filter by multiple criteria', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ models: createMockModels() })
+			} as any);
+
+			await registryService.refreshModels();
+
+			const filters: ModelFilters = {
+				provider: 'anthropic',
+				capabilities: [ModelCapability.CodeGeneration],
+				availableOnly: true,
+				maxPrice: 0.01
+			};
+
+			const models = await registryService.listModels(filters);
+
+			ok(models.length > 0);
+			ok(models.every(m => m.provider === 'anthropic'));
+			ok(models.every(m => m.capabilities.includes(ModelCapability.CodeGeneration)));
+			ok(models.every(m => m.available));
+		});
+
+		test('should search by name and description', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ models: createMockModels() })
+			} as any);
+
+			await registryService.refreshModels();
+
+			const models = await registryService.listModels({
+				search: 'claude'
+			});
+
+			ok(models.length > 0);
+			ok(models.some(m => m.name.toLowerCase().includes('claude')));
+		});
+
+		test('should filter by tags', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ models: createMockModels() })
+			} as any);
+
+			await registryService.refreshModels();
+
+			const models = await registryService.listModels({
+				tags: ['code']
+			});
+
+			ok(models.length > 0);
+			ok(models.every(m => m.tags && m.tags.includes('code')));
+		});
+
+		test('should filter by context length', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ models: createMockModels() })
+			} as any);
+
+			await registryService.refreshModels();
+
+			const models = await registryService.listModels({
+				minContextLength: 100000
+			});
+
+			ok(models.every(m => m.maxContextLength && m.maxContextLength >= 100000));
+		});
+	});
+
+	suite('Caching', () => {
+		test('should cache models for 5 minutes', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ models: createMockModels() })
+			} as any);
+
+			await registryService.listModels();
+			await registryService.listModels();
+
+			// Should only fetch once
+			strictEqual(fetchStub.callCount, 1);
+		});
+
+		test('should refresh cache after expiration', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			const clock = sinon.useFakeTimers();
+			try {
+				fetchStub.resolves({
+					ok: true,
+					json: async () => ({ models: createMockModels() })
+				} as any);
+
+				await registryService.listModels();
+				clock.tick(6 * 60 * 1000); // 6 minutes
+				await registryService.listModels();
+
+				// Should fetch twice
+				strictEqual(fetchStub.callCount, 2);
+			} finally {
+				clock.restore();
+			}
+		});
+	});
+});

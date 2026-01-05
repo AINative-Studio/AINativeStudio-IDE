@@ -73,12 +73,12 @@ class MockStorageService implements IStorageService {
 	}
 
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean {
-		const value = this.get(key, scope);
+		const value = this.get(key, scope, "Should match expected value");
 		return value !== undefined ? value === 'true' : !!fallbackValue;
 	}
 
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number {
-		const value = this.get(key, scope);
+		const value = this.get(key, scope, "Should match expected value");
 		return value !== undefined ? parseInt(value, 10) : (fallbackValue ?? 0);
 	}
 
@@ -172,7 +172,7 @@ suite('TokenService', () => {
 			await tokenService.storeTokens(accessToken, refreshToken, false);
 
 			// Check that stored value is encrypted
-			const rawStored = storageService.get('ainative.token.access', StorageScope.APPLICATION);
+			const rawStored = storageService.get('ainative.token.access', StorageScope.APPLICATION, "Should match expected value");
 			assert.ok(rawStored?.startsWith('encrypted_'), 'Stored token should be encrypted');
 		});
 

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { strictEqual, ok, rejects } from 'assert';
+import { strictEqual, ok, /* rejects */ } from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { AINativeSDKClient } from '../../common/ainativeSDKClient.js';
 import { CloudAuthError, CloudAuthErrorCode } from '../../common/ainativeCloudAuthTypes.js';

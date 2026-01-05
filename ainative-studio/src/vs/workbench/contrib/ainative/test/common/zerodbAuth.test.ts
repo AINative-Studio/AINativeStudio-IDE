@@ -79,12 +79,12 @@ class MockStorageService implements IStorageService {
 	}
 
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean {
-		const value = this.get(key, scope);
+		const value = this.get(key, scope, "Should match expected value");
 		return value !== undefined ? value === 'true' : !!fallbackValue;
 	}
 
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number {
-		const value = this.get(key, scope);
+		const value = this.get(key, scope, "Should match expected value");
 		return value !== undefined ? parseInt(value, 10) : (fallbackValue ?? 0);
 	}
 
@@ -293,7 +293,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 			await authService.login('test@example.com', 'password123');
 
 			// Check that tokens are stored encrypted
-			const storedAccessToken = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION);
+			const storedAccessToken = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION, "Should match expected value");
 			assert.ok(storedAccessToken?.startsWith('encrypted_'));
 
 			// Verify tokens can be decrypted
@@ -333,7 +333,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			const result = await authService.login('test@example.com', 'password123');
 
-			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
 			assert.ok(result.error);
 		});
 
@@ -344,7 +344,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			const result = await authService.login('test@example.com', 'password123');
 
-			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
 			assert.ok(result.error);
 			assert.strictEqual(result.error?.code, CloudAuthErrorCode.RateLimitExceeded);
 		});
@@ -404,7 +404,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 				password: 'SecurePass123'
 			});
 
-			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
 			assert.ok(result.error);
 			assert.ok(result.error?.message.includes('email'));
 		});
@@ -416,7 +416,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 				password: 'weak'
 			});
 
-			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
 			assert.ok(result.error);
 			assert.strictEqual(result.error?.code, CloudAuthErrorCode.WeakPassword);
 		});
@@ -432,7 +432,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 				password: 'SecurePass123'
 			});
 
-			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
 			assert.ok(result.error);
 			assert.strictEqual(result.error?.code, CloudAuthErrorCode.EmailAlreadyExists);
 		});
@@ -487,7 +487,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			await authService.login('test@example.com', 'password123');
 
-			const storedToken = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION);
+			const storedToken = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION, "Should match expected value");
 			assert.ok(storedToken?.startsWith('encrypted_'), 'Stored token should be encrypted');
 			assert.ok(!storedToken?.includes('eyJ'), 'Stored token should not contain JWT prefix'); // Should not contain JWT prefix
 		});
@@ -722,7 +722,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			await authService.logout();
 
-			const token = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION);
+			const token = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION, "Should match expected value");
 			assert.strictEqual(token, undefined, 'Access token should be removed from storage after logout');
 		});
 
@@ -790,7 +790,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 			// Don't set a mock response to simulate network failure
 			const result = await authService.login('test@example.com', 'password123');
 
-			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
 			assert.ok(result.error);
 		});
 
@@ -801,8 +801,8 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			const result = await authService.login('test@example.com', 'wrongpass');
 
-			assert.strictEqual(result.success, false);
-			assert.strictEqual(result.error?.code, CloudAuthErrorCode.InvalidCredentials);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
+			assert.strictEqual(result.error?.code, CloudAuthErrorCode.InvalidCredentials, 'Error code should be InvalidCredentials');
 		});
 
 		test('should handle 403 Forbidden responses', async () => {
@@ -812,7 +812,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			const result = await authService.login('test@example.com', 'password123');
 
-			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
 			assert.ok(result.error);
 		});
 
@@ -823,7 +823,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			const result = await authService.login('test@example.com', 'wrongpass');
 
-			assert.strictEqual(result.success, false);
+			assert.strictEqual(result.success, false, 'Login should fail with invalid credentials');
 			assert.ok(result.error?.message);
 			assert.ok(result.error?.message.length > 0);
 		});
@@ -861,7 +861,7 @@ suite('ZeroDB Authentication - Core Authentication Flows', () => {
 
 			// Check all stored values
 			const allKeys = storageService.keys(StorageScope.APPLICATION, StorageTarget.MACHINE);
-			const allValues = allKeys.map(k => storageService.get(k, StorageScope.APPLICATION));
+			const allValues = allKeys.map(k => storageService.get(k, StorageScope.APPLICATION), "Should match expected value", "Should match expected value");
 
 			// No value should contain the plain password
 			const containsPassword = allValues.some(v => v?.includes('MySecretPassword123'));

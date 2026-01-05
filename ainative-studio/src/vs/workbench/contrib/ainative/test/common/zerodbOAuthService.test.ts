@@ -110,7 +110,8 @@ suite('ZeroDBOAuthService', () => {
 			assert.ok(result2.state.length > 0);
 		});
 
-		test('should generate valid authorization URL for Google', async () => {			const result = await oauthService.initiateOAuthFlow(OAuthProvider.Google);
+		test('should generate valid authorization URL for Google', async () => {			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.Google);
 
 			assert.ok(result.authUrl.startsWith('https://accounts.google.com/o/oauth2/v2/auth'));
 			assert.ok(result.authUrl.includes('client_id='));
@@ -120,7 +121,8 @@ suite('ZeroDBOAuthService', () => {
 			assert.ok(result.authUrl.includes('scope='));
 		});
 
-		test('should generate valid authorization URL for GitHub', async () => {			const result = await oauthService.initiateOAuthFlow(OAuthProvider.GitHub);
+		test('should generate valid authorization URL for GitHub', async () => {			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.GitHub);
 
 			assert.ok(result.authUrl.startsWith('https://github.com/login/oauth/authorize'));
 			assert.ok(result.authUrl.includes('client_id='));
@@ -129,7 +131,8 @@ suite('ZeroDBOAuthService', () => {
 			assert.ok(result.authUrl.includes(`state=${result.state}`));
 		});
 
-		test('should generate valid authorization URL for AINative', async () => {			const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
+		test('should generate valid authorization URL for AINative', async () => {			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
 
 			assert.ok(result.authUrl.includes('/v1/auth/oauth/authorize'));
 			assert.ok(result.authUrl.includes('client_id='));
@@ -138,13 +141,15 @@ suite('ZeroDBOAuthService', () => {
 			assert.ok(result.authUrl.includes(`state=${result.state}`));
 		});
 
-		test('should include PKCE parameters for Google', async () => {			const result = await oauthService.initiateOAuthFlow(OAuthProvider.Google);
+		test('should include PKCE parameters for Google', async () => {			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.Google);
 
 			// Google supports PKCE
 			assert.ok(result.authUrl.includes('code_challenge=') || true); // May not have crypto.subtle in test env
 		});
 
-		test('should NOT include PKCE parameters for GitHub', async () => {			const result = await oauthService.initiateOAuthFlow(OAuthProvider.GitHub);
+		test('should NOT include PKCE parameters for GitHub', async () => {			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.GitHub);
 
 			// GitHub OAuth Apps don't support PKCE
 			assert.ok(!result.authUrl.includes('code_challenge='));
@@ -153,7 +158,9 @@ suite('ZeroDBOAuthService', () => {
 
 		test('should store OAuth state after initiation', async () => {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
 
 			assert.strictEqual(oauthService.isOAuthInProgress(), true);
 		});
@@ -165,7 +172,8 @@ suite('ZeroDBOAuthService', () => {
 			oauthService.onDidInitiateOAuth((state) => {
 				eventFired = true;
 				eventState = state.state;
-			});			const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
+			});			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
 
 			assert.strictEqual(eventFired, true);
 			assert.strictEqual(eventState, result.state);
@@ -332,7 +340,8 @@ suite('ZeroDBOAuthService', () => {
 			const states = new Set<string>();
 			const iterations = 100;
 
-			for (let i = 0; i < iterations; i++) {				const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
+			for (let i = 0; i < iterations; i++) {				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
 				states.add(result.state);
 			}
 
@@ -340,7 +349,8 @@ suite('ZeroDBOAuthService', () => {
 			assert.strictEqual(states.size, iterations);
 		});
 
-		test('state token should have sufficient length', async () => {			const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
+		test('state token should have sufficient length', async () => {			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
 
 			// State should be at least 32 characters (16 bytes in hex)
 			assert.ok(result.state.length >= 32);
@@ -389,7 +399,8 @@ suite('ZeroDBOAuthService', () => {
 	});
 
 	suite('PKCE Implementation', () => {
-		test('should include PKCE for providers that support it', async () => {			const result = await oauthService.initiateOAuthFlow(OAuthProvider.Google);
+		test('should include PKCE for providers that support it', async () => {			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.Google);
 
 			// Check if URL contains PKCE parameters (if crypto.subtle is available)
 			const hasPKCE = result.authUrl.includes('code_challenge=');
@@ -401,7 +412,8 @@ suite('ZeroDBOAuthService', () => {
 			}
 		});
 
-		test('should not include PKCE for providers that do not support it', async () => {			const result = await oauthService.initiateOAuthFlow(OAuthProvider.GitHub);
+		test('should not include PKCE for providers that do not support it', async () => {			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const result = await oauthService.initiateOAuthFlow(OAuthProvider.GitHub);
 
 			assert.ok(!result.authUrl.includes('code_challenge='));
 			assert.ok(!result.authUrl.includes('code_challenge_method='));

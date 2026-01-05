@@ -19,6 +19,7 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../../pla
 import { IEncryptionService, KnownStorageProvider } from '../../../../../platform/encryption/common/encryptionService.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Emitter } from '../../../../../base/common/event.js';
 
 /**
