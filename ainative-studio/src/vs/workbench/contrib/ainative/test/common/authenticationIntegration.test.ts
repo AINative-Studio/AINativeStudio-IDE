@@ -12,12 +12,14 @@ import {
 	OAuthErrorCode,
 	OAuthCallbackParams,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	OAuthResult
 } from '../../common/zerodbOAuthService.js';
 import { TokenService, ITokenService } from '../../common/tokenService.js';
 import { SessionManager, ISessionManager, SessionState } from '../../common/sessionManager.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { IEncryptionService, KnownStorageProvider } from '../../../../../platform/encryption/common/encryptionService.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -677,6 +679,7 @@ suite('Authentication Integration Tests - Issue #77', () => {
 
 			await tokenService.storeTokens(accessToken, refreshToken, true);
 
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			// Simulate page reload with new session manager
 			const newSessionManager = disposables.add(new SessionManager(tokenService, logService));
 			await newSessionManager.initialize();
@@ -912,6 +915,7 @@ suite('Authentication Integration Tests - Issue #77', () => {
 
 			assert.ok(googleConfig.authorizationEndpoint.startsWith('https://'), 'Google should use HTTPS');
 			assert.ok(googleConfig.tokenEndpoint.startsWith('https://'), 'Google token endpoint should use HTTPS');
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			assert.ok(githubConfig.authorizationEndpoint.startsWith('https://'), 'GitHub should use HTTPS');
 			assert.ok(ainativeConfig.authorizationEndpoint.startsWith('https://'), 'AINative should use HTTPS');
 		});

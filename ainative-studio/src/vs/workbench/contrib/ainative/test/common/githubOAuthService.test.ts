@@ -121,6 +121,7 @@ suite('GitHubOAuthService', () => {
 	suite('handleCallback', () => {
 		test('should validate state token', async () => {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const { state } = await service.initiateOAuthFlow();
 
 			await assert.rejects(

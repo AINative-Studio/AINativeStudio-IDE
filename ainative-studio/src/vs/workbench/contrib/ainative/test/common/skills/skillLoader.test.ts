@@ -285,6 +285,7 @@ suite('SkillLoader', () => {
 			await loader.loadMetadataOnly(skillName);
 
 			// Second call - cache hit
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			await loader.loadMetadataOnly(skillName);
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars

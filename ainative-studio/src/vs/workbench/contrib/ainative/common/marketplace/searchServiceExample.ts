@@ -18,6 +18,7 @@ import { SearchFilters } from './searchTypes.js';
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function searchAllMarketplaces(searchService: ISkillSearchService) {
 	console.log('=== Example 1: Search All Marketplaces ===');
 
@@ -37,6 +38,7 @@ async function searchAllMarketplaces(searchService: ISkillSearchService) {
 
 /**
  * Example 2: Search with filters
+ // eslint-disable-next-line @typescript-eslint/no-unused-vars
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -60,6 +62,7 @@ async function searchWithFilters(searchService: ISkillSearchService) {
 	});
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 /**
  * Example 3: Sort by different criteria
  */
@@ -87,6 +90,7 @@ async function searchWithDifferentSorts(searchService: ISkillSearchService) {
 	const byDate = await searchService.search('workflow', { sortBy: 'date' });
 	console.log('\nTop 3 by Date (newest):');
 	byDate.slice(0, 3).forEach(r => console.log(`- ${r.name} (updated: ${r.updatedAt})`));
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 }
 
 /**
@@ -110,6 +114,7 @@ async function searchSpecificMarketplaces(searchService: ISkillSearchService) {
 	console.log(`Community marketplace: ${communityResults.length} results`);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 /**
  * Example 5: Empty query (returns all skills)
  */
@@ -127,6 +132,7 @@ async function getAllSkills(searchService: ISkillSearchService) {
 		console.log(`Sources searched: ${stats.sourcesSearched.join(', ')}`);
 		console.log(`Execution time: ${stats.executionTime}ms`);
 	}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 }
 
 /**

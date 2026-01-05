@@ -7,10 +7,13 @@ import * as assert from 'assert';
 import * as path from 'path';
 import { SkillLoader } from '../../common/skills/skillLoader.js';
 import { SkillMetadata, SkillResource } from '../../common/skills/skillLoaderTypes.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { FileService } from '../../../../../platform/files/common/fileService.js';
 import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskFileSystemProvider.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Schemas } from '../../../../../base/common/network.js';
 
 suite('SkillLoader Tests', () => {

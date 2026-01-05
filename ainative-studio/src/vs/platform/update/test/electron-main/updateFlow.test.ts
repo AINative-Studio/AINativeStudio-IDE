@@ -7,6 +7,8 @@ import assert from 'assert';
 import { timeout } from '../../../../../base/common/async.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { StateType, IUpdate } from '../../common/update.js';
 
 suite('Update Service - Integration - Update Flow', () => {
@@ -36,6 +38,8 @@ suite('Update Service - Integration - Update Flow', () => {
 			states.push(StateType.Downloading);
 
 			await timeout(100); // Simulate download
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 			// Download complete
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars

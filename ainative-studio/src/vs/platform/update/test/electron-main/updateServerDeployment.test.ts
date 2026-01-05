@@ -147,6 +147,7 @@ suite('Update Server - Production Deployment Validation', () => {
 
 				// Results should be consistent (same set of IPs)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const set1 = new Set(addresses1);
 				const set2 = new Set(addresses2);
@@ -632,6 +633,8 @@ suite('Update Server - Production Deployment Validation', () => {
 
 		test('should only accept HTTPS connections', async function () {
 			this.timeout(TEST_TIMEOUT);
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 			try {
 				// Try HTTP connection

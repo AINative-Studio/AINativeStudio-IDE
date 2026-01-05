@@ -509,6 +509,7 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 			return;
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		// For npm/github, we could potentially check, but for now skip
 		// The actual check happens after we download and parse the skill
 	}

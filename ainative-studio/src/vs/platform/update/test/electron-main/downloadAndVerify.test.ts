@@ -102,6 +102,7 @@ suite('Update Service - Integration - Download and Verify', () => {
 
 		test('should download and track progress', async () => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const url = 'http://example.com/update.zip';
 			const destPath = path.join(testDir, 'update.zip');
@@ -274,6 +275,7 @@ suite('Update Service - Integration - Download and Verify', () => {
 			fs.writeFileSync(destPath, partialBuffer);
 
 			// Verify partial download exists
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			assert.ok(fs.existsSync(destPath), 'Partial download should exist');
 
 			// Resume from 30%
