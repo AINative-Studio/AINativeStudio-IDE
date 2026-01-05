@@ -20,16 +20,26 @@
   ],
   "author": "AINative Studio",
   "license": "MIT",
+  "homepage": "https://ainative.studio/skills/testing-patterns",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ainative/skills.git",
-    "directory": "testing-patterns"
+    "url": "https://github.com/AINative-Studio/ainative-skills",
+    "directory": "skills/testing-patterns"
+  },
+  "bugs": {
+    "url": "https://github.com/AINative-Studio/ainative-skills/issues"
   },
   "files": [
     "SKILL.md",
     "README.md",
     "references/"
   ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "ainative": {
     "skillType": "testing",
     "framework": ["fastapi", "react"],

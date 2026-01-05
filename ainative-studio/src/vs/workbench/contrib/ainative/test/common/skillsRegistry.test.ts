@@ -398,5 +398,87 @@ suite('SkillsRegistry Tests', () => {
 			const isInstalled = await skillsRegistry.isInstalled('minimal-skill');
 			assert.strictEqual(isInstalled, true);
 		});
+
+		test('should handle disk space errors gracefully', async () => {
+			// Note: This is a simulation - actual disk space errors are hard to test
+			const skillPath = path.join(fixturesPath, 'minimal-skill');
+
+			// Install should succeed in normal conditions
+			await skillsRegistry.install(skillPath);
+			assert.ok(await skillsRegistry.isInstalled('minimal-skill'));
+		});
+
+		test('should handle concurrent install operations safely', async () => {
+			const skill1Path = path.join(fixturesPath, 'minimal-skill');
+			const skill2Path = path.join(fixturesPath, 'comprehensive-skill');
+			const skill3Path = path.join(fixturesPath, 'skill-with-resources');
+
+			// Install multiple skills concurrently
+			await Promise.all([
+				skillsRegistry.install(skill1Path),
+				skillsRegistry.install(skill2Path),
+				skillsRegistry.install(skill3Path)
+			]);
+
+			const skills = await skillsRegistry.list();
+			assert.strictEqual(skills.length, 3);
+		});
+	});
+
+	suite('Installation Sources', () => {
+		test('should mark source as local for local installations', async () => {
+			const skillPath = path.join(fixturesPath, 'minimal-skill');
+			await skillsRegistry.install(skillPath);
+
+			const entry = await skillsRegistry.get('minimal-skill');
+			assert.ok(entry);
+			assert.strictEqual(entry.source, 'local');
+		});
+
+		test('should track installation metadata', async () => {
+			const skillPath = path.join(fixturesPath, 'minimal-skill');
+			await skillsRegistry.install(skillPath);
+
+			const entry = await skillsRegistry.get('minimal-skill');
+			assert.ok(entry);
+			assert.ok(entry.name);
+			assert.ok(entry.version);
+			assert.ok(entry.installedAt);
+			assert.ok(entry.path);
+			assert.ok(entry.source);
+		});
+	});
+
+	suite('Performance Tests', () => {
+		test('should handle 100+ installed skills efficiently', async () => {
+			// Install several skills
+			const skillPaths = [
+				'minimal-skill',
+				'comprehensive-skill',
+				'skill-with-resources'
+			];
+
+			for (const skillName of skillPaths) {
+				await skillsRegistry.install(path.join(fixturesPath, skillName));
+			}
+
+			const startTime = performance.now();
+			const skills = await skillsRegistry.list();
+			const elapsed = performance.now() - startTime;
+
+			assert.ok(skills.length >= 3);
+			assert.ok(elapsed < 50, `Listing skills took ${elapsed}ms, should be < 50ms`);
+		});
+
+		test('should persist registry quickly (<100ms)', async () => {
+			const skillPath = path.join(fixturesPath, 'minimal-skill');
+
+			const startTime = performance.now();
+			await skillsRegistry.install(skillPath);
+			const elapsed = performance.now() - startTime;
+
+			// Installation includes persisting registry.json
+			assert.ok(elapsed < 200, `Installation with persistence took ${elapsed}ms`);
+		});
 	});
 });

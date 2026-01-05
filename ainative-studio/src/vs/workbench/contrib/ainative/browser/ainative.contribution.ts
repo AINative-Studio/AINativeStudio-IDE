@@ -26,7 +26,7 @@ import './autocompleteService.js'
 import './voidSettingsPane.js'
 
 // register css
-import './media/void.css'
+import './media/ainative.css'
 
 // update (frontend part, also see platform/)
 import './voidUpdateActions.js'
@@ -95,3 +95,21 @@ import './githubOAuthUrlHandler.js'
 
 // Skills configuration service
 import '../common/skills/skillsModule.js'
+
+// AI Model Registry service
+import '../common/aiModelRegistryService.js'
+
+// AINative Cloud Authentication service
+import '../common/ainativeCloudAuthService.js'
+
+// Usage Tracking service
+import '../common/usageTrackingService.js'
+
+// AINative Auth service
+import '../common/ainativeAuthService.js'
+
+// AINative Cloud Auth service
+import '../common/ainativeCloudAuthService.js'
+
+// AINative Cloud Auth UI and commands
+import './ainativeAuthActions.js'

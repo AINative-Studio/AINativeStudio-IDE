@@ -3,8 +3,8 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { IFileService } from '../../../../platform/files/common/files.js';
-import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
+import { IFileService } from '../../../../../platform/files/common/files.js';
+import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { ISkillConfigService } from './skillConfigServiceTypes.js';
 import { SkillsConfig, ProjectMetadata, MCPConfig, ProjectDetectionResult, SkillRecommendation } from './skillConfigTypes.js';

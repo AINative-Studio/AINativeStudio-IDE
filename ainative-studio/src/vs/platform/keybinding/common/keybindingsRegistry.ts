@@ -65,7 +65,8 @@ export const enum KeybindingWeight {
 	WorkbenchContrib = 200,
 	BuiltinExtension = 300,
 	ExternalExtension = 400,
-	VoidExtension = 605, // Void -  must trump any external extension
+	AINativeExtension = 605, // AINative Studio - must trump any external extension
+	VoidExtension = 605, // Legacy alias for backward compatibility
 }
 
 export interface ICommandAndKeybindingRule extends IKeybindingRule {

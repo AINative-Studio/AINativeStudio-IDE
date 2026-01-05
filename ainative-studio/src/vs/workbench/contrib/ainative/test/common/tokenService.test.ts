@@ -45,10 +45,21 @@ class MockStorageService implements IStorageService {
 	readonly _serviceBrand: undefined;
 	private storage = new Map<string, string>();
 
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		const value = this.storage.get(key);
+		if (value === undefined) { return fallbackValue; }
+		try { return JSON.parse(value) as T; } catch { return fallbackValue; }
+	}
+
+	storeAll(): void { }
+	optimize(): Promise<void> { return Promise.resolve(); }
+
 	onDidChangeValue = () => ({ dispose: () => { } }) as any;
 	onDidChangeTarget = () => ({ dispose: () => { } }) as any;
 	onWillSaveState = () => ({ dispose: () => { } }) as any;
 
+	get(key: string, scope: StorageScope, fallbackValue: string): string;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 		return this.storage.get(this._makeKey(key, scope)) ?? fallbackValue;
 	}
@@ -85,6 +96,7 @@ class MockStorageService implements IStorageService {
 	migrate(): Promise<void> { return Promise.resolve(); }
 	isNew(scope: StorageScope): boolean { return false; }
 	flush(): Promise<void> { return Promise.resolve(); }
+	log(): void { }
 	switch(): Promise<void> { return Promise.resolve(); }
 	hasScope(): boolean { return true; }
 

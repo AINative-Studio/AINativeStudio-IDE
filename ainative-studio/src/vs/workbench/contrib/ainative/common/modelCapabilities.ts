@@ -3,7 +3,7 @@
  *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
  *--------------------------------------------------------------------------------------*/
 
-import { FeatureName, ModelSelectionOptions, OverridesOfModel, ProviderName } from './voidSettingsTypes.js';
+import { FeatureName, ModelSelectionOptions, OverridesOfModel, ProviderName } from './ainativeSettingsTypes.js';
 
 
 

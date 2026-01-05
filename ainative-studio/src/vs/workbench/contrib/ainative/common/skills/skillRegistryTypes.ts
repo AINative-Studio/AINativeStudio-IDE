@@ -76,4 +76,45 @@ export interface ISkillsRegistry {
 	 * @returns True if skill is installed
 	 */
 	isInstalled(skillName: string): Promise<boolean>;
+
+	/**
+	 * Refresh skills from a directory (e.g., .claude/skills/)
+	 * Used for syncing skills when .claude is symlinked
+	 * @param skillsSourceDir - Directory containing skill folders
+	 * @returns Summary of changes (updated, new, removed skills)
+	 */
+	refresh(skillsSourceDir: string): Promise<SkillRefreshResult>;
+
+	/**
+	 * Clear the registry cache to force reload
+	 */
+	clearCache(): void;
+}
+
+/**
+ * Result of refreshing skills from a source directory
+ */
+export interface SkillRefreshResult {
+	/** Skills that were updated (version changed) */
+	updated: SkillChange[];
+	/** Skills that are newly added */
+	new: SkillChange[];
+	/** Skills that were removed */
+	removed: SkillChange[];
+	/** Skills that were unchanged */
+	unchanged: string[];
+	/** Total number of skills in registry after refresh */
+	total: number;
+}
+
+/**
+ * Represents a change to a skill
+ */
+export interface SkillChange {
+	/** Skill name */
+	name: string;
+	/** Old version (for updates) or null (for new skills) */
+	oldVersion: string | null;
+	/** New version (for updates and new skills) or null (for removed skills) */
+	newVersion: string | null;
 }

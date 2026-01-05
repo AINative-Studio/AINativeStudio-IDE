@@ -8,10 +8,11 @@ import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { registerSingleton, InstantiationType } from '../../../../../platform/instantiation/common/extensions.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
-import { ISkillsRegistry, RegistryEntry, RegistryFile } from './skillRegistryTypes.js';
+import { ISkillsRegistry, RegistryEntry, RegistryFile, SkillRefreshResult, SkillChange } from './skillRegistryTypes.js';
 import { ISkillParser } from './skillParserTypes.js';
 import { VSBuffer } from '../../../../../base/common/buffer.js';
 import { joinPath } from '../../../../../base/common/resources.js';
+import { basename } from '../../../../../base/common/path.js';
 
 /**
  * Skills Registry Service Implementation
@@ -129,6 +130,113 @@ class SkillsRegistry extends Disposable implements ISkillsRegistry {
 	async isInstalled(skillName: string): Promise<boolean> {
 		const registry = await this.loadRegistry();
 		return registry.has(skillName);
+	}
+
+	/**
+	 * Refresh skills from a source directory (e.g., .claude/skills/)
+	 * Scans the directory for skills and updates the registry
+	 */
+	async refresh(skillsSourceDir: string): Promise<SkillRefreshResult> {
+		const sourceUri = URI.file(skillsSourceDir);
+
+		// Load current registry
+		const currentRegistry = await this.loadRegistry();
+		const currentSkills = new Map(currentRegistry);
+
+		// Scan source directory for skills
+		const newRegistry = new Map<string, RegistryEntry>();
+		const updated: SkillChange[] = [];
+		const newSkills: SkillChange[] = [];
+		const unchanged: string[] = [];
+
+		try {
+			// Read source directory
+			const dirStat = await this.fileService.resolve(sourceUri);
+
+			if (!dirStat || !dirStat.children) {
+				throw new Error(`Skills source directory not found: ${skillsSourceDir}`);
+			}
+
+			// Process each subdirectory as a potential skill
+			for (const child of dirStat.children) {
+				if (!child.isDirectory) {
+					continue;
+				}
+
+				const skillName = basename(child.resource.fsPath);
+				const skillFileUri = joinPath(child.resource, 'SKILL.md');
+
+				try {
+					// Try to parse skill file
+					const skill = await this.skillParser.parseSkillFile(skillFileUri.fsPath);
+					const version = skill.metadata.version || '1.0.0';
+
+					// Check if skill existed before
+					const existingEntry = currentSkills.get(skillName);
+
+					if (existingEntry) {
+						// Skill exists - check if version changed
+						if (existingEntry.version !== version) {
+							updated.push({
+								name: skillName,
+								oldVersion: existingEntry.version,
+								newVersion: version
+							});
+						} else {
+							unchanged.push(skillName);
+						}
+						currentSkills.delete(skillName);
+					} else {
+						// New skill
+						newSkills.push({
+							name: skillName,
+							oldVersion: null,
+							newVersion: version
+						});
+					}
+
+					// Add to new registry
+					newRegistry.set(skillName, {
+						name: skillName,
+						version,
+						installedAt: existingEntry?.installedAt || Date.now(),
+						source: 'local',
+						path: child.resource.fsPath
+					});
+				} catch (error) {
+					// Skip invalid skills
+					console.warn(`Failed to parse skill ${skillName}:`, error);
+				}
+			}
+
+			// Remaining skills in currentSkills were removed
+			const removed: SkillChange[] = Array.from(currentSkills.values()).map(entry => ({
+				name: entry.name,
+				oldVersion: entry.version,
+				newVersion: null
+			}));
+
+			// Save updated registry
+			await this.saveRegistry(newRegistry);
+			this.registryCache = newRegistry;
+
+			return {
+				updated,
+				new: newSkills,
+				removed,
+				unchanged,
+				total: newRegistry.size
+			};
+		} catch (error) {
+			throw new Error(`Failed to refresh skills: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	/**
+	 * Clear the registry cache to force reload
+	 */
+	clearCache(): void {
+		this.registryCache = null;
 	}
 
 	/**

@@ -30,7 +30,7 @@ export class ZeroDBOAuthUrlHandler extends Disposable implements IURLHandler, IW
 	constructor(
 		@ILogService private readonly logService: ILogService,
 		@IZeroDBOAuthService private readonly zerodbOAuthService: IZeroDBOAuthService,
-		@IAINativeAuthService private readonly ainativeAuthService: IAINativeAuthService,
+		@IAINativeAuthService private readonly _ainativeAuthService: IAINativeAuthService,
 		@IEncryptionService private readonly encryptionService: IEncryptionService,
 		@IStorageService private readonly storageService: IStorageService,
 		@INotificationService private readonly notificationService: INotificationService,
@@ -70,8 +70,8 @@ export class ZeroDBOAuthUrlHandler extends Disposable implements IURLHandler, IW
 		const query = new URLSearchParams(uri.query);
 		const code = query.get('code');
 		const state = query.get('state');
-		const error = query.get('error');
-		const errorDescription = query.get('error_description');
+		const error = query.get('error') ?? undefined;
+		const errorDescription = query.get('error_description') ?? undefined;
 
 		// Validate required parameters
 		if (!code && !error) {

@@ -1,0 +1,264 @@
+name: Publish Official Skills to NPM
+
+on:
+  # Trigger on version tags for skills
+  push:
+    tags:
+      - 'skills/v*.*.*'
+
+  # Manual trigger with skill selection
+  workflow_dispatch:
+    inputs:
+      skill:
+        description: 'Skill to publish (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'zerodb-workflows'
+          - 'mcp-development'
+          - 'api-design'
+          - 'testing-patterns'
+          - 'railway-deployment'
+      dry_run:
+        description: 'Dry run (test without publishing)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  validate-and-publish:
+    name: Validate and Publish Skills
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        skill:
+          - zerodb-workflows
+          - mcp-development
+          - api-design
+          - testing-patterns
+          - railway-deployment
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Check if skill should be published
+        id: should_publish
+        run: |
+          SKILL="${{ matrix.skill }}"
+          INPUT_SKILL="${{ github.event.inputs.skill }}"
+
+          # If manual trigger and specific skill selected
+          if [[ -n "$INPUT_SKILL" ]] && [[ "$INPUT_SKILL" != "all" ]]; then
+            if [[ "$INPUT_SKILL" == "$SKILL" ]]; then
+              echo "publish=true" >> $GITHUB_OUTPUT
+            else
+              echo "publish=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Tag trigger or "all" selected
+            echo "publish=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate package.json
+        if: steps.should_publish.outputs.publish == 'true'
+        working-directory: skills/${{ matrix.skill }}
+        run: |
+          echo "Validating package.json for ${{ matrix.skill }}..."
+
+          # Check if package.json exists
+          if [ ! -f "package.json" ]; then
+            echo "ERROR: package.json not found"
+            exit 1
+          fi
+
+          # Validate JSON syntax
+          node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))" || exit 1
+
+          # Check required fields
+          PACKAGE_NAME=$(node -e "console.log(require('./package.json').name)")
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          DESCRIPTION=$(node -e "console.log(require('./package.json').description)")
+
+          echo "Package: $PACKAGE_NAME"
+          echo "Version: $VERSION"
+          echo "Description: $DESCRIPTION"
+
+          # Verify package name format
+          if [[ ! $PACKAGE_NAME =~ ^@ainative/skill- ]]; then
+            echo "ERROR: Package name should follow @ainative/skill-* convention"
+            exit 1
+          fi
+
+          # Verify publishConfig
+          ACCESS=$(node -e "console.log(require('./package.json').publishConfig?.access || '')")
+          if [[ "$ACCESS" != "public" ]]; then
+            echo "ERROR: publishConfig.access must be 'public'"
+            exit 1
+          fi
+
+          echo "✓ package.json validation passed"
+
+      - name: Validate SKILL.md
+        if: steps.should_publish.outputs.publish == 'true'
+        working-directory: skills/${{ matrix.skill }}
+        run: |
+          echo "Validating SKILL.md..."
+
+          if [ ! -f "SKILL.md" ]; then
+            echo "ERROR: SKILL.md not found"
+            exit 1
+          fi
+
+          FILE_SIZE=$(stat -c%s "SKILL.md")
+          echo "SKILL.md size: $FILE_SIZE bytes"
+
+          if [ $FILE_SIZE -lt 1024 ]; then
+            echo "WARNING: SKILL.md is very small ($FILE_SIZE bytes)"
+          fi
+
+          echo "✓ SKILL.md validation passed"
+
+      - name: Validate references directory
+        if: steps.should_publish.outputs.publish == 'true'
+        working-directory: skills/${{ matrix.skill }}
+        run: |
+          echo "Validating references directory..."
+
+          if [ ! -d "references" ]; then
+            echo "ERROR: references/ directory not found"
+            exit 1
+          fi
+
+          MD_COUNT=$(find references -maxdepth 1 -name "*.md" | wc -l)
+          echo "Found $MD_COUNT reference files"
+
+          echo "✓ references/ directory validation passed"
+
+      - name: Test package creation
+        if: steps.should_publish.outputs.publish == 'true'
+        working-directory: skills/${{ matrix.skill }}
+        run: |
+          echo "Testing package creation with npm pack..."
+          npm pack --dry-run
+          echo "✓ Package creation test passed"
+
+      - name: Create tarball
+        if: steps.should_publish.outputs.publish == 'true'
+        working-directory: skills/${{ matrix.skill }}
+        run: |
+          echo "Creating tarball..."
+          TARBALL=$(npm pack)
+          echo "Created: $TARBALL"
+
+          # List tarball contents
+          echo "Tarball contents:"
+          tar -tzf "$TARBALL" | head -20
+
+          # Save tarball name for artifact upload
+          echo "TARBALL=$TARBALL" >> $GITHUB_ENV
+
+      - name: Upload package artifact
+        if: steps.should_publish.outputs.publish == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.skill }}-package
+          path: skills/${{ matrix.skill }}/*.tgz
+          retention-days: 7
+
+      - name: Publish to NPM (Dry Run)
+        if: |
+          steps.should_publish.outputs.publish == 'true' &&
+          (github.event.inputs.dry_run == 'true' || github.event.inputs.dry_run == '')
+        working-directory: skills/${{ matrix.skill }}
+        run: |
+          echo "DRY RUN: Would publish to NPM"
+          npm publish --dry-run
+
+      - name: Publish to NPM (Production)
+        if: |
+          steps.should_publish.outputs.publish == 'true' &&
+          github.event.inputs.dry_run == 'false' &&
+          github.event_name != 'pull_request'
+        working-directory: skills/${{ matrix.skill }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "Publishing to NPM..."
+          npm publish --access public
+
+          PACKAGE_NAME=$(node -e "console.log(require('./package.json').name)")
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+
+          echo "✓ Successfully published $PACKAGE_NAME@$VERSION to NPM"
+
+      - name: Create GitHub Release (on tag)
+        if: |
+          steps.should_publish.outputs.publish == 'true' &&
+          startsWith(github.ref, 'refs/tags/skills/') &&
+          github.event.inputs.dry_run == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: skills/${{ matrix.skill }}/*.tgz
+          body: |
+            Published ${{ matrix.skill }} skill to NPM
+
+            Package: @ainative/skill-${{ matrix.skill }}
+
+            ## Installation
+            ```bash
+            npm install @ainative/skill-${{ matrix.skill }}
+            ```
+
+            ## Usage
+            See [SKILL.md](./skills/${{ matrix.skill }}/SKILL.md) for documentation.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  summary:
+    name: Publish Summary
+    needs: validate-and-publish
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Print summary
+        run: |
+          echo "## Skills Publishing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]] || [[ -z "${{ github.event.inputs.dry_run }}" ]]; then
+            echo "**Mode:** Dry Run (no packages published)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Mode:** Production (packages published to NPM)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Skills Processed" >> $GITHUB_STEP_SUMMARY
+          echo "- @ainative/skill-zerodb-workflows" >> $GITHUB_STEP_SUMMARY
+          echo "- @ainative/skill-mcp-development" >> $GITHUB_STEP_SUMMARY
+          echo "- @ainative/skill-api-design" >> $GITHUB_STEP_SUMMARY
+          echo "- @ainative/skill-testing-patterns" >> $GITHUB_STEP_SUMMARY
+          echo "- @ainative/skill-railway-deployment" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]] || [[ -z "${{ github.event.inputs.dry_run }}" ]]; then
+            echo "1. Review the validation results above" >> $GITHUB_STEP_SUMMARY
+            echo "2. Check the artifact tarballs" >> $GITHUB_STEP_SUMMARY
+            echo "3. Re-run with dry_run=false to publish to NPM" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "1. Verify packages on NPM: https://www.npmjs.com/org/ainative" >> $GITHUB_STEP_SUMMARY
+            echo "2. Test installation: \`npm install @ainative/skill-<name>\`" >> $GITHUB_STEP_SUMMARY
+            echo "3. Update documentation with new versions" >> $GITHUB_STEP_SUMMARY
+          fi

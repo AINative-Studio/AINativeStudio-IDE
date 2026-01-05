@@ -1,0 +1,315 @@
+name: Build Remote Extension Host Servers
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      upload_to_release:
+        description: 'Upload servers to GitHub release (requires tag)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build-server-linux-x64:
+    name: Build Server - Linux x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          npm ci
+          npm install -g node-gyp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build remote server
+        working-directory: ainative-studio
+        run: npm run gulp -- vscode-reh-linux-x64-min
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package server
+        run: |
+          cd VSCode-reh-linux-x64
+          tar czf ../ainative-server-linux-x64.tar.gz .
+          cd ..
+          ls -lh ainative-server-linux-x64.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-server-linux-x64
+          path: ainative-server-linux-x64.tar.gz
+          retention-days: 30
+
+  build-server-linux-arm64:
+    name: Build Server - Linux ARM64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          npm ci
+          npm install -g node-gyp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build remote server
+        working-directory: ainative-studio
+        run: npm run gulp -- vscode-reh-linux-arm64-min
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package server
+        run: |
+          cd VSCode-reh-linux-arm64
+          tar czf ../ainative-server-linux-arm64.tar.gz .
+          cd ..
+          ls -lh ainative-server-linux-arm64.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-server-linux-arm64
+          path: ainative-server-linux-arm64.tar.gz
+          retention-days: 30
+
+  build-server-darwin-x64:
+    name: Build Server - macOS Intel
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          npm ci
+          npm install -g node-gyp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build remote server
+        working-directory: ainative-studio
+        run: npm run gulp -- vscode-reh-darwin-x64-min
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package server
+        run: |
+          cd VSCode-reh-darwin-x64
+          tar czf ../ainative-server-darwin-x64.tar.gz .
+          cd ..
+          ls -lh ainative-server-darwin-x64.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-server-darwin-x64
+          path: ainative-server-darwin-x64.tar.gz
+          retention-days: 30
+
+  build-server-darwin-arm64:
+    name: Build Server - macOS Apple Silicon
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          npm ci
+          npm install -g node-gyp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build remote server
+        working-directory: ainative-studio
+        run: npm run gulp -- vscode-reh-darwin-arm64-min
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package server
+        run: |
+          cd VSCode-reh-darwin-arm64
+          tar czf ../ainative-server-darwin-arm64.tar.gz .
+          cd ..
+          ls -lh ainative-server-darwin-arm64.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-server-darwin-arm64
+          path: ainative-server-darwin-arm64.tar.gz
+          retention-days: 30
+
+  build-server-win32-x64:
+    name: Build Server - Windows x64
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          npm ci
+          npm install -g node-gyp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build remote server
+        working-directory: ainative-studio
+        run: npm run gulp -- vscode-reh-win32-x64-min
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package server
+        shell: bash
+        run: |
+          cd VSCode-reh-win32-x64
+          tar czf ../ainative-server-win32-x64.tar.gz .
+          cd ..
+          ls -lh ainative-server-win32-x64.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-server-win32-x64
+          path: ainative-server-win32-x64.tar.gz
+          retention-days: 30
+
+  build-server-win32-arm64:
+    name: Build Server - Windows ARM64
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Install dependencies
+        working-directory: ainative-studio
+        run: |
+          npm ci
+          npm install -g node-gyp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build remote server
+        working-directory: ainative-studio
+        run: npm run gulp -- vscode-reh-win32-arm64-min
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package server
+        shell: bash
+        run: |
+          cd VSCode-reh-win32-arm64
+          tar czf ../ainative-server-win32-arm64.tar.gz .
+          cd ..
+          ls -lh ainative-server-win32-arm64.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ainative-server-win32-arm64
+          path: ainative-server-win32-arm64.tar.gz
+          retention-days: 30
+
+  publish-servers:
+    name: Publish Servers to Release
+    needs:
+      - build-server-linux-x64
+      - build-server-linux-arm64
+      - build-server-darwin-x64
+      - build-server-darwin-arm64
+      - build-server-win32-x64
+      - build-server-win32-arm64
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: servers
+
+      - name: List downloaded files
+        run: |
+          echo "Downloaded server artifacts:"
+          find servers -type f -name "*.tar.gz" -exec ls -lh {} \;
+
+      - name: Move files to root
+        run: |
+          mkdir -p release-files
+          find servers -type f -name "*.tar.gz" -exec mv {} release-files/ \;
+          ls -lh release-files/
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-files/*.tar.gz
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        run: |
+          echo "## Remote Server Release Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The following remote server binaries have been published:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ainative-server-linux-x64.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- ainative-server-linux-arm64.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- ainative-server-darwin-x64.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- ainative-server-darwin-arm64.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- ainative-server-win32-x64.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- ainative-server-win32-arm64.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "These servers can be used for:" >> $GITHUB_STEP_SUMMARY
+          echo "- Remote-WSL development" >> $GITHUB_STEP_SUMMARY
+          echo "- Remote-SSH development" >> $GITHUB_STEP_SUMMARY
+          echo "- Dev Containers" >> $GITHUB_STEP_SUMMARY
+          echo "- Remote Tunnels" >> $GITHUB_STEP_SUMMARY

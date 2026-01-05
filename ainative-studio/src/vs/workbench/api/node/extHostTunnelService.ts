@@ -108,9 +108,11 @@ function knownExcludeCmdline(command: string): boolean {
 	if (command.length > 500) {
 		return false;
 	}
-	return !!command.match(/.*\.vscode-server-[a-zA-Z]+\/bin.*/)
+	// Match any VS Code-like server directory pattern (vscode-server, ainativestudio-server, etc.)
+	return !!command.match(/.*\.(vscode|ainativestudio|void)-server(-[a-zA-Z]+)?\/bin.*/)
 		|| (command.indexOf('out/server-main.js') !== -1)
-		|| (command.indexOf('_productName=VSCode') !== -1);
+		|| (command.indexOf('_productName=VSCode') !== -1)
+		|| (command.indexOf('_productName=AINativeStudio') !== -1);
 }
 
 export function getRootProcesses(stdout: string) {

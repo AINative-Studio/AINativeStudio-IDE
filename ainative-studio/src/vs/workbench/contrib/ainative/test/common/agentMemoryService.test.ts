@@ -146,12 +146,12 @@ suite('AgentMemoryService', () => {
 		let capturedBody: any = null;
 
 		// Override fetch to capture request
-		global.fetch = async (url: string, options?: RequestInit) => {
+		global.fetch = (async (url: string, options?: RequestInit) => {
 			if (options?.body) {
 				capturedBody = JSON.parse(options.body as string);
 			}
 			return new Response(JSON.stringify({ success: true }), { status: 200 });
-		};
+		}) as any;
 
 		await service.storeMemory('test content', 'user', { custom: 'data' });
 
@@ -255,10 +255,10 @@ suite('AgentMemoryService', () => {
 	test('should use default limit for search', async () => {
 		let capturedUrl: string = '';
 
-		global.fetch = async (url: string) => {
+		global.fetch = (async (url: string) => {
 			capturedUrl = url;
 			return new Response(JSON.stringify({ results: [] }), { status: 200 });
-		};
+		}) as any;
 
 		await service.searchMemory('query');
 
@@ -278,12 +278,12 @@ suite('AgentMemoryService', () => {
 	test('should include authorization header', async () => {
 		let capturedHeaders: Headers | undefined;
 
-		global.fetch = async (url: string, options?: RequestInit) => {
+		global.fetch = (async (url: string, options?: RequestInit) => {
 			if (options?.headers) {
 				capturedHeaders = new Headers(options.headers);
 			}
 			return new Response(JSON.stringify({ success: true }), { status: 200 });
-		};
+		}) as any;
 
 		await service.storeMemory('test', 'user');
 

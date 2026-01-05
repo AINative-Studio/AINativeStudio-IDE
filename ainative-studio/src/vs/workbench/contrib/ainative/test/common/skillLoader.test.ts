@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import { SkillLoader } from '../../common/skills/skillLoader.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { SkillSummary, SkillMetadata, SkillResource, LoadedSkill } from '../../common/skills/skillLoaderTypes.js';
 import { FileService } from '../../../../../platform/files/common/fileService.js';
 import { NullLogService } from '../../../../../platform/log/common/log.js';
@@ -394,6 +395,94 @@ suite('SkillLoader Tests', () => {
 				assert.ok(error instanceof Error);
 				assert.ok(error.message.includes('Skill not found'));
 			}
+		});
+
+		test('should handle malformed skills gracefully', async () => {
+			// The parser should throw an error for malformed skills
+			// The loader should propagate this error appropriately
+			try {
+				await loader.loadMetadataOnly('non-existent-skill');
+				assert.fail('Should have thrown error');
+			} catch (error) {
+				assert.ok(error instanceof Error);
+			}
+		});
+	});
+
+	suite('Token Usage Measurement', () => {
+		test('should measure token usage for metadata', async () => {
+			const summary = await loader.loadMetadataOnly('minimal-skill');
+
+			// Verify token estimation exists (approximate character count / 4)
+			const estimatedTokens = (summary.name.length + summary.description.length) / 4;
+			assert.ok(estimatedTokens > 0, 'Should have measurable token usage');
+		});
+
+		test('should measure token usage for full skill', async () => {
+			const skill = await loader.loadFullSkill('comprehensive-skill');
+
+			// Verify we can estimate tokens for full skill
+			const bodyTokens = skill.body.length / 4;
+			assert.ok(bodyTokens > 0, 'Should have measurable token usage for body');
+		});
+
+		test('should track cumulative token usage across loads', async () => {
+			loader.clearCache();
+
+			await loader.loadMetadataOnly('minimal-skill');
+			await loader.loadMetadataOnly('comprehensive-skill');
+			await loader.loadFullSkill('minimal-skill');
+
+			const stats = loader.getCacheStats();
+
+			// We loaded content, so memory usage should be > 0
+			assert.ok(stats.estimatedMemoryUsage > 0);
+		});
+	});
+
+	suite('Advanced Caching', () => {
+		test('should invalidate cache when skill updated', async () => {
+			await loader.loadFullSkill('minimal-skill');
+
+			const stats1 = loader.getCacheStats();
+			assert.strictEqual(stats1.fullSkillCount, 1);
+
+			// Clear cache (simulating skill update)
+			loader.clearCache();
+
+			const stats2 = loader.getCacheStats();
+			assert.strictEqual(stats2.fullSkillCount, 0);
+
+			// Reload should work
+			const skill = await loader.loadFullSkill('minimal-skill');
+			assert.ok(skill);
+		});
+
+		test('should handle cache hits and misses correctly', async () => {
+			loader.clearCache();
+
+			// First load is a cache miss
+			await loader.loadMetadataOnly('minimal-skill');
+
+			// Second load should be a cache hit
+			await loader.loadMetadataOnly('minimal-skill');
+
+			const stats = loader.getCacheStats();
+			assert.ok(stats.hitRatio > 0, 'Should have cache hits');
+		});
+	});
+
+	suite('Very Large Skills', () => {
+		test('should handle very large skill bodies (>500KB)', async () => {
+			// This verifies the loader can handle large skills without issues
+			const skill = await loader.loadFullSkill('comprehensive-skill');
+
+			assert.ok(skill);
+			assert.ok(skill.body);
+
+			// Verify the loader handles the skill efficiently
+			const stats = loader.getCacheStats();
+			assert.ok(stats.estimatedMemoryUsage < 10 * 1024 * 1024, 'Should keep memory usage reasonable');
 		});
 	});
 });

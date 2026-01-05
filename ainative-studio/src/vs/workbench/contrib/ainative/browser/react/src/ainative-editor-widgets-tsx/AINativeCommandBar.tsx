@@ -23,13 +23,13 @@ import {
 	VOID_REJECT_ALL_DIFFS_ACTION_ID
 } from '../../../actionIDs.js';
 
-export const VoidCommandBarMain = ({ uri, editor }: VoidCommandBarProps) => {
+export const AINativeCommandBarMain = ({ uri, editor }: VoidCommandBarProps) => {
 	const isDark = useIsDark()
 
 	return <div
-		className={`@@void-scope ${isDark ? 'dark' : ''}`}
+		className={`@@ainative-scope ${isDark ? 'dark' : ''}`}
 	>
-		<VoidCommandBar uri={uri} editor={editor} />
+		<AINativeCommandBar uri={uri} editor={editor} />
 	</div>
 }
 
@@ -83,7 +83,7 @@ export const RejectAllButtonWrapper = ({ text, onClick, className, ...props }: {
 
 
 
-export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
+export const AINativeCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 	const accessor = useAccessor()
 	const editCodeService = accessor.get('IEditCodeService')
 	const editorService = accessor.get('ICodeEditorService')
@@ -196,7 +196,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 	if (currFileIdx === null) {
 		return (
 			<div className="pointer-events-auto">
-				<div className="flex bg-void-bg-2 shadow-md border border-void-border-2 [&>*:first-child]:pl-3 [&>*:last-child]:pr-3 [&>*]:border-r [&>*]:border-void-border-2 [&>*:last-child]:border-r-0">
+				<div className="flex bg-ainative-bg-2 shadow-md border border-ainative-border-2 [&>*:first-child]:pl-3 [&>*:last-child]:pr-3 [&>*]:border-r [&>*]:border-ainative-border-2 [&>*:last-child]:border-r-0">
 					<div className="flex items-center px-3">
 						<span className="text-xs whitespace-nowrap">
 							{`${sortedCommandBarURIs.length} file${sortedCommandBarURIs.length === 1 ? '' : 's'} changed`}
@@ -226,8 +226,8 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 			{/* Accept All / Reject All buttons that appear when the vertical ellipsis is clicked */}
 			{showAcceptRejectAllButtons && showAcceptRejectAll && (
 				<div className="flex justify-end mb-1">
-					<div className="inline-flex bg-void-bg-2 rounded shadow-md border border-void-border-2 overflow-hidden">
-						<div className="flex items-center [&>*]:border-r [&>*]:border-void-border-2 [&>*:last-child]:border-r-0">
+					<div className="inline-flex bg-ainative-bg-2 rounded shadow-md border border-ainative-border-2 overflow-hidden">
+						<div className="flex items-center [&>*]:border-r [&>*]:border-ainative-border-2 [&>*:last-child]:border-r-0">
 							<AcceptAllButtonWrapper
 								// text={`Accept All${acceptAllKeybindLabel ? ` ${acceptAllKeybindLabel}` : ''}`}
 								text={`Accept All`}
@@ -249,7 +249,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 				</div>
 			)}
 
-			<div className="flex items-center bg-void-bg-2 rounded shadow-md border border-void-border-2 [&>*:first-child]:pl-3 [&>*:last-child]:pr-3 [&>*]:px-3 [&>*]:border-r [&>*]:border-void-border-2 [&>*:last-child]:border-r-0">
+			<div className="flex items-center bg-ainative-bg-2 rounded shadow-md border border-ainative-border-2 [&>*:first-child]:pl-3 [&>*:last-child]:pr-3 [&>*]:px-3 [&>*]:border-r [&>*]:border-ainative-border-2 [&>*:last-child]:border-r-0">
 
 				{/* Diff Navigation Group */}
 				<div className="flex items-center py-0.5">

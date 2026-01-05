@@ -3,7 +3,7 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
+import { createDecorator } from '../../../../../platform/instantiation/common/instantiation.js';
 
 export const ISkillLoader = createDecorator<ISkillLoader>('skillLoader');
 

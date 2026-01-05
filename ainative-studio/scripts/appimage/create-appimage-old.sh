@@ -3,21 +3,21 @@ set -e  # Exit on error
 set -x  # Print commands as they are executed
 
 # Configuration
-APP_NAME="void"
+APP_NAME="ainative"
 APP_VERSION="1.0.0"
 ARCH="x86_64"
 
 export ARCH
 
-# Check if void binary exists in current directory
-if [ ! -f "./void" ]; then
-    echo "Error: void binary not found in current directory"
+# Check if ainative binary exists in current directory
+if [ ! -f "./ainative" ]; then
+    echo "Error: ainative binary not found in current directory"
     exit 1
 fi
 
 # Check if icon exists
-if [ ! -f "./void.png" ]; then
-    echo "Error: void.png icon not found in current directory"
+if [ ! -f "./ainative.png" ]; then
+    echo "Error: ainative.png icon not found in current directory"
     exit 1
 fi
 
@@ -35,15 +35,15 @@ mkdir -pv "$APP_DIR/usr/share/icons/hicolor/256x256/apps"
 # Exclude create-appimage.sh and appimagetool-x86_64.AppImage from being copied
 echo "Copying files excluding create-appimage.sh and appimagetool-x86_64.AppImage..."
 
-cp -v ./void "$APP_DIR/usr/bin/"
+cp -v ./ainative "$APP_DIR/usr/bin/"
 
 # Copy the icon to required locations
-cp -v ./void.png "$APP_DIR/void.png"
-cp -v ./void.png "$APP_DIR/usr/share/icons/hicolor/256x256/apps/void.png"
+cp -v ./ainative.png "$APP_DIR/ainative.png"
+cp -v ./ainative.png "$APP_DIR/usr/share/icons/hicolor/256x256/apps/ainative.png"
 
 # Copy dependencies with error checking
 echo "Copying dependencies..."
-for lib in $(ldd ./void | grep "=> /" | awk '{print $3}'); do
+for lib in $(ldd ./ainative | grep "=> /" | awk '{print $3}'); do
     if [ -f "$lib" ]; then
         cp -v "$lib" "$APP_DIR/usr/lib/" || echo "Failed to copy $lib"
     else
@@ -55,12 +55,12 @@ done
 echo "Creating desktop file..."
 if ! cat > "$APP_DIR/$APP_NAME.desktop" <<EOF
 [Desktop Entry]
-Name=$APP_NAME
-Exec=void
-Icon=void
+Name=AINative Studio
+Exec=ainative
+Icon=ainative
 Type=Application
-Categories=Utility;
-Comment=Void Linux Application
+Categories=Utility;Development;IDE;
+Comment=AI Native Studio Application
 EOF
 then
     echo "Error creating desktop file"
@@ -79,7 +79,7 @@ if ! cat > "$APP_DIR/AppRun" <<EOF
 #!/bin/bash
 cd "\$(dirname "\$0")/usr/bin"
 export LD_LIBRARY_PATH="\$APPDIR/usr/lib:\$LD_LIBRARY_PATH"
-exec ./void "\$@"
+exec ./ainative "\$@"
 EOF
 then
     echo "Error creating AppRun"

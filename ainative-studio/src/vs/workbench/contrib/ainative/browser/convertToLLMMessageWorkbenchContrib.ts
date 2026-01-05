@@ -10,7 +10,7 @@ import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase 
 import { IAINativeModelService } from '../common/ainativeModelService.js';
 
 class ConvertContribWorkbenchContribution extends Disposable implements IWorkbenchContribution {
-	static readonly ID = 'workbench.contrib.void.convertcontrib'
+	static readonly ID = 'workbench.contrib.ainative.convertcontrib'
 	_serviceBrand: undefined;
 
 	constructor(
@@ -21,7 +21,7 @@ class ConvertContribWorkbenchContribution extends Disposable implements IWorkben
 
 		const initializeURI = (uri: URI) => {
 			this.workspaceContext.getWorkspace()
-			const voidRulesURI = URI.joinPath(uri, '.voidrules')
+			const voidRulesURI = URI.joinPath(uri, '.ainativerules')
 			this.voidModelService.initializeModel(voidRulesURI)
 		}
 

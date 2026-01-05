@@ -19,7 +19,7 @@ import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/
 import { ILLMMessageService } from '../common/sendLLMMessageService.js';
 import { isWindows } from '../../../../base/common/platform.js';
 import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
-import { FeatureName } from '../common/voidSettingsTypes.js';
+import { FeatureName } from '../common/ainativeSettingsTypes.js';
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
 // import { IContextGatheringService } from './contextGatheringService.js';
 
@@ -28,7 +28,7 @@ import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
 const allLinebreakSymbols = ['\r\n', '\n']
 const _ln = isWindows ? allLinebreakSymbols[0] : allLinebreakSymbols[1]
 
-// The extension this was called from is here - https://github.com/voideditor/void/blob/autocomplete/extensions/void/src/extension/extension.ts
+// The extension this was called from is here - https://github.com/AINative-Studio/AINativeStudio-IDE/blob/main/ainative-studio/extensions/ainative/src/extension/extension.ts
 
 
 /*
@@ -617,7 +617,7 @@ export const IAutocompleteService = createDecorator<IAutocompleteService>('Autoc
 
 export class AutocompleteService extends Disposable implements IAutocompleteService {
 
-	static readonly ID = 'void.autocompleteService'
+	static readonly ID = 'ainative.autocompleteService'
 
 	_serviceBrand: undefined;
 

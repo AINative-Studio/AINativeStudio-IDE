@@ -40,7 +40,7 @@ type SetGlobalSettingFn = <T extends GlobalSettingName>(settingName: T, newVal: 
 type SetOptionsOfModelSelection = (featureName: FeatureName, providerName: ProviderName, modelName: string, newVal: Partial<ModelSelectionOptions>) => void
 
 
-export type VoidSettingsState = {
+export type AINativeSettingsState = {
 	readonly settingsOfProvider: SettingsOfProvider; // optionsOfProvider
 	readonly modelSelectionOfFeature: ModelSelectionOfFeature; // stateOfFeature
 	readonly optionsOfModelSelection: OptionsOfModelSelection;
@@ -51,13 +51,16 @@ export type VoidSettingsState = {
 	readonly _modelOptions: ModelOption[] // computed based on the two above items
 }
 
-// type RealVoidSettings = Exclude<keyof VoidSettingsState, '_modelOptions'>
-// type EventProp<T extends RealVoidSettings = RealVoidSettings> = T extends 'globalSettings' ? [T, keyof VoidSettingsState[T]] : T | 'all'
+/** @deprecated Legacy alias for backward compatibility. Use AINativeSettingsState instead. */
+export type VoidSettingsState = AINativeSettingsState;
+
+// type RealAINativeSettings = Exclude<keyof AINativeSettingsState, '_modelOptions'>
+// type EventProp<T extends RealAINativeSettings = RealAINativeSettings> = T extends 'globalSettings' ? [T, keyof AINativeSettingsState[T]] : T | 'all'
 
 
 export interface IAINativeSettingsService {
 	readonly _serviceBrand: undefined;
-	readonly state: VoidSettingsState; // in order to play nicely with react, you should immutably change state
+	readonly state: AINativeSettingsState; // in order to play nicely with react, you should immutably change state
 	readonly waitForInitState: Promise<void>;
 
 	onDidChangeState: Event<void>;
@@ -71,7 +74,7 @@ export interface IAINativeSettingsService {
 	// setting to undefined CLEARS it, unlike others:
 	setOverridesOfModel(providerName: ProviderName, modelName: string, overrides: Partial<ModelOverrides> | undefined): Promise<void>;
 
-	dangerousSetState(newState: VoidSettingsState): Promise<void>;
+	dangerousSetState(newState: AINativeSettingsState): Promise<void>;
 	resetState(): Promise<void>;
 
 	setAutodetectedModels(providerName: ProviderName, modelNames: string[], logging: object): void;

@@ -13,7 +13,7 @@ import { getActiveWindow } from '../../../../base/browser/dom.js';
 
 // Onboarding contribution that mounts the component at startup
 export class MiscWorkbenchContribs extends Disposable implements IWorkbenchContribution {
-	static readonly ID = 'workbench.contrib.voidMiscWorkbenchContribs';
+	static readonly ID = 'workbench.contrib.ainativeMiscWorkbenchContribs';
 
 	constructor(
 		@IExtensionTransferService private readonly extensionTransferService: IExtensionTransferService,
@@ -26,7 +26,7 @@ export class MiscWorkbenchContribs extends Disposable implements IWorkbenchContr
 	private initialize(): void {
 
 		// delete blacklisted extensions once (this is for people who already installed them)
-		const deleteExtensionsStorageId = 'void-deleted-blacklist-2'
+		const deleteExtensionsStorageId = 'ainative-deleted-blacklist-2'
 		const alreadyDeleted = this.storageService.get(deleteExtensionsStorageId, StorageScope.APPLICATION)
 		if (!alreadyDeleted) {
 			this.storageService.store(deleteExtensionsStorageId, 'true', StorageScope.APPLICATION, StorageTarget.MACHINE)

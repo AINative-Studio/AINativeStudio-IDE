@@ -12,7 +12,7 @@ import { IMainProcessService } from '../../../../platform/ipc/common/mainProcess
 import { generateUuid } from '../../../../base/common/uuid.js';
 import { Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { IAINativeSettingsService } from './voidSettingsService.js';
+import { IAINativeSettingsService } from './ainativeSettingsService.js';
 import { IMCPService } from './mcpService.js';
 
 // calls channel to implement features

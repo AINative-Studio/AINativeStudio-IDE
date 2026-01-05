@@ -1,0 +1,581 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) AINative Studio. All rights reserved.
+ *  Licensed under the MIT License.
+ *--------------------------------------------------------------------------------------------*/
+
+import { strictEqual, ok, notStrictEqual } from 'assert';
+import * as sinon from 'sinon';
+import { DisposableStore } from '../../../../../base/common/lifecycle.js';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
+import { TestStorageService } from '../../../../test/common/workbenchTestServices.js';
+import { AINativeCloudAuthService } from '../../common/ainativeCloudAuthService.js';
+import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
+import { StorageScope } from '../../../../../platform/storage/common/storage.js';
+
+/**
+ * Mock Encryption Service for testing
+ */
+class MockEncryptionService implements IEncryptionService {
+	_serviceBrand: undefined;
+
+	async encrypt(value: string): Promise<string> {
+		return Buffer.from(value).toString('base64');
+	}
+
+	async decrypt(value: string): Promise<string> {
+		return Buffer.from(value, 'base64').toString('utf-8');
+	}
+
+	async isEncryptionAvailable(): Promise<boolean> {
+		return true;
+	}
+
+	async setUsePlainTextEncryption(): Promise<void> { }
+	async getKeyStorageProvider(): Promise<any> { return 'test'; }
+}
+
+suite('Cloud Authentication Security Tests', () => {
+	const disposables = new DisposableStore();
+	let storageService: TestStorageService;
+	let encryptionService: MockEncryptionService;
+	let authService: AINativeCloudAuthService;
+	let fetchStub: sinon.SinonStub;
+	let consoleStub: sinon.SinonStub;
+
+	setup(() => {
+		storageService = new TestStorageService();
+		encryptionService = new MockEncryptionService();
+		authService = disposables.add(new AINativeCloudAuthService(
+			encryptionService,
+			storageService
+		));
+
+		fetchStub = sinon.stub(globalThis, 'fetch' as any);
+		consoleStub = sinon.stub(console, 'error');
+	});
+
+	teardown(() => {
+		disposables.clear();
+		fetchStub.restore();
+		consoleStub.restore();
+	});
+
+	ensureNoDisposablesAreLeakedInTestSuite();
+
+	suite('Token Encryption/Decryption', () => {
+		test('should encrypt access token before storage', async () => {
+			const service = authService as any;
+			const plainToken = 'test-access-token-12345';
+
+			// Mock login response
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: plainToken,
+					refresh_token: 'test-refresh-token',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			await authService.login('test@example.com', 'password');
+
+			// Get stored token from storage
+			const storedToken = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION);
+
+			// Stored token should be encrypted (different from plain token)
+			ok(storedToken);
+			notStrictEqual(storedToken, plainToken);
+
+			// Decrypt and verify
+			const decrypted = await encryptionService.decrypt(storedToken);
+			strictEqual(decrypted, plainToken);
+		});
+
+		test('should encrypt refresh token before storage', async () => {
+			const service = authService as any;
+			const plainRefreshToken = 'test-refresh-token-67890';
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test-access',
+					refresh_token: plainRefreshToken,
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			await authService.login('test@example.com', 'password');
+
+			const storedRefreshToken = storageService.get('ainative.cloud.auth.refreshToken', StorageScope.APPLICATION);
+
+			ok(storedRefreshToken);
+			notStrictEqual(storedRefreshToken, plainRefreshToken);
+
+			const decrypted = await encryptionService.decrypt(storedRefreshToken);
+			strictEqual(decrypted, plainRefreshToken);
+		});
+
+		test('should decrypt tokens on retrieval', async () => {
+			const plainToken = 'test-access-token';
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: plainToken,
+					refresh_token: 'test-refresh',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			await authService.login('test@example.com', 'password');
+
+			const retrievedToken = authService.getAccessTokenSync();
+			strictEqual(retrievedToken, plainToken);
+		});
+	});
+
+	suite('Token Not Exposed in Logs or Errors', () => {
+		test('should not log tokens in error messages', async () => {
+			const sensitiveToken = 'super-secret-token-12345';
+
+			fetchStub.rejects(new Error('Network error'));
+
+			try {
+				await authService.login('test@example.com', 'password');
+			} catch (error: any) {
+				// Error message should not contain the token
+				ok(!error.message.includes(sensitiveToken));
+			}
+		});
+
+		test('should not expose tokens in console logs', async () => {
+			const service = authService as any;
+			service._accessToken = 'secret-token-12345';
+
+			// Trigger some operation that might log
+			authService.getAccessTokenSync();
+
+			// Check console.error calls don't contain token
+			consoleStub.getCalls().forEach(call => {
+				const args = call.args.join(' ');
+				ok(!args.includes('secret-token-12345'));
+			});
+		});
+
+		test('should not include tokens in serialized errors', async () => {
+			const service = authService as any;
+			service._accessToken = 'secret-token';
+			service._refreshToken = 'secret-refresh';
+
+			fetchStub.rejects(new Error('API error'));
+
+			try {
+				await authService.login('test@example.com', 'password');
+			} catch (error: any) {
+				const serialized = JSON.stringify(error);
+				ok(!serialized.includes('secret-token'));
+				ok(!serialized.includes('secret-refresh'));
+			}
+		});
+	});
+
+	suite('HTTPS Enforcement', () => {
+		test('should use HTTPS for all API calls', async () => {
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test',
+					refresh_token: 'test',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			await authService.login('test@example.com', 'password');
+
+			// Verify all fetch calls use HTTPS
+			fetchStub.getCalls().forEach(call => {
+				const url = call.args[0];
+				ok(url.startsWith('https://'), `URL should use HTTPS: ${url}`);
+			});
+		});
+
+		test('should reject HTTP URLs', () => {
+			const service = authService as any;
+			const httpUrl = 'http://insecure-api.example.com';
+
+			// This would be caught by API_BASE constant being HTTPS
+			ok(!httpUrl.startsWith('https://'));
+			ok(service.constructor.API_BASE.startsWith('https://'));
+		});
+	});
+
+	suite('Token Blacklisting on Logout', () => {
+		test('should blacklist token on logout', async () => {
+			// Setup authenticated state
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test-token',
+					refresh_token: 'test-refresh',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			await authService.login('test@example.com', 'password');
+			const tokenBeforeLogout = authService.getAccessTokenSync();
+
+			// Mock logout response
+			fetchStub.resetHistory();
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ message: 'Logged out' })
+			} as any);
+
+			await authService.logout();
+
+			// Verify logout was called with token to blacklist
+			ok(fetchStub.called);
+			const logoutCall = fetchStub.getCall(0);
+			const requestBody = logoutCall.args[1]?.body;
+
+			if (requestBody) {
+				const parsed = JSON.parse(requestBody);
+				strictEqual(parsed.token, tokenBeforeLogout);
+			}
+		});
+
+		test('should clear token from memory on logout', async () => {
+			const service = authService as any;
+			service._accessToken = 'test-token';
+			service._refreshToken = 'test-refresh';
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ message: 'Logged out' })
+			} as any);
+
+			await authService.logout();
+
+			strictEqual(service._accessToken, null);
+			strictEqual(service._refreshToken, null);
+		});
+
+		test('should clear token from storage on logout', async () => {
+			const service = authService as any;
+			service._accessToken = 'test-token';
+			service._refreshToken = 'test-refresh';
+
+			// Store tokens
+			await storageService.store('ainative.cloud.auth.accessToken', 'encrypted-token', StorageScope.APPLICATION, 0);
+			await storageService.store('ainative.cloud.auth.refreshToken', 'encrypted-refresh', StorageScope.APPLICATION, 0);
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ message: 'Logged out' })
+			} as any);
+
+			await authService.logout();
+
+			const accessToken = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION);
+			const refreshToken = storageService.get('ainative.cloud.auth.refreshToken', StorageScope.APPLICATION);
+
+			strictEqual(accessToken, undefined);
+			strictEqual(refreshToken, undefined);
+		});
+	});
+
+	suite('Session Cleanup Completeness', () => {
+		test('should clear all session data on logout', async () => {
+			const service = authService as any;
+			service._accessToken = 'test-token';
+			service._refreshToken = 'test-refresh';
+			service._user = { id: 'user-123', email: 'test@example.com', role: 'user' };
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ message: 'Logged out' })
+			} as any);
+
+			await authService.logout();
+
+			// Verify all session data cleared
+			strictEqual(service._accessToken, null);
+			strictEqual(service._refreshToken, null);
+			strictEqual(service._user, null);
+			strictEqual(authService.isAuthenticated(), false);
+		});
+
+		test('should clear all storage keys on logout', async () => {
+			// Store various auth-related data
+			await storageService.store('ainative.cloud.auth.accessToken', 'token', StorageScope.APPLICATION, 0);
+			await storageService.store('ainative.cloud.auth.refreshToken', 'refresh', StorageScope.APPLICATION, 0);
+			await storageService.store('ainative.cloud.auth.user', '{}', StorageScope.APPLICATION, 0);
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ message: 'Logged out' })
+			} as any);
+
+			await authService.logout();
+
+			// Verify all keys cleared
+			const keys = storageService.keys(StorageScope.APPLICATION, 0);
+			const authKeys = keys.filter(k => k.startsWith('ainative.cloud.auth'));
+			strictEqual(authKeys.length, 0);
+		});
+	});
+
+	suite('Concurrent Auth Operation Protection', () => {
+		test('should prevent concurrent login operations', async () => {
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test',
+					refresh_token: 'test',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			// Start multiple login operations
+			const logins = [
+				authService.login('test@example.com', 'password1'),
+				authService.login('test@example.com', 'password2'),
+				authService.login('test@example.com', 'password3')
+			];
+
+			const results = await Promise.allSettled(logins);
+
+			// At most one should succeed, others should be rejected
+			const rejected = results.filter(r => r.status === 'rejected');
+			ok(rejected.length > 0);
+		});
+
+		test('should prevent concurrent registration operations', async () => {
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test',
+					refresh_token: 'test',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			const registrations = [
+				authService.register({ username: 'user1', email: 'test1@example.com', password: 'password123' }),
+				authService.register({ username: 'user2', email: 'test2@example.com', password: 'password123' }),
+				authService.register({ username: 'user3', email: 'test3@example.com', password: 'password123' })
+			];
+
+			const results = await Promise.allSettled(registrations);
+
+			const rejected = results.filter(r => r.status === 'rejected');
+			ok(rejected.length > 0);
+		});
+
+		test('should queue operations safely', async () => {
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test',
+					refresh_token: 'test',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			// Try to login and refresh simultaneously
+			const service = authService as any;
+			service._accessToken = 'old-token';
+			service._refreshToken = 'old-refresh';
+
+			const operations = [
+				authService.login('test@example.com', 'password'),
+				authService.refreshToken()
+			];
+
+			const results = await Promise.allSettled(operations);
+
+			// At least one should complete
+			const fulfilled = results.filter(r => r.status === 'fulfilled');
+			ok(fulfilled.length > 0);
+		});
+	});
+
+	suite('Password Validation', () => {
+		test('should reject weak passwords in registration', async () => {
+			const result = await authService.register({
+				username: 'testuser',
+				email: 'test@example.com',
+				password: 'weak'
+			});
+
+			strictEqual(result.success, false);
+			ok(result.error);
+			strictEqual(result.error.code, 'WEAK_PASSWORD');
+		});
+
+		test('should reject weak passwords in password change', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+
+			const result = await authService.changePassword('oldpassword123', 'weak');
+
+			strictEqual(result.success, false);
+			ok(result.error);
+			strictEqual(result.error.code, 'WEAK_PASSWORD');
+		});
+
+		test('should reject weak passwords in password reset', async () => {
+			const result = await authService.confirmPasswordReset('reset-token', 'weak');
+
+			strictEqual(result.success, false);
+			ok(result.error);
+			strictEqual(result.error.code, 'WEAK_PASSWORD');
+		});
+
+		test('should accept strong passwords', async () => {
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test',
+					refresh_token: 'test',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			const result = await authService.register({
+				username: 'testuser',
+				email: 'test@example.com',
+				password: 'StrongPassword123!'
+			});
+
+			// Password validation passes, might fail on network but that's OK for this test
+			ok(true);
+		});
+	});
+
+	suite('Token Expiration Handling', () => {
+		test('should detect expired tokens', () => {
+			const service = authService as any;
+
+			// Create expired token
+			const expiredToken = service._createMockJWT({
+				sub: 'user-123',
+				email: 'test@example.com',
+				role: 'user',
+				exp: Math.floor(Date.now() / 1000) - 3600 // Expired 1 hour ago
+			});
+
+			const isExpired = service._isTokenExpired(expiredToken);
+			strictEqual(isExpired, true);
+		});
+
+		test('should not treat valid tokens as expired', () => {
+			const service = authService as any;
+
+			// Create valid token
+			const validToken = service._createMockJWT({
+				sub: 'user-123',
+				email: 'test@example.com',
+				role: 'user',
+				exp: Math.floor(Date.now() / 1000) + 3600 // Expires in 1 hour
+			});
+
+			const isExpired = service._isTokenExpired(validToken);
+			strictEqual(isExpired, false);
+		});
+
+		test('should auto-refresh expired tokens', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'expired-token';
+			service._refreshToken = 'valid-refresh';
+
+			// Mock refresh response
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'new-token',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			const token = await authService.getAccessToken();
+
+			ok(token);
+			strictEqual(token, 'new-token');
+		});
+	});
+
+	suite('Input Sanitization', () => {
+		test('should sanitize email input', async () => {
+			const service = authService as any;
+
+			// Emails with invalid characters
+			strictEqual(service._isValidEmail('test@example.com'), true);
+			strictEqual(service._isValidEmail('test@<script>alert(1)</script>.com'), false);
+			strictEqual(service._isValidEmail('test@example.com<script>'), false);
+		});
+
+		test('should prevent SQL injection attempts', async () => {
+			fetchStub.resolves({
+				ok: false,
+				status: 400,
+				json: async () => ({ error: 'Invalid input' })
+			} as any);
+
+			const result = await authService.login(
+				"admin'--",
+				"password"
+			);
+
+			strictEqual(result.success, false);
+		});
+
+		test('should prevent XSS attempts in username', async () => {
+			fetchStub.resolves({
+				ok: false,
+				status: 400,
+				json: async () => ({ error: 'Invalid input' })
+			} as any);
+
+			const result = await authService.register({
+				username: '<script>alert(1)</script>',
+				email: 'test@example.com',
+				password: 'password123'
+			});
+
+			strictEqual(result.success, false);
+		});
+	});
+
+	suite('Secure Storage Practices', () => {
+		test('should not store passwords', async () => {
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test',
+					refresh_token: 'test',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			await authService.login('test@example.com', 'mySecretPassword123');
+
+			// Check storage for password
+			const keys = storageService.keys(StorageScope.APPLICATION, 0);
+			keys.forEach(key => {
+				const value = storageService.get(key, StorageScope.APPLICATION);
+				ok(!value?.includes('mySecretPassword123'));
+			});
+		});
+
+		test('should use separate storage scopes for sensitive data', async () => {
+			const service = authService as any;
+			service._accessToken = 'test-token';
+
+			// Verify token is stored in APPLICATION scope (machine-specific)
+			const storedToken = storageService.get('ainative.cloud.auth.accessToken', StorageScope.APPLICATION);
+			ok(storedToken !== undefined);
+		});
+	});
+});

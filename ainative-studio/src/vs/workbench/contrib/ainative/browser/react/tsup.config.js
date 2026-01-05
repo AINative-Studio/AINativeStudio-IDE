@@ -7,13 +7,15 @@ import { defineConfig } from 'tsup'
 
 export default defineConfig({
 	entry: [
-		'./src2/void-editor-widgets-tsx/index.tsx',
+		'./src2/ainative-editor-widgets-tsx/index.tsx',
 		'./src2/sidebar-tsx/index.tsx',
-		'./src2/void-settings-tsx/index.tsx',
-		'./src2/void-tooltip/index.tsx',
-		'./src2/void-onboarding/index.tsx',
+		'./src2/ainative-settings-tsx/index.tsx',
+		'./src2/ainative-tooltip/index.tsx',
+		'./src2/ainative-onboarding/index.tsx',
 		'./src2/quick-edit-tsx/index.tsx',
 		'./src2/diff/index.tsx',
+		'./src2/auth/index.tsx',
+		'./src2/ai-registry/index.tsx',
 	],
 	outDir: './out',
 	format: ['esm'],

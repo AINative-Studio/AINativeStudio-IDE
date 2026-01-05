@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------*/
 
 import { mountFnGenerator } from '../util/mountFnGenerator.js'
-import { VoidCommandBarMain } from './VoidCommandBar.js'
-import { VoidSelectionHelperMain } from './VoidSelectionHelper.js'
+import { AINativeCommandBarMain } from './AINativeCommandBar.js'
+import { AINativeSelectionHelperMain } from './AINativeSelectionHelper.js'
 
-export const mountVoidCommandBar = mountFnGenerator(VoidCommandBarMain)
+export const mountAINativeCommandBar = mountFnGenerator(AINativeCommandBarMain)
 
-export const mountVoidSelectionHelper = mountFnGenerator(VoidSelectionHelperMain)
+export const mountAINativeSelectionHelper = mountFnGenerator(AINativeSelectionHelperMain)
 

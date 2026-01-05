@@ -6,7 +6,7 @@
 
 import { defaultModelsOfProvider, defaultProviderSettings, ModelOverrides } from './modelCapabilities.js';
 import { ToolApprovalType } from './toolsServiceTypes.js';
-import { VoidSettingsState } from './voidSettingsService.js'
+import { VoidSettingsState } from './ainativeSettingsService.js'
 
 
 type UnionOfKeys<T> = T extends T ? keyof T : never;
@@ -29,11 +29,14 @@ export const customSettingNamesOfProvider = (providerName: ProviderName) => {
 
 
 
-export type VoidStatefulModelInfo = { // <-- STATEFUL
+export type AINativeStatefulModelInfo = { // <-- STATEFUL
 	modelName: string,
 	type: 'default' | 'autodetected' | 'custom';
 	isHidden: boolean, // whether or not the user is hiding it (switched off)
 }
+
+/** @deprecated Legacy alias for backward compatibility. Use AINativeStatefulModelInfo instead. */
+export type VoidStatefulModelInfo = AINativeStatefulModelInfo;
 
 
 
@@ -261,6 +264,16 @@ export const defaultSettingsOfProvider: SettingsOfProvider = {
 		...defaultProviderSettings.anthropic,
 		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.anthropic),
 		_didFillInProviderSettings: undefined,
+	},
+	ainativeCloud: {
+		_didFillInProviderSettings: undefined,
+		models: [],
+		apiKey: undefined,
+		project: undefined,
+		region: undefined,
+		endpoint: undefined,
+		headersJSON: undefined,
+		azureApiVersion: undefined,
 	},
 	openAI: {
 		...defaultCustomSettings,

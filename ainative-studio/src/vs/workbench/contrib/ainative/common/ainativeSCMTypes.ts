@@ -33,4 +33,4 @@ export interface IAINativeSCMService {
 	gitLog(path: string): Promise<string>
 }
 
-export const IAINativeSCMService = createDecorator<IAINativeSCMService>('voidSCMService')
+export const IAINativeSCMService = createDecorator<IAINativeSCMService>('ainativeSCMService')

@@ -8,7 +8,7 @@ import { IEnvironmentMainService } from '../../../../platform/environment/electr
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IUpdateService, StateType } from '../../../../platform/update/common/update.js';
 import { IAINativeUpdateService } from '../common/ainativeUpdateService.js';
-import { VoidCheckUpdateRespose } from '../common/ainativeUpdateServiceTypes.js';
+import { AINativeCheckUpdateResponse } from '../common/ainativeUpdateServiceTypes.js';
 
 
 
@@ -24,7 +24,7 @@ export class AINativeMainUpdateService extends Disposable implements IAINativeUp
 	}
 
 
-	async check(explicit: boolean): Promise<VoidCheckUpdateRespose> {
+	async check(explicit: boolean): Promise<AINativeCheckUpdateResponse> {
 
 		const isDevMode = !this._envMainService.isBuilt // found in abstractUpdateService.ts
 
@@ -79,7 +79,7 @@ export class AINativeMainUpdateService extends Disposable implements IAINativeUp
 
 		if (this._updateService.state.type === StateType.Ready) {
 			// Update is ready
-			return { message: 'Restart Void to update!', action: 'restart' } as const
+			return { message: 'Restart AINative Studio to update!', action: 'restart' } as const
 		}
 
 		if (this._updateService.state.type === StateType.Disabled) {
@@ -93,9 +93,9 @@ export class AINativeMainUpdateService extends Disposable implements IAINativeUp
 
 
 
-	private async _manualCheckGHTagIfDisabled(explicit: boolean): Promise<VoidCheckUpdateRespose> {
+	private async _manualCheckGHTagIfDisabled(explicit: boolean): Promise<AINativeCheckUpdateResponse> {
 		try {
-			const response = await fetch('https://api.github.com/repos/voideditor/binaries/releases/latest');
+			const response = await fetch('https://api.github.com/repos/AINative-Studio/binaries/releases/latest');
 
 			const data = await response.json();
 			const version = data.tag_name;
@@ -112,11 +112,11 @@ export class AINativeMainUpdateService extends Disposable implements IAINativeUp
 			if (explicit) {
 				if (response.ok) {
 					if (!isUpToDate) {
-						message = 'A new version of Void is available! Please reinstall (auto-updates are disabled on this OS) - it only takes a second!'
+						message = 'A new version of AINative Studio is available! Please reinstall (auto-updates are disabled on this OS) - it only takes a second!'
 						action = 'reinstall'
 					}
 					else {
-						message = 'Void is up-to-date!'
+						message = 'AINative Studio is up-to-date!'
 					}
 				}
 				else {
@@ -127,7 +127,7 @@ export class AINativeMainUpdateService extends Disposable implements IAINativeUp
 			// not explicit
 			else {
 				if (response.ok && !isUpToDate) {
-					message = 'A new version of Void is available! Please reinstall (auto-updates are disabled on this OS) - it only takes a second!'
+					message = 'A new version of AINative Studio is available! Please reinstall (auto-updates are disabled on this OS) - it only takes a second!'
 					action = 'reinstall'
 				}
 				else {

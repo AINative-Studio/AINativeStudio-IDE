@@ -29,11 +29,11 @@ registerAction2(class extends Action2 {
 	constructor() {
 		super({
 			f1: true,
-			id: 'void.dummy',
+			id: 'ainative.dummy',
 			title: localize2('dummy', 'dummy: Init'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyCode.Digit0,
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -45,7 +45,7 @@ registerAction2(class extends Action2 {
 
 
 class DummyService extends Disposable implements IWorkbenchContribution, IDummyService {
-	static readonly ID = 'workbench.contrib.void.dummy' // workbenchContributions need this, services do not
+	static readonly ID = 'workbench.contrib.ainative.dummy' // workbenchContributions need this, services do not
 	_serviceBrand: undefined;
 
 	constructor(

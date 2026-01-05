@@ -1,0 +1,1 @@
+{"version":3,"sources":["common/platform.ts"],"names":[],"mappings":";;;AAAA;;;gGAGgG;AACnF,QAAA,SAAS,GAAG,OAAO,CAAC,QAAQ,KAAK,OAAO,CAAC;AACzC,QAAA,WAAW,GAAG,OAAO,CAAC,QAAQ,KAAK,QAAQ,CAAC;AAC5C,QAAA,OAAO,GAAG,OAAO,CAAC,QAAQ,KAAK,OAAO,CAAC","file":"platform.js","sourceRoot":"../../src/"}

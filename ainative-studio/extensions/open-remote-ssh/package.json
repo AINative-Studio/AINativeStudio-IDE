@@ -1,7 +1,7 @@
 {
   "name": "open-remote-ssh",
   "displayName": "Open Remote - SSH",
-  "publisher": "voideditor",
+  "publisher": "ainative-studio",
   "description": "Use any remote machine with a SSH server as your development environment.",
   "version": "0.0.48",
   "icon": "resources/icon.png",
@@ -69,9 +69,9 @@
         },
         "remote.SSH.serverDownloadUrlTemplate": {
           "type": "string",
-          "description": "The URL from where the vscode server will be downloaded. You can use the following variables and they will be replaced dynamically:\n- ${quality}: vscode server quality, e.g. stable or insiders\n- ${version}: vscode server version, e.g. 1.69.0\n- ${commit}: vscode server release commit\n- ${arch}: vscode server arch, e.g. x64, armhf, arm64\n- ${release}: release number",
+          "description": "The URL from where the vscode server will be downloaded. You can use the following variables and they will be replaced dynamically:\n- ${quality}: vscode server quality, e.g. stable or insiders\n- ${version}: vscode server version, e.g. 1.69.0\n- ${commit}: vscode server release commit\n- ${arch}: vscode server arch, e.g. x64, armhf, arm64\n- ${os}: operating system, e.g. linux, darwin, win32",
           "scope": "application",
-          "default": "https://github.com/voideditor/binaries/releases/download/${version}/void-reh-${os}-${arch}-${version}.tar.gz"
+          "default": "https://update.code.visualstudio.com/commit:${commit}/server-${os}/${arch}/stable"
         },
         "remote.SSH.remotePlatform": {
           "type": "object",

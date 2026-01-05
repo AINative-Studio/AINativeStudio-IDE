@@ -41,7 +41,7 @@ registerAction2(class extends Action2 {
 			title: localize2('voidQuickEditAction', 'AINative Studio: Quick Edit'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyCode.KeyK,
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 				when: ContextKeyExpr.deserialize('editorFocus && !terminalFocus'),
 			}
 		});

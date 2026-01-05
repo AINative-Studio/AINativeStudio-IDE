@@ -112,8 +112,11 @@ export const diffAreaSnapshotKeys = [
 
 export type DiffAreaSnapshotEntry<DiffAreaType extends DiffArea = DiffArea> = Pick<DiffAreaType, typeof diffAreaSnapshotKeys[number]>
 
-export type VoidFileSnapshot = {
+export type AINativeFileSnapshot = {
 	snapshottedDiffAreaOfId: Record<string, DiffAreaSnapshotEntry>;
 	entireFileCode: string;
 }
+
+// Legacy type alias for backward compatibility
+export type VoidFileSnapshot = AINativeFileSnapshot;
 

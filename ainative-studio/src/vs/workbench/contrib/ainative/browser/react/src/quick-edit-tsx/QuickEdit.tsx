@@ -13,7 +13,7 @@ export const QuickEdit = (props: QuickEditPropsType) => {
 
 	const isDark = useIsDark()
 
-	return <div className={`@@void-scope ${isDark ? 'dark' : ''}`}>
+	return <div className={`@@ainative-scope ${isDark ? 'dark' : ''}`}>
 		<ErrorBoundary>
 			<QuickEditChat {...props} />
 		</ErrorBoundary>

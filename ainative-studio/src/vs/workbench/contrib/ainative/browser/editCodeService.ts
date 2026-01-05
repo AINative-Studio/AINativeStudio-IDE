@@ -23,7 +23,7 @@ import * as dom from '../../../../base/browser/dom.js';
 import { Widget } from '../../../../base/browser/ui/widget.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IConsistentEditorItemService, IConsistentItemService } from './helperServices/consistentItemService.js';
-import { voidPrefixAndSuffix, ctrlKStream_userMessage, ctrlKStream_systemMessage, defaultQuickEditFimTags, rewriteCode_systemMessage, rewriteCode_userMessage, searchReplaceGivenDescription_systemMessage, searchReplaceGivenDescription_userMessage, tripleTick, } from '../common/prompt/prompts.js';
+import { ainativePrefixAndSuffix, ctrlKStream_userMessage, ctrlKStream_systemMessage, defaultQuickEditFimTags, rewriteCode_systemMessage, rewriteCode_userMessage, searchReplaceGivenDescription_systemMessage, searchReplaceGivenDescription_userMessage, tripleTick, } from '../common/prompt/prompts.js';
 import { IAINativeCommandBarService } from './ainativeCommandBarService.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { VOID_ACCEPT_DIFF_ACTION_ID, VOID_REJECT_DIFF_ACTION_ID } from './actionIDs.js';
@@ -40,11 +40,11 @@ import { LLMChatMessage } from '../common/sendLLMMessageTypes.js';
 import { IMetricsService } from '../common/metricsService.js';
 import { IEditCodeService, AddCtrlKOpts, StartApplyingOpts, CallBeforeStartApplyingOpts, } from './editCodeServiceInterface.js';
 import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
-import { FeatureName } from '../common/voidSettingsTypes.js';
+import { FeatureName } from '../common/ainativeSettingsTypes.js';
 import { IAINativeModelService } from '../common/ainativeModelService.js';
 import { deepClone } from '../../../../base/common/objects.js';
 import { acceptBg, acceptBorder, buttonFontSize, buttonTextColor, rejectBg, rejectBorder } from '../common/helpers/colors.js';
-import { DiffArea, Diff, CtrlKZone, VoidFileSnapshot, DiffAreaSnapshotEntry, diffAreaSnapshotKeys, DiffZone, TrackingZone, ComputedDiff } from '../common/editCodeServiceTypes.js';
+import { DiffArea, Diff, CtrlKZone, AINativeFileSnapshot, DiffAreaSnapshotEntry, diffAreaSnapshotKeys, DiffZone, TrackingZone, ComputedDiff } from '../common/editCodeServiceTypes.js';
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
 // import { isMacintosh } from '../../../../base/common/platform.js';
 // import { VOID_OPEN_SETTINGS_ACTION_ID } from './voidSettingsPane.js';
@@ -194,7 +194,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		// @ICommandService private readonly _commandService: ICommandService,
 		@IAINativeSettingsService private readonly _settingsService: IAINativeSettingsService,
 		// @IFileService private readonly _fileService: IFileService,
-		@IAINativeModelService private readonly _voidModelService: IAINativeModelService,
+		@IAINativeModelService private readonly _ainativeModelService: IAINativeModelService,
 		@IConvertToLLMMessageService private readonly _convertToLLMMessageService: IConvertToLLMMessageService,
 	) {
 		super();
@@ -203,7 +203,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		const registeredModelURIs = new Set<string>()
 		const initializeModel = async (model: ITextModel) => {
 
-			await this._voidModelService.initializeModel(model.uri)
+			await this._ainativeModelService.initializeModel(model.uri)
 
 			// do not add listeners to the same model twice - important, or will see duplicates
 			if (registeredModelURIs.has(model.uri.fsPath)) return
@@ -279,7 +279,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 	// 	const details = errorDetails(e.fullError)
 	// 	this._notificationService.notify({
 	// 		severity: Severity.Warning,
-	// 		message: `Void Error: ${e.message}`,
+	// 		message: `AINative Studio Error: ${e.message}`,
 	// 		actions: {
 	// 			secondary: [{
 	// 				id: 'void.onerror.opensettings',
@@ -290,7 +290,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 	// 				run: () => { this._commandService.executeCommand(VOID_OPEN_SETTINGS_ACTION_ID) }
 	// 			}]
 	// 		},
-	// 		source: details ? `(Hold ${isMacintosh ? 'Option' : 'Alt'} to hover) - ${details}\n\nIf this persists, feel free to [report](https://github.com/voideditor/void/issues/new) it.` : undefined
+	// 		source: details ? `(Hold ${isMacintosh ? 'Option' : 'Alt'} to hover) - ${details}\n\nIf this persists, feel free to [report](https://github.com/AINative-Studio/AINativeStudio-IDE/issues/new) it.` : undefined
 	// 	})
 	// }
 
@@ -315,7 +315,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 
 	private _addDiffAreaStylesToURI = (uri: URI) => {
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 
 		for (const diffareaid of this.diffAreasOfURI[uri.fsPath] || []) {
 			const diffArea = this.diffAreaOfId[diffareaid]
@@ -344,7 +344,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 
 	private _computeDiffsAndAddStylesToURI = (uri: URI) => {
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (model === null) return
 		const fullFileText = model.getValue(EndOfLinePreference.LF)
 
@@ -477,7 +477,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 		const disposeInThisEditorFns: (() => void)[] = []
 
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 
 		// green decoration and minimap decoration
 		if (type !== 'deletion') {
@@ -625,7 +625,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 	weAreWriting = false
 	private _writeURIText(uri: URI, text: string, range_: IRange | 'wholeFileRange', { shouldRealignDiffAreas, }: { shouldRealignDiffAreas: boolean, }) {
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) {
 			this._refreshStylesAndDiffsInURI(uri) // at the end of a write, we still expect to refresh all styles. e.g. sometimes we expect to restore all the decorations even if no edits were made when _writeText is used
 			return
@@ -663,8 +663,8 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 
 
-	private _getCurrentVoidFileSnapshot = (uri: URI): VoidFileSnapshot => {
-		const { model } = this._voidModelService.getModel(uri)
+	private _getCurrentAINativeFileSnapshot = (uri: URI): AINativeFileSnapshot => {
+		const { model } = this._ainativeModelService.getModel(uri)
 		const snapshottedDiffAreaOfId: Record<string, DiffAreaSnapshotEntry> = {}
 
 		for (const diffareaid in this.diffAreaOfId) {
@@ -687,7 +687,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 	}
 
 
-	private _restoreVoidFileSnapshot = async (uri: URI, snapshot: VoidFileSnapshot) => {
+	private _restoreAINativeFileSnapshot = async (uri: URI, snapshot: AINativeFileSnapshot) => {
 		// for each diffarea in this uri, stop streaming if currently streaming
 		for (const diffareaid in this.diffAreaOfId) {
 			const diffArea = this.diffAreaOfId[diffareaid]
@@ -737,34 +737,44 @@ class EditCodeService extends Disposable implements IEditCodeService {
 	}
 
 	private _addToHistory(uri: URI, opts?: { onWillUndo?: () => void }) {
-		const beforeSnapshot: VoidFileSnapshot = this._getCurrentVoidFileSnapshot(uri)
-		let afterSnapshot: VoidFileSnapshot | null = null
+		const beforeSnapshot: AINativeFileSnapshot = this._getCurrentAINativeFileSnapshot(uri)
+		let afterSnapshot: AINativeFileSnapshot | null = null
 
 		const elt: IUndoRedoElement = {
 			type: UndoRedoElementType.Resource,
 			resource: uri,
-			label: 'Void Agent',
+			label: 'AINative Agent',
 			code: 'undoredo.editCode',
-			undo: async () => { opts?.onWillUndo?.(); await this._restoreVoidFileSnapshot(uri, beforeSnapshot) },
-			redo: async () => { if (afterSnapshot) await this._restoreVoidFileSnapshot(uri, afterSnapshot) }
+			undo: async () => { opts?.onWillUndo?.(); await this._restoreAINativeFileSnapshot(uri, beforeSnapshot) },
+			redo: async () => { if (afterSnapshot) await this._restoreAINativeFileSnapshot(uri, afterSnapshot) }
 		}
 		this._undoRedoService.pushElement(elt)
 
 		const onFinishEdit = async () => {
-			afterSnapshot = this._getCurrentVoidFileSnapshot(uri)
-			await this._voidModelService.saveModel(uri)
+			afterSnapshot = this._getCurrentAINativeFileSnapshot(uri)
+			await this._ainativeModelService.saveModel(uri)
 		}
 		return { onFinishEdit }
 	}
 
 
-	public getVoidFileSnapshot(uri: URI) {
-		return this._getCurrentVoidFileSnapshot(uri)
+	public getAINativeFileSnapshot(uri: URI) {
+		return this._getCurrentAINativeFileSnapshot(uri)
 	}
 
 
-	public restoreVoidFileSnapshot(uri: URI, snapshot: VoidFileSnapshot): void {
-		this._restoreVoidFileSnapshot(uri, snapshot)
+	public restoreAINativeFileSnapshot(uri: URI, snapshot: AINativeFileSnapshot): void {
+		this._restoreAINativeFileSnapshot(uri, snapshot)
+	}
+
+	/** @deprecated Legacy alias for backward compatibility. Use getAINativeFileSnapshot instead. */
+	public getVoidFileSnapshot(uri: URI) {
+		return this.getAINativeFileSnapshot(uri);
+	}
+
+	/** @deprecated Legacy alias for backward compatibility. Use restoreAINativeFileSnapshot instead. */
+	public restoreVoidFileSnapshot(uri: URI, snapshot: AINativeFileSnapshot): void {
+		this.restoreAINativeFileSnapshot(uri, snapshot);
 	}
 
 
@@ -997,7 +1007,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 			else if (lastDiff.type === 'deletion')
 				endLineInLlmTextSoFar = lastDiff.startLine
 			else
-				throw new Error(`Void: diff.type not recognized on: ${lastDiff}`)
+				throw new Error(`AINative Studio: diff.type not recognized on: ${lastDiff}`)
 		}
 
 		// at the start, add a newline between the stream and originalCode to make reasoning easier
@@ -1127,8 +1137,8 @@ class EditCodeService extends Disposable implements IEditCodeService {
 	public async callBeforeApplyOrEdit(givenURI: URI | 'current') {
 		const uri = this._uriOfGivenURI(givenURI)
 		if (!uri) return
-		await this._voidModelService.initializeModel(uri)
-		await this._voidModelService.saveModel(uri) // save the URI
+		await this._ainativeModelService.initializeModel(uri)
+		await this._ainativeModelService.saveModel(uri) // save the URI
 	}
 
 
@@ -1269,7 +1279,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		linkedCtrlKZone: CtrlKZone | null,
 		onWillUndo: () => void,
 	}) {
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) return
 
 		// treat like full file, unless linkedCtrlKZone was provided in which case use its diff's range
@@ -1376,10 +1386,10 @@ class EditCodeService extends Disposable implements IEditCodeService {
 			startRange = [startLine_, endLine_]
 		}
 		else {
-			throw new Error(`Void: diff.type not recognized on: ${from}`)
+			throw new Error(`AINative Studio: diff.type not recognized on: ${from}`)
 		}
 
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) return
 
 		let streamRequestIdRef: { current: string | null } = { current: null } // can use this as a proxy to set the diffArea's stream state requestId
@@ -1408,7 +1418,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 			const startLine = startRange === 'fullFile' ? 1 : startRange[0]
 			const endLine = startRange === 'fullFile' ? model.getLineCount() : startRange[1]
-			const { prefix, suffix } = voidPrefixAndSuffix({ fullFileStr: originalFileCode, startLine, endLine })
+			const { prefix, suffix } = ainativePrefixAndSuffix({ fullFileStr: originalFileCode, startLine, endLine })
 			const userContent = ctrlKStream_userMessage({ selection: originalCode, instructions: instructions, prefix, suffix, fimTags: quickEditFIMTags, language })
 
 			const { messages: a, separateSystemMessage: b } = this._convertToLLMMessageService.prepareLLMSimpleMessages({
@@ -1578,7 +1588,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 	_fileLengthOfGivenURI(givenURI: URI | 'current') {
 		const uri = this._uriOfGivenURI(givenURI)
 		if (!uri) return null
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) return null
 		const numCharsInFile = model.getValueLength(EndOfLinePreference.LF)
 		return numCharsInFile
@@ -1617,7 +1627,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		const blocks = extractSearchReplaceBlocks(blocksStr)
 		if (blocks.length === 0) throw new Error(`No Search/Replace blocks were received!`)
 
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) throw new Error(`Error applying Search/Replace blocks: File does not exist.`)
 		const modelStr = model.getValue(EndOfLinePreference.LF)
 		// .split('\n').map(l => '\t' + l).join('\n') // for testing purposes only, remember to remove this
@@ -1678,7 +1688,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		const uri = this._getURIBeforeStartApplying(opts)
 		if (!uri) return
 
-		const { model } = this._voidModelService.getModel(uri)
+		const { model } = this._ainativeModelService.getModel(uri)
 		if (!model) return
 
 		let streamRequestIdRef: { current: string | null } = { current: null } // can use this as a proxy to set the diffArea's stream state requestId
@@ -1968,7 +1978,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 						const blocks = extractSearchReplaceBlocks(fullText)
 						if (blocks.length === 0) {
-							this._notificationService.info(`Void: We ran Fast Apply, but the LLM didn't output any changes.`)
+							this._notificationService.info(`AINative Studio: We ran Fast Apply, but the LLM didn't output any changes.`)
 						}
 						this._writeURIText(uri, originalFileCode, 'wholeFileRange', { shouldRealignDiffAreas: true })
 
@@ -2305,7 +2315,7 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 			startLine: number,
 			offsetLines: number
 		},
-		@IAINativeCommandBarService private readonly _voidCommandBarService: IAINativeCommandBarService,
+		@IAINativeCommandBarService private readonly _ainativeCommandBarService: IAINativeCommandBarService,
 		@IKeybindingService private readonly _keybindingService: IKeybindingService,
 		@IEditCodeService private readonly _editCodeService: IEditCodeService,
 	) {
@@ -2336,7 +2346,7 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 			const acceptKeybindLabel = this._editCodeService.processRawKeybindingText(acceptKeybinding && acceptKeybinding.getLabel() || '');
 			const rejectKeybindLabel = this._editCodeService.processRawKeybindingText(rejectKeybinding && rejectKeybinding.getLabel() || '');
 
-			const commandBarStateAtUri = this._voidCommandBarService.stateOfURI[uri.fsPath];
+			const commandBarStateAtUri = this._ainativeCommandBarService.stateOfURI[uri.fsPath];
 			const selectedDiffIdx = commandBarStateAtUri?.diffIdx ?? 0; // 0th item is selected by default
 			const thisDiffIdx = commandBarStateAtUri?.sortedDiffIds.indexOf(diffid) ?? null;
 
@@ -2435,7 +2445,7 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 
 
 		// Listen for state changes in the command bar service
-		this._register(this._voidCommandBarService.onDidChangeState(e => {
+		this._register(this._ainativeCommandBarService.onDidChangeState(e => {
 			if (uri && e.uri.fsPath === uri.fsPath) {
 
 				const { acceptText, rejectText } = getAcceptRejectText()

@@ -1,0 +1,560 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) AINative Studio. All rights reserved.
+ *  Licensed under the MIT License.
+ *--------------------------------------------------------------------------------------------*/
+
+import { strictEqual, ok, deepStrictEqual } from 'assert';
+import * as sinon from 'sinon';
+import { DisposableStore } from '../../../../../base/common/lifecycle.js';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
+import { TestStorageService } from '../../../../test/common/workbenchTestServices.js';
+import { UsageTrackingService, IUsageTrackingService } from '../../common/usageTrackingService.js';
+import { IAINativeCloudAuthService, CloudAuthState } from '../../common/ainativeCloudAuthTypes.js';
+import { IAIModelRegistryService } from '../../common/aiModelRegistryService.js';
+import { AIModel, PricingTier, ModelCapability, ModelParameterType, QuotaInfo } from '../../common/aiModelRegistryTypes.js';
+import { Emitter } from '../../../../../base/common/event.js';
+
+/**
+ * Mock cloud auth service
+ */
+class MockCloudAuthService implements IAINativeCloudAuthService {
+	readonly _serviceBrand: undefined;
+	private _authenticated = false;
+	private readonly _onDidChangeAuthState = new Emitter<CloudAuthState>();
+	readonly onDidChangeAuthState = this._onDidChangeAuthState.event;
+	readonly onDidUpdateUser = () => ({ dispose: () => { } }) as any;
+
+	async register() { return { success: true }; }
+	async login() { return { success: true, accessToken: 'test', refreshToken: 'test' }; }
+	async logout() { this._authenticated = false; }
+	async requestPasswordReset() { return { success: true }; }
+	async confirmPasswordReset() { return { success: true }; }
+	async changePassword() { return { success: true }; }
+	async refreshToken() { return 'test-token'; }
+	async validateToken() { return { valid: true }; }
+	async getAccessToken() { return this._authenticated ? 'test-token' : null; }
+	getAccessTokenSync() { return this._authenticated ? 'test-token' : null; }
+	async getCurrentUser() { return null; }
+	getUser() { return null; }
+	isAuthenticated() { return this._authenticated; }
+	getAuthState() { return this._authenticated ? CloudAuthState.Authenticated : CloudAuthState.Unauthenticated; }
+	async resendEmailVerification() { return { success: true }; }
+	async verifyEmail() { return { success: true }; }
+
+	setAuthenticated(value: boolean) {
+		this._authenticated = value;
+		this._onDidChangeAuthState.fire(value ? CloudAuthState.Authenticated : CloudAuthState.Unauthenticated);
+	}
+}
+
+/**
+ * Mock model registry service
+ */
+class MockModelRegistryService implements IAIModelRegistryService {
+	readonly _serviceBrand: undefined;
+	readonly onDidUpdateModels = () => ({ dispose: () => { } }) as any;
+	readonly onDidChangeModelSelection = () => ({ dispose: () => { } }) as any;
+
+	private models = new Map<string, AIModel>([
+		['claude-3-sonnet', {
+			id: 'claude-3-sonnet',
+			name: 'Claude 3 Sonnet',
+			description: 'Test model',
+			provider: 'anthropic',
+			version: '3.0',
+			capabilities: [ModelCapability.CodeGeneration],
+			pricing: {
+				tier: PricingTier.PayAsYouGo,
+				inputTokenCost: 0.003,
+				outputTokenCost: 0.015,
+				currency: 'USD'
+			},
+			parameters: [],
+			maxContextLength: 200000,
+			available: true
+		}],
+		['gpt-4', {
+			id: 'gpt-4',
+			name: 'GPT-4',
+			description: 'Test model',
+			provider: 'openai',
+			version: '4.0',
+			capabilities: [ModelCapability.TextGeneration],
+			pricing: {
+				tier: PricingTier.PayAsYouGo,
+				inputTokenCost: 0.01,
+				outputTokenCost: 0.03,
+				currency: 'USD'
+			},
+			parameters: [],
+			maxContextLength: 128000,
+			available: true
+		}]
+	]);
+
+	quotaInfo: QuotaInfo = {
+		totalLimit: 10000,
+		used: 0,
+		remaining: 10000,
+		exceeded: false,
+		resetDate: new Date(Date.now() + 86400000).toISOString()
+	};
+
+	async listModels() { return Array.from(this.models.values()); }
+	async getModel(id: string) {
+		const model = this.models.get(id);
+		if (!model) { throw new Error('Model not found'); }
+		return model;
+	}
+	async selectModel() { }
+	async getSelectedModel() { return null; }
+	async invokeModel() { return { id: '1', modelId: 'test', text: 'test', finishReason: 'stop' as const }; }
+	async streamModel() { }
+	async getUsageStats() {
+		return {
+			totalCalls: 0,
+			totalTokens: 0,
+			inputTokens: 0,
+			outputTokens: 0,
+			totalCost: 0,
+			byModel: {},
+			periodStart: '2024-01-01',
+			periodEnd: '2024-01-31'
+		};
+	}
+	async getQuota() { return this.quotaInfo; }
+	async refreshModels() { }
+}
+
+suite('UsageTrackingService Tests', () => {
+	const disposables = new DisposableStore();
+	let storageService: TestStorageService;
+	let cloudAuthService: MockCloudAuthService;
+	let modelRegistryService: MockModelRegistryService;
+	let usageService: UsageTrackingService;
+
+	setup(() => {
+		storageService = new TestStorageService();
+		cloudAuthService = new MockCloudAuthService();
+		modelRegistryService = new MockModelRegistryService();
+		usageService = disposables.add(new UsageTrackingService(
+			cloudAuthService as any,
+			modelRegistryService as any,
+			storageService
+		));
+	});
+
+	teardown(() => {
+		disposables.clear();
+	});
+
+	ensureNoDisposablesAreLeakedInTestSuite();
+
+	suite('Local Usage Tracking', () => {
+		test('should track single usage', async () => {
+			await usageService.trackUsage('claude-3-sonnet', 100, 50);
+
+			const usage = await usageService.getUsage();
+			strictEqual(usage.totalCalls, 1);
+			strictEqual(usage.inputTokens, 100);
+			strictEqual(usage.outputTokens, 50);
+			strictEqual(usage.totalTokens, 150);
+			ok(usage.totalCost > 0);
+		});
+
+		test('should track multiple usages', async () => {
+			await usageService.trackUsage('claude-3-sonnet', 100, 50);
+			await usageService.trackUsage('gpt-4', 200, 100);
+
+			const usage = await usageService.getUsage();
+			strictEqual(usage.totalCalls, 2);
+			strictEqual(usage.inputTokens, 300);
+			strictEqual(usage.outputTokens, 150);
+			strictEqual(usage.totalTokens, 450);
+		});
+
+		test('should aggregate usage by model', async () => {
+			await usageService.trackUsage('claude-3-sonnet', 100, 50);
+			await usageService.trackUsage('claude-3-sonnet', 200, 100);
+			await usageService.trackUsage('gpt-4', 150, 75);
+
+			const usage = await usageService.getUsage();
+			strictEqual(usage.byModel['claude-3-sonnet'].calls, 2);
+			strictEqual(usage.byModel['claude-3-sonnet'].inputTokens, 300);
+			strictEqual(usage.byModel['claude-3-sonnet'].outputTokens, 150);
+			strictEqual(usage.byModel['gpt-4'].calls, 1);
+		});
+
+		test('should emit usage update event', async () => {
+			let eventFired = false;
+			const disposable = usageService.onDidUpdateUsage(() => {
+				eventFired = true;
+			});
+
+			await usageService.trackUsage('claude-3-sonnet', 100, 50);
+
+			ok(eventFired);
+			disposable.dispose();
+		});
+	});
+
+	suite('Cost Calculation', () => {
+		test('should calculate cost correctly', async () => {
+			const cost = await usageService.calculateCost('claude-3-sonnet', 1000, 1000);
+
+			// Input: 1000/1000 * 0.003 = 0.003
+			// Output: 1000/1000 * 0.015 = 0.015
+			// Total: 0.018
+			strictEqual(cost.inputCost, 0.003);
+			strictEqual(cost.outputCost, 0.015);
+			strictEqual(cost.totalCost, 0.018);
+		});
+
+		test('should handle different token counts', async () => {
+			const cost1 = await usageService.calculateCost('claude-3-sonnet', 500, 1000);
+			const cost2 = await usageService.calculateCost('gpt-4', 1000, 500);
+
+			ok(cost1.totalCost > 0);
+			ok(cost2.totalCost > 0);
+			ok(cost2.totalCost > cost1.totalCost); // GPT-4 is more expensive
+		});
+
+		test('should return zero cost for unknown model', async () => {
+			const cost = await usageService.calculateCost('unknown-model', 1000, 1000);
+
+			strictEqual(cost.inputCost, 0);
+			strictEqual(cost.outputCost, 0);
+			strictEqual(cost.totalCost, 0);
+		});
+	});
+
+	suite('Quota Monitoring', () => {
+		test('should get quota status', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			const status = await usageService.getQuotaStatus();
+
+			ok(status);
+			strictEqual(status.hasQuota, true);
+			strictEqual(status.totalLimit, 10000);
+			strictEqual(status.remaining, 10000);
+			strictEqual(status.exceeded, false);
+		});
+
+		test('should detect approaching quota', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			modelRegistryService.quotaInfo = {
+				totalLimit: 10000,
+				used: 8500,
+				remaining: 1500,
+				exceeded: false
+			};
+
+			const status = await usageService.getQuotaStatus();
+
+			strictEqual(status.approaching, true);
+			strictEqual(status.warningThreshold, 0.8);
+		});
+
+		test('should detect exceeded quota', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			modelRegistryService.quotaInfo = {
+				totalLimit: 10000,
+				used: 10500,
+				remaining: 0,
+				exceeded: true
+			};
+
+			const status = await usageService.getQuotaStatus();
+
+			strictEqual(status.exceeded, true);
+		});
+
+		test('should emit quota update event', async () => {
+			cloudAuthService.setAuthenticated(true);
+			let eventFired = false;
+
+			const disposable = usageService.onDidUpdateQuota(() => {
+				eventFired = true;
+			});
+
+			await usageService.trackUsage('claude-3-sonnet', 100, 50);
+
+			ok(eventFired);
+			disposable.dispose();
+		});
+	});
+
+	suite('Cloud Synchronization', () => {
+		test('should sync with cloud when authenticated', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			await usageService.syncWithCloud();
+
+			const status = await usageService.getQuotaStatus();
+			ok(status.hasQuota);
+		});
+
+		test('should skip sync when not authenticated', async () => {
+			cloudAuthService.setAuthenticated(false);
+
+			await usageService.syncWithCloud();
+
+			const status = await usageService.getQuotaStatus();
+			strictEqual(status.hasQuota, false);
+		});
+
+		test('should auto-sync on authentication', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			// Wait for auto-sync
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			const status = await usageService.getQuotaStatus();
+			ok(status);
+		});
+	});
+
+	suite('Storage Persistence', () => {
+		test('should persist usage to storage', async () => {
+			await usageService.trackUsage('claude-3-sonnet', 100, 50);
+
+			// Create new service instance to test loading
+			const newService = new UsageTrackingService(
+				cloudAuthService as any,
+				modelRegistryService as any,
+				storageService
+			);
+
+			const usage = await newService.getUsage();
+			strictEqual(usage.totalCalls, 1);
+
+			newService.dispose();
+		});
+
+		test('should handle corrupt storage data', async () => {
+			// Manually corrupt storage
+			storageService.store('ainative.usage.records', 'invalid json', 0, 0);
+
+			const newService = new UsageTrackingService(
+				cloudAuthService as any,
+				modelRegistryService as any,
+				storageService
+			);
+
+			const usage = await newService.getUsage();
+			strictEqual(usage.totalCalls, 0);
+
+			newService.dispose();
+		});
+
+		test('should clear storage on reset', async () => {
+			await usageService.trackUsage('claude-3-sonnet', 100, 50);
+
+			usageService.reset();
+
+			const usage = await usageService.getUsage();
+			strictEqual(usage.totalCalls, 0);
+		});
+	});
+
+	suite('Auth State Changes', () => {
+		test('should reset on logout', async () => {
+			cloudAuthService.setAuthenticated(true);
+			await usageService.trackUsage('claude-3-sonnet', 100, 50);
+
+			cloudAuthService.setAuthenticated(false);
+
+			const usage = await usageService.getUsage();
+			strictEqual(usage.totalCalls, 0);
+		});
+
+		test('should sync on login', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			// Wait for auto-sync
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			const status = await usageService.getQuotaStatus();
+			ok(status.hasQuota);
+		});
+	});
+
+	suite('Usage Aggregation by Time Period', () => {
+		test('should filter usage by day', async () => {
+			const now = Date.now();
+			const oneDayAgo = now - (24 * 60 * 60 * 1000);
+			const twoDaysAgo = now - (2 * 24 * 60 * 60 * 1000);
+
+			// Manually add records at different times
+			const service = usageService as any;
+			service._usageRecords = [
+				{ id: '1', modelId: 'claude-3-sonnet', inputTokens: 100, outputTokens: 50, totalTokens: 150, cost: 0.001, timestamp: twoDaysAgo },
+				{ id: '2', modelId: 'claude-3-sonnet', inputTokens: 200, outputTokens: 100, totalTokens: 300, cost: 0.002, timestamp: oneDayAgo },
+				{ id: '3', modelId: 'claude-3-sonnet', inputTokens: 300, outputTokens: 150, totalTokens: 450, cost: 0.003, timestamp: now }
+			];
+
+			const dayUsage = await usageService.getUsage('day');
+			const weekUsage = await usageService.getUsage('week');
+			const allUsage = await usageService.getUsage('all');
+
+			ok(dayUsage.totalCalls < weekUsage.totalCalls);
+			strictEqual(allUsage.totalCalls, 3);
+		});
+
+		test('should filter usage by week', async () => {
+			const service = usageService as any;
+			service._usageRecords = [
+				{ id: '1', modelId: 'claude-3-sonnet', inputTokens: 100, outputTokens: 50, totalTokens: 150, cost: 0.001, timestamp: Date.now() - (8 * 24 * 60 * 60 * 1000) },
+				{ id: '2', modelId: 'claude-3-sonnet', inputTokens: 200, outputTokens: 100, totalTokens: 300, cost: 0.002, timestamp: Date.now() - (3 * 24 * 60 * 60 * 1000) }
+			];
+
+			const weekUsage = await usageService.getUsage('week');
+			strictEqual(weekUsage.totalCalls, 1);
+		});
+
+		test('should filter usage by month', async () => {
+			const service = usageService as any;
+			service._usageRecords = [
+				{ id: '1', modelId: 'claude-3-sonnet', inputTokens: 100, outputTokens: 50, totalTokens: 150, cost: 0.001, timestamp: Date.now() - (35 * 24 * 60 * 60 * 1000) },
+				{ id: '2', modelId: 'claude-3-sonnet', inputTokens: 200, outputTokens: 100, totalTokens: 300, cost: 0.002, timestamp: Date.now() - (15 * 24 * 60 * 60 * 1000) }
+			];
+
+			const monthUsage = await usageService.getUsage('month');
+			strictEqual(monthUsage.totalCalls, 1);
+		});
+	});
+
+	suite('Storage Trimming', () => {
+		test('should trim records exceeding max limit', async () => {
+			const service = usageService as any;
+			const maxRecords = 10000;
+
+			// Add more than max records
+			for (let i = 0; i < maxRecords + 100; i++) {
+				await usageService.trackUsage('claude-3-sonnet', 10, 5);
+			}
+
+			strictEqual(service._usageRecords.length, maxRecords);
+		});
+
+		test('should keep most recent records after trimming', async () => {
+			const service = usageService as any;
+
+			// Add records with increasing timestamps
+			for (let i = 0; i < 10100; i++) {
+				service._usageRecords.push({
+					id: `${i}`,
+					modelId: 'test',
+					inputTokens: 10,
+					outputTokens: 5,
+					totalTokens: 15,
+					cost: 0.001,
+					timestamp: Date.now() + i
+				});
+			}
+
+			// Manually trigger trim
+			await usageService.trackUsage('claude-3-sonnet', 10, 5);
+
+			// Should keep the last 10000 records
+			strictEqual(service._usageRecords.length, 10000);
+			const firstRecord = service._usageRecords[0];
+			strictEqual(firstRecord.id, '101');
+		});
+	});
+
+	suite('Error Handling', () => {
+		test('should handle model fetch errors gracefully', async () => {
+			const service = usageService as any;
+			service._modelCache.clear();
+
+			// Override getModel to throw error
+			const originalGetModel = modelRegistryService.getModel.bind(modelRegistryService);
+			modelRegistryService.getModel = async () => {
+				throw new Error('Network error');
+			};
+
+			await usageService.trackUsage('unknown-model', 100, 50);
+
+			const usage = await usageService.getUsage();
+			strictEqual(usage.totalCalls, 1);
+			strictEqual(usage.totalCost, 0);
+
+			modelRegistryService.getModel = originalGetModel;
+		});
+
+		test('should handle quota fetch errors', async () => {
+			cloudAuthService.setAuthenticated(true);
+
+			modelRegistryService.getQuota = async () => {
+				throw new Error('Network error');
+			};
+
+			await usageService.syncWithCloud();
+
+			const status = await usageService.getQuotaStatus();
+			strictEqual(status.hasQuota, false);
+		});
+	});
+
+	suite('Clear Local Usage', () => {
+		test('should clear all local usage data', async () => {
+			await usageService.trackUsage('claude-3-sonnet', 100, 50);
+			await usageService.trackUsage('gpt-4', 200, 100);
+
+			const usageBefore = await usageService.getUsage();
+			strictEqual(usageBefore.totalCalls, 2);
+
+			await usageService.clearLocalUsage();
+
+			const usageAfter = await usageService.getUsage();
+			strictEqual(usageAfter.totalCalls, 0);
+		});
+	});
+
+	suite('Periodic Sync Timer', () => {
+		test('should sync periodically when authenticated', async () => {
+			const clock = sinon.useFakeTimers();
+			try {
+				cloudAuthService.setAuthenticated(true);
+
+				let syncCount = 0;
+				const originalSync = usageService.syncWithCloud.bind(usageService);
+				usageService.syncWithCloud = async () => {
+					syncCount++;
+					return originalSync();
+				};
+
+				// Advance time by 6 minutes (sync interval is 5 minutes)
+				await clock.tickAsync(6 * 60 * 1000);
+
+				ok(syncCount > 0);
+			} finally {
+				clock.restore();
+			}
+		});
+
+		test('should not sync when unauthenticated', async () => {
+			const clock = sinon.useFakeTimers();
+			try {
+				cloudAuthService.setAuthenticated(false);
+
+				let syncCount = 0;
+				const originalSync = usageService.syncWithCloud.bind(usageService);
+				usageService.syncWithCloud = async () => {
+					syncCount++;
+					return originalSync();
+				};
+
+				await clock.tickAsync(6 * 60 * 1000);
+
+				strictEqual(syncCount, 0);
+			} finally {
+				clock.restore();
+			}
+		});
+	});
+});

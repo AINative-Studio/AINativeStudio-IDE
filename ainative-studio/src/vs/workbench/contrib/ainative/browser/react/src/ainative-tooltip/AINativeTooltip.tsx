@@ -14,33 +14,33 @@ import { useIsDark } from '../util/services.js';
  * 1. Mount a Tooltip with some id eg id='ainative-tooltip'
  * 2. Add data-tooltip-id="ainative-tooltip" and data-tooltip-content="Your tooltip text" to any element
  */
-export const VoidTooltip = () => {
+export const AINativeTooltip = () => {
 
 
 	const isDark = useIsDark()
 
 	return (
 
-		// use native colors so we don't have to worry about @@void-scope styles
-		// --void-bg-1: var(--vscode-input-background);
-		// --void-bg-1-alt: var(--vscode-badge-background);
-		// --void-bg-2: var(--vscode-sideBar-background);
-		// --void-bg-2-alt: color-mix(in srgb, var(--vscode-sideBar-background) 30%, var(--vscode-editor-background) 70%);
-		// --void-bg-3: var(--vscode-editor-background);
+		// use native colors so we don't have to worry about @@ainative-scope styles
+		// --ainative-bg-1: var(--vscode-input-background);
+		// --ainative-bg-1-alt: var(--vscode-badge-background);
+		// --ainative-bg-2: var(--vscode-sideBar-background);
+		// --ainative-bg-2-alt: color-mix(in srgb, var(--vscode-sideBar-background) 30%, var(--vscode-editor-background) 70%);
+		// --ainative-bg-3: var(--vscode-editor-background);
 
-		// --void-fg-0: color-mix(in srgb, var(--vscode-tab-activeForeground) 90%, black 10%);
-		// --void-fg-1: var(--vscode-editor-foreground);
-		// --void-fg-2: var(--vscode-input-foreground);
-		// --void-fg-3: var(--vscode-input-placeholderForeground);
-		// /* --void-fg-4: var(--vscode-tab-inactiveForeground); */
-		// --void-fg-4: var(--vscode-list-deemphasizedForeground);
+		// --ainative-fg-0: color-mix(in srgb, var(--vscode-tab-activeForeground) 90%, black 10%);
+		// --ainative-fg-1: var(--vscode-editor-foreground);
+		// --ainative-fg-2: var(--vscode-input-foreground);
+		// --ainative-fg-3: var(--vscode-input-placeholderForeground);
+		// /* --ainative-fg-4: var(--vscode-tab-inactiveForeground); */
+		// --ainative-fg-4: var(--vscode-list-deemphasizedForeground);
 
-		// --void-warning: var(--vscode-charts-yellow);
+		// --ainative-warning: var(--vscode-charts-yellow);
 
-		// --void-border-1: var(--vscode-commandCenter-activeBorder);
-		// --void-border-2: var(--vscode-commandCenter-border);
-		// --void-border-3: var(--vscode-commandCenter-inactiveBorder);
-		// --void-border-4: var(--vscode-editorGroup-border);
+		// --ainative-border-1: var(--vscode-commandCenter-activeBorder);
+		// --ainative-border-2: var(--vscode-commandCenter-border);
+		// --ainative-border-3: var(--vscode-commandCenter-inactiveBorder);
+		// --ainative-border-4: var(--vscode-editorGroup-border);
 
 		<>
 			<style>

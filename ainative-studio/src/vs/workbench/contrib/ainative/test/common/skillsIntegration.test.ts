@@ -126,7 +126,7 @@ suite('Skills Manager Integration Tests', () => {
 				}
 			};
 
-			const packageJsonPath = URI.joinPath(testWorkspaceDir, 'package.json');
+			// const packageJsonPath = URI.joinPath(testWorkspaceDir, 'package.json');
 			await fileService.writeFile(packageJsonPath, VSBuffer.fromString(JSON.stringify(packageJson, null, 2)));
 
 			// 2. Detect project type
@@ -185,25 +185,12 @@ suite('Skills Manager Integration Tests', () => {
 			assert.strictEqual(await skillsRegistry.isInstalled('minimal-skill'), true);
 
 			// 2. Simulate restart by creating new registry instance
-			const mockEnvService: IEnvironmentService = {
+			const mockEnvService: INativeEnvironmentService = {
 				userHome: testHomeDir,
 			} as any;
 
-			const { default: SkillsRegistryModule } = await import('../../common/skills/skillsRegistry.js');
-			const SkillsRegistryClass = (SkillsRegistryModule as any).SkillsRegistry || SkillsRegistryModule;
-
-			let newRegistry: ISkillsRegistry;
-			if (!SkillsRegistryClass) {
-				const moduleKeys = Object.keys(SkillsRegistryModule);
-				const registryClass = moduleKeys.find(key => key.includes('Registry'));
-				newRegistry = new (SkillsRegistryModule as any)[registryClass || 'SkillsRegistry'](
-					fileService,
-					skillParser,
-					mockEnvService
-				);
-			} else {
-				newRegistry = new SkillsRegistryClass(fileService, skillParser, mockEnvService);
-			}
+			const { SkillsRegistry } = await import('../../common/skills/skillsRegistry.js');
+			const newRegistry = new SkillsRegistry(fileService, skillParser, mockEnvService);
 
 			// 3. Verify skill is still available
 			const isStillInstalled = await newRegistry.isInstalled('minimal-skill');
@@ -358,7 +345,7 @@ suite('Skills Manager Integration Tests', () => {
 				}
 			};
 
-			const packageJsonPath = URI.joinPath(testWorkspaceDir, 'package.json');
+			// const packageJsonPath = URI.joinPath(testWorkspaceDir, 'package.json');
 			await fileService.writeFile(packageJsonPath, VSBuffer.fromString(JSON.stringify(packageJson, null, 2)));
 
 			const startTime = performance.now();
@@ -417,11 +404,13 @@ suite('Skills Manager Integration Tests', () => {
 	suite('Configuration Workflows', () => {
 		test('should initialize complete .mcp.json with project detection', async () => {
 			// Create project files
+			/* Not used - Python project
 			const packageJson = {
 				dependencies: {
 					fastapi: '0.104.0'
 				}
 			};
+			*/
 
 			// Wait, fastapi is Python, let me fix this
 			const requirements = 'fastapi==0.104.0\nuvicorn==0.24.0';

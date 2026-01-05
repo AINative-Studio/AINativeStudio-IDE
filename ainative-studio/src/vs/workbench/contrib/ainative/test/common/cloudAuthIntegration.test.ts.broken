@@ -1,0 +1,538 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) AINative Studio. All rights reserved.
+ *  Licensed under the MIT License.
+ *--------------------------------------------------------------------------------------------*/
+
+import { strictEqual, ok } from 'assert';
+import * as sinon from 'sinon';
+import { DisposableStore } from '../../../../../base/common/lifecycle.js';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
+import { TestStorageService } from '../../../../test/common/workbenchTestServices.js';
+import { AINativeCloudAuthService } from '../../common/ainativeCloudAuthService.js';
+import { AIModelRegistryService } from '../../common/aiModelRegistryService.js';
+import { UsageTrackingService } from '../../common/usageTrackingService.js';
+import { ModelInvocationRequest } from '../../common/aiModelRegistryTypes.js';
+import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
+
+/**
+ * Mock Encryption Service
+ */
+class MockEncryptionService implements IEncryptionService {
+	_serviceBrand: undefined;
+
+	async encrypt(value: string): Promise<string> {
+		return Buffer.from(value).toString('base64');
+	}
+
+	async decrypt(value: string): Promise<string> {
+		return Buffer.from(value, 'base64').toString('utf-8');
+	}
+
+	async isEncryptionAvailable(): Promise<boolean> {
+		return true;
+	}
+
+	async setUsePlainTextEncryption(): Promise<void> { }
+	async getKeyStorageProvider(): Promise<any> { return 'test'; }
+}
+
+suite('Cloud Authentication Integration Tests', () => {
+	const disposables = new DisposableStore();
+	let storageService: TestStorageService;
+	let encryptionService: MockEncryptionService;
+	let authService: AINativeCloudAuthService;
+	let modelRegistryService: AIModelRegistryService;
+	let usageTrackingService: UsageTrackingService;
+	let fetchStub: sinon.SinonStub;
+
+	setup(() => {
+		storageService = new TestStorageService();
+		encryptionService = new MockEncryptionService();
+		authService = disposables.add(new AINativeCloudAuthService(
+			encryptionService,
+			storageService
+		));
+		usageTrackingService = disposables.add(new UsageTrackingService(
+			authService as any,
+			null as any, // Will be set after modelRegistryService is created
+			storageService
+		));
+		modelRegistryService = disposables.add(new AIModelRegistryService(
+			authService as any,
+			storageService,
+			usageTrackingService as any
+		));
+
+		// Update usage tracking service with model registry reference
+		(usageTrackingService as any)._modelRegistryService = modelRegistryService;
+
+		fetchStub = sinon.stub(globalThis, 'fetch' as any);
+	});
+
+	teardown(() => {
+		disposables.clear();
+		fetchStub.restore();
+	});
+
+	ensureNoDisposablesAreLeakedInTestSuite();
+
+	suite('Complete Flow: Login → Fetch Models → Track Usage → Logout', () => {
+		test('should complete full workflow successfully', async () => {
+			// Mock login response
+			fetchStub.onCall(0).resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test-access-token',
+					refresh_token: 'test-refresh-token',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			// Mock user info response
+			fetchStub.onCall(1).resolves({
+				ok: true,
+				json: async () => ({
+					id: 'user-123',
+					email: 'test@example.com',
+					username: 'testuser',
+					role: 'user'
+				})
+			} as any);
+
+			// Step 1: Login
+			const loginResult = await authService.login('test@example.com', 'password123');
+			ok(loginResult.success);
+			ok(authService.isAuthenticated());
+
+			// Mock models list response
+			fetchStub.onCall(2).resolves({
+				ok: true,
+				json: async () => ({
+					models: [{
+						id: 'claude-3-sonnet',
+						name: 'Claude 3 Sonnet',
+						description: 'Test model',
+						provider: 'anthropic',
+						version: '3.0',
+						capabilities: ['code_generation'],
+						pricing: {
+							tier: 'pay_as_you_go',
+							input_token_cost: 0.003,
+							output_token_cost: 0.015,
+							currency: 'USD'
+						},
+						parameters: [],
+						max_context_length: 200000,
+						available: true,
+						tags: ['code']
+					}]
+				})
+			} as any);
+
+			// Step 2: Fetch models
+			await modelRegistryService.refreshModels();
+			const models = await modelRegistryService.listModels();
+			ok(models.length > 0);
+
+			// Mock invocation response
+			fetchStub.onCall(3).resolves({
+				ok: true,
+				json: async () => ({
+					id: 'inv-123',
+					text: 'Hello, world!',
+					finish_reason: 'stop',
+					usage: {
+						input_tokens: 100,
+						output_tokens: 50,
+						total_tokens: 150
+					}
+				})
+			} as any);
+
+			// Mock tracking response
+			fetchStub.onCall(4).resolves({
+				ok: true,
+				json: async () => ({ success: true })
+			} as any);
+
+			// Step 3: Invoke model and track usage
+			const request: ModelInvocationRequest = {
+				modelId: 'claude-3-sonnet',
+				prompt: 'Say hello'
+			};
+
+			const response = await modelRegistryService.invokeModel(request);
+			ok(response);
+			strictEqual(response.text, 'Hello, world!');
+
+			// Verify usage was tracked
+			const usage = await usageTrackingService.getUsage();
+			strictEqual(usage.totalCalls, 1);
+			strictEqual(usage.inputTokens, 100);
+			strictEqual(usage.outputTokens, 50);
+
+			// Mock logout response
+			fetchStub.onCall(5).resolves({
+				ok: true,
+				json: async () => ({ message: 'Logged out successfully' })
+			} as any);
+
+			// Step 4: Logout
+			await authService.logout();
+			strictEqual(authService.isAuthenticated(), false);
+
+			// Verify cache was cleared
+			const modelsAfterLogout = await modelRegistryService.listModels();
+			strictEqual(modelsAfterLogout.length, 0);
+		});
+	});
+
+	suite('Token Refresh During Model Invocation', () => {
+		test('should refresh token when expired during invocation', async () => {
+			// Setup authenticated state
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'expired-token';
+			service._refreshToken = 'valid-refresh-token';
+
+			// Mock token refresh response
+			fetchStub.onCall(0).resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'new-access-token',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			// Mock invocation with new token
+			fetchStub.onCall(1).resolves({
+				ok: true,
+				json: async () => ({
+					id: 'inv-123',
+					text: 'Response',
+					finish_reason: 'stop',
+					usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 }
+				})
+			} as any);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'test-model',
+				prompt: 'Test'
+			};
+
+			// Should succeed even with expired token
+			const response = await modelRegistryService.invokeModel(request);
+			ok(response);
+		});
+	});
+
+	suite('Quota Warnings During Usage', () => {
+		test('should emit quota warning when approaching limit', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'test-token';
+
+			// Mock quota response with high usage
+			fetchStub.onCall(0).resolves({
+				ok: true,
+				json: async () => ({
+					total_limit: 10000,
+					used: 8500,
+					remaining: 1500,
+					exceeded: false
+				})
+			} as any);
+
+			let quotaWarningFired = false;
+			usageTrackingService.onDidUpdateQuota((status) => {
+				if (status.approaching) {
+					quotaWarningFired = true;
+				}
+			});
+
+			await usageTrackingService.syncWithCloud();
+
+			ok(quotaWarningFired);
+		});
+
+		test('should emit quota exceeded event', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'test-token';
+
+			// Mock quota response with exceeded quota
+			fetchStub.onCall(0).resolves({
+				ok: true,
+				json: async () => ({
+					total_limit: 10000,
+					used: 10500,
+					remaining: 0,
+					exceeded: true
+				})
+			} as any);
+
+			let quotaExceededFired = false;
+			usageTrackingService.onDidUpdateQuota((status) => {
+				if (status.exceeded) {
+					quotaExceededFired = true;
+				}
+			});
+
+			await usageTrackingService.syncWithCloud();
+
+			ok(quotaExceededFired);
+		});
+	});
+
+	suite('Error Propagation Through Stack', () => {
+		test('should propagate network errors from auth to registry', async () => {
+			fetchStub.rejects(new Error('Network error'));
+
+			try {
+				await authService.login('test@example.com', 'password');
+				ok(false, 'Should have thrown error');
+			} catch (error: any) {
+				ok(error.message.includes('Network error'));
+			}
+		});
+
+		test('should handle auth errors in model invocation', async () => {
+			const service = authService as any;
+			service._authenticated = false;
+
+			const request: ModelInvocationRequest = {
+				modelId: 'test-model',
+				prompt: 'Test'
+			};
+
+			try {
+				await modelRegistryService.invokeModel(request);
+				ok(false, 'Should have thrown error');
+			} catch (error: any) {
+				ok(error.code === 'AUTHENTICATION_REQUIRED');
+			}
+		});
+
+		test('should handle quota exceeded errors', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'test-token';
+
+			fetchStub.resolves({
+				ok: false,
+				status: 402,
+				statusText: 'Payment Required',
+				json: async () => ({ error: 'Quota exceeded' })
+			} as any);
+
+			const request: ModelInvocationRequest = {
+				modelId: 'test-model',
+				prompt: 'Test'
+			};
+
+			try {
+				await modelRegistryService.invokeModel(request);
+				ok(false, 'Should have thrown error');
+			} catch (error: any) {
+				ok(error.code === 'QUOTA_EXCEEDED');
+			}
+		});
+	});
+
+	suite('Concurrent Operations Handling', () => {
+		test('should handle concurrent model invocations', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'test-token';
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					id: 'inv-123',
+					text: 'Response',
+					finish_reason: 'stop',
+					usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 }
+				})
+			} as any);
+
+			const requests = Array(5).fill(null).map((_, i) => ({
+				modelId: 'test-model',
+				prompt: `Test ${i}`
+			}));
+
+			const responses = await Promise.all(
+				requests.map(req => modelRegistryService.invokeModel(req))
+			);
+
+			strictEqual(responses.length, 5);
+			ok(responses.every(r => r.text === 'Response'));
+
+			const usage = await usageTrackingService.getUsage();
+			strictEqual(usage.totalCalls, 5);
+		});
+
+		test('should handle concurrent logins safely', async () => {
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					access_token: 'test-token',
+					refresh_token: 'test-refresh',
+					token_type: 'Bearer'
+				})
+			} as any);
+
+			const logins = Array(3).fill(null).map(() =>
+				authService.login('test@example.com', 'password')
+			);
+
+			const results = await Promise.allSettled(logins);
+			const successful = results.filter(r => r.status === 'fulfilled').length;
+			const rejected = results.filter(r => r.status === 'rejected').length;
+
+			// At least one should succeed, others might be rejected due to concurrent operation lock
+			ok(successful >= 1);
+		});
+	});
+
+	suite('State Synchronization Across Services', () => {
+		test('should synchronize auth state across all services', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'test-token';
+
+			// Track state changes
+			let authStateChanged = false;
+			let modelsCached = false;
+			let usageReset = false;
+
+			authService.onDidChangeAuthState(() => {
+				authStateChanged = true;
+			});
+
+			modelRegistryService.onDidUpdateModels(() => {
+				modelsCached = true;
+			});
+
+			// Logout should trigger state changes
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ message: 'Logged out' })
+			} as any);
+
+			await authService.logout();
+
+			ok(authStateChanged);
+		});
+
+		test('should clear all service data on logout', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'test-token';
+
+			// Setup some data
+			await usageTrackingService.trackUsage('test-model', 100, 50);
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({ message: 'Logged out' })
+			} as any);
+
+			await authService.logout();
+
+			// Verify all services cleared their data
+			strictEqual(authService.isAuthenticated(), false);
+			const usage = await usageTrackingService.getUsage();
+			strictEqual(usage.totalCalls, 0);
+		});
+	});
+
+	suite('Multi-Step Error Recovery', () => {
+		test('should recover from transient network errors', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'test-token';
+
+			// First call fails, second succeeds
+			fetchStub.onCall(0).rejects(new Error('Network timeout'));
+			fetchStub.onCall(1).resolves({
+				ok: true,
+				json: async () => ({
+					models: [{
+						id: 'test-model',
+						name: 'Test Model',
+						description: 'Test',
+						provider: 'test',
+						version: '1.0',
+						capabilities: ['text_generation'],
+						pricing: {
+							tier: 'pay_as_you_go',
+							input_token_cost: 0.001,
+							output_token_cost: 0.002,
+							currency: 'USD'
+						},
+						parameters: [],
+						available: true
+					}]
+				})
+			} as any);
+
+			// Should retry and succeed
+			await modelRegistryService.refreshModels();
+			const models = await modelRegistryService.listModels();
+			ok(models.length > 0);
+		});
+	});
+
+	suite('Performance and Load Testing', () => {
+		test('should handle rapid successive calls', async () => {
+			const service = authService as any;
+			service._authenticated = true;
+			service._accessToken = 'test-token';
+
+			fetchStub.resolves({
+				ok: true,
+				json: async () => ({
+					id: 'inv-123',
+					text: 'Response',
+					finish_reason: 'stop',
+					usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 }
+				})
+			} as any);
+
+			const startTime = Date.now();
+
+			// Make 20 rapid calls
+			const promises = Array(20).fill(null).map(() =>
+				modelRegistryService.invokeModel({
+					modelId: 'test-model',
+					prompt: 'Test'
+				})
+			);
+
+			await Promise.all(promises);
+
+			const duration = Date.now() - startTime;
+
+			// Should complete in reasonable time (< 5 seconds)
+			ok(duration < 5000);
+
+			const usage = await usageTrackingService.getUsage();
+			strictEqual(usage.totalCalls, 20);
+		});
+
+		test('should handle large usage history', async () => {
+			// Add 1000 usage records
+			for (let i = 0; i < 1000; i++) {
+				await usageTrackingService.trackUsage('test-model', 100, 50);
+			}
+
+			const startTime = Date.now();
+			const usage = await usageTrackingService.getUsage();
+			const duration = Date.now() - startTime;
+
+			// Should retrieve quickly (< 100ms)
+			ok(duration < 100);
+			strictEqual(usage.totalCalls, 1000);
+		});
+	});
+});

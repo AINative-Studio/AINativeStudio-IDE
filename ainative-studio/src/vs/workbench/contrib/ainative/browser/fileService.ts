@@ -12,12 +12,12 @@ import { IAINativeModelService } from '../common/ainativeModelService.js';
 
 
 class FilePromptActionService extends Action2 {
-	private static readonly VOID_COPY_FILE_PROMPT_ID = 'void.copyfileprompt'
+	private static readonly VOID_COPY_FILE_PROMPT_ID = 'ainative.copyfileprompt'
 
 	constructor() {
 		super({
 			id: FilePromptActionService.VOID_COPY_FILE_PROMPT_ID,
-			title: localize2('voidCopyPrompt', 'Void: Copy Prompt'),
+			title: localize2('ainativeCopyPrompt', 'AINative Studio: Copy Prompt'),
 			menu: [{
 				id: MenuId.ExplorerContext,
 				group: '8_void',

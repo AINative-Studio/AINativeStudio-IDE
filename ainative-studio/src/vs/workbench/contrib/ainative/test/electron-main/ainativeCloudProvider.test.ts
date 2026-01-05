@@ -55,13 +55,15 @@ class MockAuthService implements IAINativeAuthService {
 suite('AINativeCloudProvider', () => {
 
 	test('should send chat completion request with JWT', async () => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		let errorOccurred = false;
 		const mockAuth = new MockAuthService();
 		const provider = new AINativeCloudProvider(mockAuth);
 
 		const messages = [{ role: 'user' as const, content: 'Hello' }];
 		let textReceived = '';
 		let finalMessageReceived = false;
-		let errorOccurred = false;
+		// let errorOccurred = false; // Commented out - not used in test
 
 		const onText: OnText = ({ fullText }) => {
 			textReceived = fullText;
@@ -143,11 +145,13 @@ suite('AINativeCloudProvider', () => {
 	});
 
 	test('should auto-refresh token on 401 error', async () => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		let errorOccurred = false;
 		const mockAuth = new MockAuthService();
 		const provider = new AINativeCloudProvider(mockAuth);
 
 		const messages = [{ role: 'user' as const, content: 'Test 401' }];
-		let errorOccurred = false;
+		// let errorOccurred = false; // Commented out - not used in test
 
 		const onText: OnText = () => { };
 		const onFinalMessage: OnFinalMessage = () => { };

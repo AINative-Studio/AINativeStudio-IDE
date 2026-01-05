@@ -10,9 +10,10 @@ import { SkillParseError } from '../../common/skills/skillTypes.js';
 import { FileService } from '../../../../../platform/files/common/fileService.js';
 import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
-import { InMemoryFileSystemProvider } from '../../../../../platform/files/common/inMemoryFilesystemProvider.js';
+// import { InMemoryFileSystemProvider } from '../../../../../platform/files/common/inMemoryFilesystemProvider.js';
 import { Schemas } from '../../../../../base/common/network.js';
 import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskFileSystemProvider.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { URI } from '../../../../../base/common/uri.js';
 
 suite('SkillParser Tests', () => {
@@ -250,6 +251,52 @@ suite('SkillParser Tests', () => {
 
 			const elapsed = performance.now() - startTime;
 			assert.ok(elapsed < 100, `Parsing took ${elapsed}ms, should be < 100ms`);
+		});
+
+		test('should handle concurrent parse operations', async () => {
+			const skillPath = path.join(fixturesPath, 'comprehensive-skill', 'SKILL.md');
+
+			// Parse the same file multiple times concurrently
+			const parsePromises = [
+				parser.parseSkillFile(skillPath),
+				parser.parseSkillFile(skillPath),
+				parser.parseSkillFile(skillPath)
+			];
+
+			const results = await Promise.all(parsePromises);
+
+			assert.strictEqual(results.length, 3);
+			results.forEach(skill => {
+				assert.strictEqual(skill.metadata.name, 'comprehensive-skill');
+			});
+		});
+	});
+
+	suite('Advanced Edge Cases', () => {
+		test('should handle Windows line endings (CRLF)', async () => {
+			const skillPath = path.join(fixturesPath, 'crlf-skill', 'SKILL.md');
+			const skill = await parser.parseSkillFile(skillPath);
+
+			assert.strictEqual(skill.metadata.name, 'crlf-skill');
+			assert.ok(skill.body.length > 0);
+		});
+
+		test('should parse skills with nested directory structures', async () => {
+			const skillPath = path.join(fixturesPath, 'skill-with-resources', 'SKILL.md');
+			const skill = await parser.parseSkillFile(skillPath);
+
+			// Verify nested resources are discovered
+			const references = skill.resources.filter(r => r.type === 'reference');
+			assert.ok(references.length > 0, 'Should discover resources in nested directories');
+		});
+
+		test('should handle very large SKILL.md files (>1MB)', async () => {
+			// This test verifies the parser can handle large files without memory issues
+			const skillPath = path.join(fixturesPath, 'large-skill', 'SKILL.md');
+			const skill = await parser.parseSkillFile(skillPath);
+
+			assert.strictEqual(skill.metadata.name, 'large-skill');
+			assert.ok(skill.body.length > 100000, 'Should parse large body content');
 		});
 	});
 });

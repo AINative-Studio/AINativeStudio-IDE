@@ -11,7 +11,7 @@ import { Widget } from '../../../../base/browser/ui/widget.js';
 import { IOverlayWidget, ICodeEditor, OverlayWidgetPositionPreference } from '../../../../editor/browser/editorBrowser.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { ICodeEditorService } from '../../../../editor/browser/services/codeEditorService.js';
-import { mountVoidCommandBar } from './react/out/ainative-editor-widgets-tsx/index.js'
+import { mountAINativeCommandBar } from './react/out/ainative-editor-widgets-tsx/index.js'
 import { deepClone } from '../../../../base/common/objects.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { IEditCodeService } from './editCodeServiceInterface.js';
@@ -78,7 +78,7 @@ const defaultState: NonNullable<CommandBarStateType> = {
 export class AINativeCommandBarService extends Disposable implements IAINativeCommandBarService {
 	_serviceBrand: undefined;
 
-	static readonly ID: 'void.AINativeCommandBarService'
+	static readonly ID: 'ainative.AINativeCommandBarService'
 
 	// depends on uri -> diffZone -> {streaming, diffs}
 	public stateOfURI: { [uri: string]: CommandBarStateType } = {}
@@ -535,7 +535,7 @@ class AcceptRejectAllFloatingWidget extends Widget implements IOverlayWidget {
 
 		this.instantiationService.invokeFunction(accessor => {
 			const uri = editor.getModel()?.uri || null
-			const res = mountVoidCommandBar(root, accessor, { uri, editor } satisfies VoidCommandBarProps)
+			const res = mountAINativeCommandBar(root, accessor, { uri, editor } satisfies VoidCommandBarProps)
 			if (!res) return
 			this._register(toDisposable(() => res.dispose?.()))
 			this._register(editor.onWillChangeModel((model) => {
@@ -572,11 +572,11 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_ACCEPT_DIFF_ACTION_ID,
 			f1: true,
-			title: localize2('voidAcceptDiffAction', 'Void: Accept Diff'),
+			title: localize2('ainativeAcceptDiffAction', 'AINative Studio: Accept Diff'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.Enter,
 				mac: { primary: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.Enter },
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -615,11 +615,11 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_REJECT_DIFF_ACTION_ID,
 			f1: true,
-			title: localize2('voidRejectDiffAction', 'Void: Reject Diff'),
+			title: localize2('ainativeRejectDiffAction', 'AINative Studio: Reject Diff'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.Backspace,
 				mac: { primary: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.Backspace },
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -656,11 +656,11 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_GOTO_NEXT_DIFF_ACTION_ID,
 			f1: true,
-			title: localize2('voidGoToNextDiffAction', 'Void: Go to Next Diff'),
+			title: localize2('ainativeGoToNextDiffAction', 'AINative Studio: Go to Next Diff'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.DownArrow,
 				mac: { primary: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.DownArrow },
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -683,11 +683,11 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_GOTO_PREV_DIFF_ACTION_ID,
 			f1: true,
-			title: localize2('voidGoToPrevDiffAction', 'Void: Go to Previous Diff'),
+			title: localize2('ainativeGoToPrevDiffAction', 'AINative Studio: Go to Previous Diff'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.UpArrow,
 				mac: { primary: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.UpArrow },
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -710,11 +710,11 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_GOTO_NEXT_URI_ACTION_ID,
 			f1: true,
-			title: localize2('voidGoToNextUriAction', 'Void: Go to Next File with Diffs'),
+			title: localize2('ainativeGoToNextUriAction', 'AINative Studio: Go to Next File with Diffs'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.RightArrow,
 				mac: { primary: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.RightArrow },
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -737,11 +737,11 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_GOTO_PREV_URI_ACTION_ID,
 			f1: true,
-			title: localize2('voidGoToPrevUriAction', 'Void: Go to Previous File with Diffs'),
+			title: localize2('ainativeGoToPrevUriAction', 'AINative Studio: Go to Previous File with Diffs'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.LeftArrow,
 				mac: { primary: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.LeftArrow },
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -764,10 +764,10 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_ACCEPT_FILE_ACTION_ID,
 			f1: true,
-			title: localize2('voidAcceptFileAction', 'Void: Accept All Diffs in Current File'),
+			title: localize2('ainativeAcceptFileAction', 'AINative Studio: Accept All Diffs in Current File'),
 			keybinding: {
 				primary: KeyMod.Alt | KeyMod.Shift | KeyCode.Enter,
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -795,10 +795,10 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_REJECT_FILE_ACTION_ID,
 			f1: true,
-			title: localize2('voidRejectFileAction', 'Void: Reject All Diffs in Current File'),
+			title: localize2('ainativeRejectFileAction', 'AINative Studio: Reject All Diffs in Current File'),
 			keybinding: {
 				primary: KeyMod.Alt | KeyMod.Shift | KeyCode.Backspace,
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -826,10 +826,10 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_ACCEPT_ALL_DIFFS_ACTION_ID,
 			f1: true,
-			title: localize2('voidAcceptAllDiffsAction', 'Void: Accept All Diffs in All Files'),
+			title: localize2('ainativeAcceptAllDiffsAction', 'AINative Studio: Accept All Diffs in All Files'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.Enter,
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}
@@ -851,10 +851,10 @@ registerAction2(class extends Action2 {
 		super({
 			id: VOID_REJECT_ALL_DIFFS_ACTION_ID,
 			f1: true,
-			title: localize2('voidRejectAllDiffsAction', 'Void: Reject All Diffs in All Files'),
+			title: localize2('ainativeRejectAllDiffsAction', 'AINative Studio: Reject All Diffs in All Files'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.Backspace,
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			}
 		});
 	}

@@ -23,7 +23,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 
 
-import { mountVoidSettings } from './react/out/void-settings-tsx/index.js'
+import { mountAINativeSettings } from './react/out/ainative-settings-tsx/index.js'
 import { Codicon } from '../../../../base/common/codicons.js';
 import { toDisposable } from '../../../../base/common/lifecycle.js';
 
@@ -90,7 +90,7 @@ class AINativeSettingsPane extends EditorPane {
 
 		// Mount React into the scrollable content
 		this.instantiationService.invokeFunction(accessor => {
-			const disposeFn = mountVoidSettings(settingsElt, accessor)?.dispose;
+			const disposeFn = mountAINativeSettings(settingsElt, accessor)?.dispose;
 			this._register(toDisposable(() => disposeFn?.()))
 
 			// setTimeout(() => { // this is a complete hack and I don't really understand how scrollbar works here
@@ -118,12 +118,12 @@ Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane
 
 
 // register the gear on the top right
-export const VOID_TOGGLE_SETTINGS_ACTION_ID = 'workbench.action.toggleVoidSettings'
+export const AINATIVE_TOGGLE_SETTINGS_ACTION_ID = 'workbench.action.toggleAINativeSettings'
 registerAction2(class extends Action2 {
 	constructor() {
 		super({
-			id: VOID_TOGGLE_SETTINGS_ACTION_ID,
-			title: nls.localize2('voidSettings', "AINative Studio: Toggle Settings"),
+			id: AINATIVE_TOGGLE_SETTINGS_ACTION_ID,
+			title: nls.localize2('ainativeSettings', "AINative Studio: Toggle Settings"),
 			icon: Codicon.settingsGear,
 			menu: [
 				{
@@ -167,12 +167,15 @@ registerAction2(class extends Action2 {
 
 
 
-export const VOID_OPEN_SETTINGS_ACTION_ID = 'workbench.action.openVoidSettings'
+export const AINATIVE_OPEN_SETTINGS_ACTION_ID = 'workbench.action.openAINativeSettings'
+/** @deprecated Legacy alias for backward compatibility. Use AINATIVE_OPEN_SETTINGS_ACTION_ID instead. */
+export const VOID_OPEN_SETTINGS_ACTION_ID = AINATIVE_OPEN_SETTINGS_ACTION_ID
+
 registerAction2(class extends Action2 {
 	constructor() {
 		super({
-			id: VOID_OPEN_SETTINGS_ACTION_ID,
-			title: nls.localize2('voidSettingsAction2', "AINative Studio: Open Settings"),
+			id: AINATIVE_OPEN_SETTINGS_ACTION_ID,
+			title: nls.localize2('ainativeSettingsAction2', "AINative Studio: Open Settings"),
 			f1: true,
 			icon: Codicon.settingsGear,
 		});
@@ -201,8 +204,8 @@ registerAction2(class extends Action2 {
 MenuRegistry.appendMenuItem(MenuId.GlobalActivity, {
 	group: '0_command',
 	command: {
-		id: VOID_TOGGLE_SETTINGS_ACTION_ID,
-		title: nls.localize('voidSettingsActionGear', "AINative Studio Settings")
+		id: AINATIVE_TOGGLE_SETTINGS_ACTION_ID,
+		title: nls.localize('ainativeSettingsActionGear', "AINative Studio Settings")
 	},
 	order: 1
 });

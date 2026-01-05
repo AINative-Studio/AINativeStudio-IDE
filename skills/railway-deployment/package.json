@@ -11,20 +11,32 @@
     "production",
     "ci-cd",
     "infrastructure",
-    "platform-as-a-service"
+    "platform-as-a-service",
+    "ainative",
+    "skill"
   ],
   "author": "AINative Studio",
   "license": "MIT",
+  "homepage": "https://ainative.studio/skills/railway-deployment",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ainative/official-skills.git",
-    "directory": "railway-deployment"
+    "url": "https://github.com/AINative-Studio/ainative-skills",
+    "directory": "skills/railway-deployment"
+  },
+  "bugs": {
+    "url": "https://github.com/AINative-Studio/ainative-skills/issues"
   },
   "files": [
     "SKILL.md",
-    "references/*.md",
-    "README.md"
+    "README.md",
+    "references/"
   ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "ainative": {
     "skill": {
       "name": "railway-deployment",

@@ -87,8 +87,8 @@ These dependencies are installed within the Docker container (Ubuntu 20.04 base)
     Copy the following files to the directory where the app binary is being bundled (created during the build process):
 
     *   `create_appimage.sh`
-    *   `void.desktop`
-    *   `void.png`
+    *   `ainative.desktop`
+    *   `ainative.png`
 
 4.  **Run the Script:**
 
@@ -111,7 +111,7 @@ These dependencies are installed within the Docker container (Ubuntu 20.04 base)
 *   **AppImage Creation:**
     *   Creates the `VoidApp.AppDir` structure.
     *   Copies binaries, resources, and the `.desktop` entry.
-    *   Copies `void.desktop` and `void.png`.
+    *   Copies `ainative.desktop` and `ainative.png`.
     *   Strips unnecessary symbols from the binary.
     *   Runs `appimagetool` to generate the AppImage.
 *   **Cleanup:** Removes the temporary `Dockerfile.build`.

@@ -17,7 +17,7 @@ import { IRange } from '../../../../editor/common/core/range.js';
 import { VOID_VIEW_CONTAINER_ID, VOID_VIEW_ID } from './sidebarPane.js';
 import { IMetricsService } from '../common/metricsService.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
-import { VOID_TOGGLE_SETTINGS_ACTION_ID } from './voidSettingsPane.js';
+import { AINATIVE_TOGGLE_SETTINGS_ACTION_ID } from './ainativeSettingsPane.js';
 import { VOID_CTRL_L_ACTION_ID } from './actionIDs.js';
 import { localize2 } from '../../../../nls.js';
 import { IChatThreadService } from './chatThreadService.js';
@@ -61,7 +61,7 @@ export const roundRangeToLines = (range: IRange | null | undefined, options: { e
 
 
 
-const VOID_OPEN_SIDEBAR_ACTION_ID = 'void.sidebar.open'
+const VOID_OPEN_SIDEBAR_ACTION_ID = 'ainative.sidebar.open'
 registerAction2(class extends Action2 {
 	constructor() {
 		super({ id: VOID_OPEN_SIDEBAR_ACTION_ID, title: localize2('voidOpenSidebar', 'AINative Studio: Open Sidebar'), f1: true });
@@ -84,7 +84,7 @@ registerAction2(class extends Action2 {
 			title: localize2('voidCmdL', 'AINative Studio: Add Selection to Chat'),
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyCode.KeyL,
-				weight: KeybindingWeight.VoidExtension
+				weight: KeybindingWeight.AINativeExtension
 			}
 		});
 	}
@@ -144,7 +144,7 @@ registerAction2(class extends Action2 {
 
 
 // New chat keybind + menu button
-const VOID_CMD_SHIFT_L_ACTION_ID = 'void.cmdShiftL'
+const VOID_CMD_SHIFT_L_ACTION_ID = 'ainative.cmdShiftL'
 registerAction2(class extends Action2 {
 	constructor() {
 		super({
@@ -152,7 +152,7 @@ registerAction2(class extends Action2 {
 			title: 'New Chat',
 			keybinding: {
 				primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyL,
-				weight: KeybindingWeight.VoidExtension,
+				weight: KeybindingWeight.AINativeExtension,
 			},
 			icon: { id: 'add' },
 			menu: [{ id: MenuId.ViewTitle, group: 'navigation', when: ContextKeyExpr.equals('view', VOID_VIEW_ID), }],
@@ -209,7 +209,7 @@ registerAction2(class extends Action2 {
 registerAction2(class extends Action2 {
 	constructor() {
 		super({
-			id: 'void.historyAction',
+			id: 'ainative.historyAction',
 			title: 'View Past Chats',
 			icon: { id: 'history' },
 			menu: [{ id: MenuId.ViewTitle, group: 'navigation', when: ContextKeyExpr.equals('view', VOID_VIEW_ID), }]
@@ -239,7 +239,7 @@ registerAction2(class extends Action2 {
 registerAction2(class extends Action2 {
 	constructor() {
 		super({
-			id: 'void.settingsAction',
+			id: 'ainative.settingsAction',
 			title: `AINative Studio Settings`,
 			icon: { id: 'settings-gear' },
 			menu: [{ id: MenuId.ViewTitle, group: 'navigation', when: ContextKeyExpr.equals('view', VOID_VIEW_ID), }]
@@ -247,7 +247,7 @@ registerAction2(class extends Action2 {
 	}
 	async run(accessor: ServicesAccessor): Promise<void> {
 		const commandService = accessor.get(ICommandService)
-		commandService.executeCommand(VOID_TOGGLE_SETTINGS_ACTION_ID)
+		commandService.executeCommand(AINATIVE_TOGGLE_SETTINGS_ACTION_ID)
 	}
 })
 

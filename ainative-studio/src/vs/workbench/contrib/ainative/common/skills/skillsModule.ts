@@ -15,3 +15,8 @@ registerSingleton(
 	SkillConfigService,
 	InstantiationType.Delayed
 );
+
+/**
+ * Import skill CLI commands (install, uninstall, list)
+ */
+import './cli/skillCommands.contribution.js';

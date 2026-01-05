@@ -201,7 +201,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Void', 'User', 'keybindings.json'),
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.vscode', 'extensions'),
-				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.void-editor', 'extensions'),
+				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.ainative-studio', 'extensions'),
 				isExtensions: true,
 			}]
 		} else if (fromEditor === 'Cursor') {
@@ -213,7 +213,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Void', 'User', 'keybindings.json'),
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.cursor', 'extensions'),
-				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.void-editor', 'extensions'),
+				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.ainative-studio', 'extensions'),
 				isExtensions: true,
 			}]
 		} else if (fromEditor === 'Windsurf') {
@@ -225,7 +225,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Void', 'User', 'keybindings.json'),
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.windsurf', 'extensions'),
-				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.void-editor', 'extensions'),
+				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.ainative-studio', 'extensions'),
 				isExtensions: true,
 			}]
 		}
@@ -244,7 +244,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Void', 'User', 'keybindings.json'),
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.vscode', 'extensions'),
-				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.void-editor', 'extensions'),
+				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.ainative-studio', 'extensions'),
 				isExtensions: true,
 			}]
 		} else if (fromEditor === 'Cursor') {
@@ -256,7 +256,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Void', 'User', 'keybindings.json'),
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.cursor', 'extensions'),
-				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.void-editor', 'extensions'),
+				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.ainative-studio', 'extensions'),
 				isExtensions: true,
 			}]
 		} else if (fromEditor === 'Windsurf') {
@@ -268,7 +268,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Void', 'User', 'keybindings.json'),
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.windsurf', 'extensions'),
-				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.void-editor', 'extensions'),
+				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.ainative-studio', 'extensions'),
 				isExtensions: true,
 			}]
 		}
@@ -289,7 +289,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 				to: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Void', 'User', 'keybindings.json'),
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), userprofile, '.vscode', 'extensions'),
-				to: URI.joinPath(URI.from({ scheme: 'file' }), userprofile, '.void-editor', 'extensions'),
+				to: URI.joinPath(URI.from({ scheme: 'file' }), userprofile, '.ainative-studio', 'extensions'),
 				isExtensions: true,
 			}]
 		} else if (fromEditor === 'Cursor') {
@@ -301,7 +301,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 				to: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Void', 'User', 'keybindings.json'),
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), userprofile, '.cursor', 'extensions'),
-				to: URI.joinPath(URI.from({ scheme: 'file' }), userprofile, '.void-editor', 'extensions'),
+				to: URI.joinPath(URI.from({ scheme: 'file' }), userprofile, '.ainative-studio', 'extensions'),
 				isExtensions: true,
 			}]
 		} else if (fromEditor === 'Windsurf') {
@@ -313,7 +313,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 				to: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Void', 'User', 'keybindings.json'),
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), userprofile, '.windsurf', 'extensions'),
-				to: URI.joinPath(URI.from({ scheme: 'file' }), userprofile, '.void-editor', 'extensions'),
+				to: URI.joinPath(URI.from({ scheme: 'file' }), userprofile, '.ainative-studio', 'extensions'),
 				isExtensions: true,
 			}]
 		}

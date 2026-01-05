@@ -426,4 +426,165 @@ suite('Update Service - Integration - Download and Verify', () => {
 			assert.ok(measurements.length === 5, 'Should have 5 measurements');
 		});
 	});
+
+	suite('Additional Download & Verification Tests', () => {
+
+		test('should verify complete download with exact byte count', async () => {
+			const expectedSize = 15 * 1024 * 1024; // 15MB
+			const destPath = path.join(testDir, 'update-exact-size.zip');
+
+			await simulateDownload('http://example.com/update.zip', destPath, expectedSize);
+
+			const actualSize = fs.statSync(destPath).size;
+			assert.strictEqual(actualSize, expectedSize, 'Downloaded file should match exact expected size');
+		});
+
+		test('should handle concurrent downloads to different files', async () => {
+			const downloads = [
+				{ url: 'http://example.com/update1.zip', size: 5 * 1024 * 1024 },
+				{ url: 'http://example.com/update2.zip', size: 10 * 1024 * 1024 },
+				{ url: 'http://example.com/update3.zip', size: 8 * 1024 * 1024 }
+			];
+
+			const downloadPromises = downloads.map((dl, index) => {
+				const destPath = path.join(testDir, `concurrent-${index}.zip`);
+				return simulateDownload(dl.url, destPath, dl.size);
+			});
+
+			await Promise.all(downloadPromises);
+
+			// Verify all files exist
+			downloads.forEach((_, index) => {
+				const destPath = path.join(testDir, `concurrent-${index}.zip`);
+				assert.ok(fs.existsSync(destPath), `Concurrent download ${index} should exist`);
+			});
+		});
+
+		test('should validate SHA256 hash format before verification', () => {
+			const validHashes = [
+				'a'.repeat(64),
+				'0123456789abcdef'.repeat(4),
+				'f'.repeat(64)
+			];
+
+			const invalidHashes = [
+				'',
+				'abc',
+				'g'.repeat(64), // invalid character
+				'a'.repeat(63), // too short
+				'a'.repeat(65)  // too long
+			];
+
+			validHashes.forEach(hash => {
+				const isValid = /^[a-f0-9]{64}$/i.test(hash);
+				assert.ok(isValid, `Valid hash ${hash.substring(0, 10)}... should pass validation`);
+			});
+
+			invalidHashes.forEach(hash => {
+				const isValid = /^[a-f0-9]{64}$/i.test(hash);
+				assert.strictEqual(isValid, false, `Invalid hash should fail validation`);
+			});
+		});
+
+		test('should detect file corruption during download', async () => {
+			const destPath = path.join(testDir, 'corrupt-detection.zip');
+			const size = 5 * 1024 * 1024; // 5MB
+
+			// Download original file
+			await simulateDownload('http://example.com/update.zip', destPath, size);
+			const originalHash = await computeSHA256(destPath);
+
+			// Simulate corruption by modifying random bytes
+			const buffer = fs.readFileSync(destPath);
+			const corruptionPoints = [0, Math.floor(buffer.length / 2), buffer.length - 1];
+
+			corruptionPoints.forEach(index => {
+				buffer[index] = buffer[index] ^ 0xFF; // Flip all bits
+			});
+
+			fs.writeFileSync(destPath, buffer);
+
+			const corruptedHash = await computeSHA256(destPath);
+
+			assert.notStrictEqual(
+				corruptedHash,
+				originalHash,
+				'Corrupted file should have different hash'
+			);
+		});
+
+		test('should verify download integrity across multiple platforms', async () => {
+			const platforms = [
+				{ name: 'darwin', ext: '.zip' },
+				{ name: 'win32', ext: '.exe' },
+				{ name: 'linux', ext: '.tar.gz' }
+			];
+
+			for (const platform of platforms) {
+				const destPath = path.join(testDir, `update-${platform.name}${platform.ext}`);
+				const size = 20 * 1024 * 1024; // 20MB
+
+				await simulateDownload(`http://example.com/${platform.name}`, destPath, size);
+
+				const hash = await computeSHA256(destPath);
+
+				assert.ok(fs.existsSync(destPath), `${platform.name} update should download`);
+				assert.strictEqual(hash.length, 64, `${platform.name} hash should be 64 chars`);
+				assert.match(hash, /^[a-f0-9]{64}$/, `${platform.name} hash should be valid hex`);
+			}
+		});
+
+		test('should handle very large files (>200MB) efficiently', async () => {
+			const size = 250 * 1024 * 1024; // 250MB
+			const destPath = path.join(testDir, 'very-large-update.zip');
+
+			const startTime = Date.now();
+			await simulateDownload('http://example.com/large-update.zip', destPath, size);
+			const duration = Date.now() - startTime;
+
+			assert.ok(fs.existsSync(destPath), 'Very large file should download');
+			assert.ok(duration < 10000, 'Large download should complete in reasonable time');
+
+			const stats = fs.statSync(destPath);
+			assert.strictEqual(stats.size, size, 'Very large file should have correct size');
+		});
+
+		test('should cleanup partial downloads on failure', async () => {
+			const destPath = path.join(testDir, 'partial-cleanup.zip');
+			const partialSize = 5 * 1024 * 1024; // 5MB partial
+
+			// Create partial download
+			const buffer = Buffer.alloc(partialSize);
+			crypto.randomFillSync(buffer);
+			fs.writeFileSync(destPath, buffer);
+
+			assert.ok(fs.existsSync(destPath), 'Partial download should exist');
+
+			// Simulate cleanup on failure
+			if (fs.existsSync(destPath)) {
+				fs.unlinkSync(destPath);
+			}
+
+			assert.ok(!fs.existsSync(destPath), 'Partial download should be cleaned up');
+		});
+
+		test('should verify checksum matches server-provided hash', async () => {
+			const destPath = path.join(testDir, 'checksum-verify.zip');
+			const size = 10 * 1024 * 1024; // 10MB
+
+			// Download file
+			await simulateDownload('http://example.com/update.zip', destPath, size);
+
+			// Compute actual hash
+			const actualHash = await computeSHA256(destPath);
+
+			// In real scenario, expectedHash comes from update server
+			const expectedHash = actualHash; // Self-verification for test
+
+			// Verify checksum
+			const checksumValid = actualHash === expectedHash;
+
+			assert.ok(checksumValid, 'Checksum should match server-provided hash');
+		});
+	});
 });

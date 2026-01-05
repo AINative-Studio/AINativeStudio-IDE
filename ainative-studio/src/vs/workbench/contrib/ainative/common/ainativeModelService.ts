@@ -6,6 +6,7 @@ import { registerSingleton, InstantiationType } from '../../../../platform/insta
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { ITextFileService } from '../../../services/textfile/common/textfiles.js';
 
+/** @deprecated Legacy alias for backward compatibility. Use AINativeModelType instead. */
 type VoidModelType = {
 	model: ITextModel | null;
 	editorModel: IResolvedTextEditorModel | null;
@@ -21,11 +22,11 @@ export interface IAINativeModelService {
 
 }
 
-export const IAINativeModelService = createDecorator<IAINativeModelService>('voidAINativeModelService');
+export const IAINativeModelService = createDecorator<IAINativeModelService>('ainativeModelService');
 
 class AINativeModelService extends Disposable implements IAINativeModelService {
 	_serviceBrand: undefined;
-	static readonly ID = 'voidAINativeModelService';
+	static readonly ID = 'ainativeModelService';
 	private readonly _modelRefOfURI: Record<string, IReference<IResolvedTextEditorModel>> = {};
 
 	constructor(

@@ -86,7 +86,7 @@ export class GitHubOAuthService extends Disposable implements IGitHubOAuthServic
 
 	private static readonly OAUTH_ENDPOINT = 'https://github.com/login/oauth/authorize';
 	private static readonly CLIENT_ID = 'Ov23liU7x20VoRInkAiq';
-	private static readonly REDIRECT_URI = 'void://auth/github/callback';
+	private static readonly REDIRECT_URI = 'ainative://auth/github/callback';
 	private static readonly SCOPE = 'read:user,user:email';
 	private static readonly API_BASE = 'https://api.ainative.studio';
 

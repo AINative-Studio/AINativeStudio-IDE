@@ -3,7 +3,7 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
+import { createDecorator } from '../../../../../platform/instantiation/common/instantiation.js';
 import { SkillsConfig, ProjectMetadata, ProjectDetectionResult, SkillRecommendation } from './skillConfigTypes.js';
 
 export const ISkillConfigService = createDecorator<ISkillConfigService>('skillConfigService');

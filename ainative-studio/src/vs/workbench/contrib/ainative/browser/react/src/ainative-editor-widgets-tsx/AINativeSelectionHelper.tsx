@@ -11,24 +11,24 @@ import { VOID_CTRL_K_ACTION_ID, VOID_CTRL_L_ACTION_ID } from '../../../actionIDs
 import { Circle, MoreVertical } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { VoidSelectionHelperProps } from '../../../../../../contrib/void/browser/voidSelectionHelperWidget.js';
-import { VOID_OPEN_SETTINGS_ACTION_ID } from '../../../voidSettingsPane.js';
+import { AINativeSelectionHelperProps } from '../../../../../../contrib/ainative/browser/ainativeSelectionHelperWidget.js';
+import { AINATIVE_OPEN_SETTINGS_ACTION_ID } from '../../../ainativeSettingsPane.js';
 
 
-export const VoidSelectionHelperMain = (props: VoidSelectionHelperProps) => {
+export const AINativeSelectionHelperMain = (props: AINativeSelectionHelperProps) => {
 
 	const isDark = useIsDark()
 
 	return <div
-		className={`@@void-scope ${isDark ? 'dark' : ''}`}
+		className={`@@ainative-scope ${isDark ? 'dark' : ''}`}
 	>
-		<VoidSelectionHelper {...props} />
+		<AINativeSelectionHelper {...props} />
 	</div>
 }
 
 
 
-const VoidSelectionHelper = ({ rerenderKey }: VoidSelectionHelperProps) => {
+const AINativeSelectionHelper = ({ rerenderKey }: AINativeSelectionHelperProps) => {
 
 
 	const accessor = useAccessor()
@@ -38,7 +38,7 @@ const VoidSelectionHelper = ({ rerenderKey }: VoidSelectionHelperProps) => {
 	const ctrlLKeybind = keybindingService.lookupKeybinding(VOID_CTRL_L_ACTION_ID)
 	const ctrlKKeybind = keybindingService.lookupKeybinding(VOID_CTRL_K_ACTION_ID)
 
-	const dividerHTML = <div className='w-[0.5px] bg-void-border-3'></div>
+	const dividerHTML = <div className='w-[0.5px] bg-ainative-border-3'></div>
 
 	const [reactRerenderCount, setReactRerenderKey] = useState(rerenderKey)
 	const [clickState, setClickState] = useState<'init' | 'clickedOption' | 'clickedMore'>('init')
@@ -159,7 +159,7 @@ const VoidSelectionHelper = ({ rerenderKey }: VoidSelectionHelperProps) => {
 		pointer-events-auto select-none
 		z-[1000]
 		rounded-sm shadow-md flex flex-nowrap text-nowrap
-		border border-void-border-3 bg-void-bg-2
+		border border-ainative-border-3 bg-ainative-bg-2
 		transition-all duration-200
 	'>
 		{clickState === 'init' ? defaultHTML

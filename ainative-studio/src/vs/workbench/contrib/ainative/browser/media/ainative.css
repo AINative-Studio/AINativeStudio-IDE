@@ -100,11 +100,11 @@
 	--scrollbar-horizontal-height: 6px;
 }
 
-/* Target both void-scope and all its descendants with scrollbars */
+/* Target both ainative-scope and all its descendants with scrollbars */
 .ainative-scope,
 .ainative-scope * {
 	scrollbar-width: thin !important;
-	scrollbar-color: var(--void-bg-1) var(--void-bg-3) !important;
+	scrollbar-color: var(--ainative-bg-1) var(--ainative-bg-3) !important;
 	/* For Firefox */
 }
 
@@ -112,12 +112,12 @@
 .ainative-scope *::-webkit-scrollbar {
 	width: var(--scrollbar-vertical-width) !important;
 	height: var(--scrollbar-horizontal-height) !important;
-	background-color: var(--void-bg-3) !important;
+	background-color: var(--ainative-bg-3) !important;
 }
 
 .ainative-scope::-webkit-scrollbar-thumb,
 .ainative-scope *::-webkit-scrollbar-thumb {
-	background-color: var(--void-bg-1) !important;
+	background-color: var(--ainative-bg-1) !important;
 	border-radius: 4px !important;
 	border: none !important;
 	-webkit-box-shadow: none !important;
@@ -126,25 +126,25 @@
 
 .ainative-scope::-webkit-scrollbar-thumb:hover,
 .ainative-scope *::-webkit-scrollbar-thumb:hover {
-	background-color: var(--void-bg-1) !important;
+	background-color: var(--ainative-bg-1) !important;
 	filter: brightness(1.1) !important;
 }
 
 .ainative-scope::-webkit-scrollbar-thumb:active,
 .ainative-scope *::-webkit-scrollbar-thumb:active {
-	background-color: var(--void-bg-1) !important;
+	background-color: var(--ainative-bg-1) !important;
 	filter: brightness(1.2) !important;
 }
 
 .ainative-scope::-webkit-scrollbar-track,
 .ainative-scope *::-webkit-scrollbar-track {
-	background-color: var(--void-bg-3) !important;
+	background-color: var(--ainative-bg-3) !important;
 	border: none !important;
 }
 
 .ainative-scope::-webkit-scrollbar-corner,
 .ainative-scope *::-webkit-scrollbar-corner {
-	background-color: var(--void-bg-3) !important;
+	background-color: var(--ainative-bg-3) !important;
 }
 
 /* Add ainative-scrollable-element styles to match */
@@ -160,7 +160,7 @@
 .ainative-scrollable-element * {
 	scrollbar-width: thin !important;
 	/* For Firefox */
-	scrollbar-color: var(--void-bg-1) var(--void-bg-3) !important;
+	scrollbar-color: var(--ainative-bg-1) var(--ainative-bg-3) !important;
 	/* For Firefox */
 }
 
@@ -168,12 +168,12 @@
 .ainative-scrollable-element *::-webkit-scrollbar {
 	width: var(--scrollbar-vertical-width) !important;
 	height: var(--scrollbar-horizontal-height) !important;
-	background-color: var(--void-bg-3) !important;
+	background-color: var(--ainative-bg-3) !important;
 }
 
 .ainative-scrollable-element::-webkit-scrollbar-thumb,
 .ainative-scrollable-element *::-webkit-scrollbar-thumb {
-	background-color: var(--void-bg-1) !important;
+	background-color: var(--ainative-bg-1) !important;
 	border-radius: 4px !important;
 	border: none !important;
 	-webkit-box-shadow: none !important;
@@ -182,23 +182,23 @@
 
 .ainative-scrollable-element::-webkit-scrollbar-thumb:hover,
 .ainative-scrollable-element *::-webkit-scrollbar-thumb:hover {
-	background-color: var(--void-bg-1) !important;
+	background-color: var(--ainative-bg-1) !important;
 	filter: brightness(1.1) !important;
 }
 
 .ainative-scrollable-element::-webkit-scrollbar-thumb:active,
 .ainative-scrollable-element *::-webkit-scrollbar-thumb:active {
-	background-color: var(--void-bg-1) !important;
+	background-color: var(--ainative-bg-1) !important;
 	filter: brightness(1.2) !important;
 }
 
 .ainative-scrollable-element::-webkit-scrollbar-track,
 .ainative-scrollable-element *::-webkit-scrollbar-track {
-	background-color: var(--void-bg-3) !important;
+	background-color: var(--ainative-bg-3) !important;
 	border: none !important;
 }
 
 .ainative-scrollable-element::-webkit-scrollbar-corner,
 .ainative-scrollable-element *::-webkit-scrollbar-corner {
-	background-color: var(--void-bg-3) !important;
+	background-color: var(--ainative-bg-3) !important;
 }

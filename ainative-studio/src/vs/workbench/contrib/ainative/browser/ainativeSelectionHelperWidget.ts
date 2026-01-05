@@ -11,7 +11,7 @@ import { IEditorContribution } from '../../../../editor/common/editorCommon.js';
 import { Selection } from '../../../../editor/common/core/selection.js';
 import { RunOnceScheduler } from '../../../../base/common/async.js';
 import * as dom from '../../../../base/browser/dom.js';
-import { mountVoidSelectionHelper } from './react/out/ainative-editor-widgets-tsx/index.js';
+import { mountAINativeSelectionHelper } from './react/out/ainative-editor-widgets-tsx/index.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
 import { EditorOption } from '../../../../editor/common/config/editorOptions.js';
@@ -22,13 +22,14 @@ const minDistanceFromRightPx = 400;
 const minLeftPx = 60;
 
 
+/** @deprecated Legacy alias for backward compatibility. Use AINativeSelectionHelperProps instead. */
 export type VoidSelectionHelperProps = {
 	rerenderKey: number // alternates between 0 and 1
 }
 
 
 export class SelectionHelperContribution extends Disposable implements IEditorContribution, IOverlayWidget {
-	public static readonly ID = 'editor.contrib.voidSelectionHelper';
+	public static readonly ID = 'editor.contrib.ainativeSelectionHelper';
 	// react
 	private _rootHTML: HTMLElement;
 	private _rerender: (props?: any) => void = () => { };
@@ -63,7 +64,7 @@ export class SelectionHelperContribution extends Disposable implements IEditorCo
 			if (this._reactComponentDisposable) {
 				this._reactComponentDisposable.dispose();
 			}
-			const res = mountVoidSelectionHelper(content, accessor);
+			const res = mountAINativeSelectionHelper(content, accessor);
 			if (!res) return;
 
 			this._reactComponentDisposable = res;

@@ -269,6 +269,18 @@ suite('SkillConfigService Tests', () => {
 			assert.strictEqual(result.metadata.projectType, 'backend');
 		});
 
+		test('should detect Go project from go.mod', async () => {
+			const goMod = 'module example.com/myapp\n\ngo 1.21';
+
+			const goModPath = URI.joinPath(testWorkspaceDir, 'go.mod');
+			await fileService.writeFile(goModPath, VSBuffer.fromString(goMod));
+
+			const result = await service.detectProjectType();
+
+			assert.ok(result.metadata.languages?.includes('go'));
+			assert.strictEqual(result.metadata.projectType, 'backend');
+		});
+
 		test('should calculate confidence score based on detected files', async () => {
 			const packageJson = {
 				dependencies: {
@@ -487,6 +499,80 @@ suite('SkillConfigService Tests', () => {
 			assert.ok(mcpConfig.skills.enabled);
 			assert.ok(mcpConfig.skills.metadata);
 			assert.strictEqual(mcpConfig.skills.metadata.framework, 'react');
+		});
+	});
+
+	suite('Config Merging', () => {
+		test('should merge global and project-specific configs', async () => {
+			// Create a base config
+			const baseConfig: SkillsConfig = {
+				enabled: ['git-workflow']
+			};
+
+			await service.writeSkillsConfig(baseConfig, false);
+
+			// Now merge with additional skills
+			const additionalConfig: SkillsConfig = {
+				enabled: ['git-workflow', 'mandatory-tdd'],
+				autoLoad: true
+			};
+
+			await service.writeSkillsConfig(additionalConfig, true);
+
+			const finalConfig = await service.readSkillsConfig();
+			assert.ok(finalConfig);
+			assert.strictEqual(finalConfig.enabled.length, 2);
+			assert.strictEqual(finalConfig.autoLoad, true);
+		});
+
+		test('should preserve existing mcpServers when merging', async () => {
+			const existingConfig = {
+				mcpServers: {
+					memory: {
+						command: 'npx',
+						args: ['-y', '@modelcontextprotocol/server-memory']
+					}
+				}
+			};
+
+			const mcpConfigPath = URI.joinPath(testWorkspaceDir, '.mcp.json');
+			await fileService.writeFile(mcpConfigPath, VSBuffer.fromString(JSON.stringify(existingConfig, null, 2)));
+
+			const skillsConfig: SkillsConfig = {
+				enabled: ['git-workflow']
+			};
+
+			await service.writeSkillsConfig(skillsConfig, true);
+
+			const content = await fileService.readFile(mcpConfigPath);
+			const mcpConfig = JSON.parse(content.value.toString());
+
+			assert.ok(mcpConfig.mcpServers, 'Should preserve mcpServers');
+			assert.ok(mcpConfig.mcpServers.memory, 'Should preserve memory server');
+			assert.ok(mcpConfig.skills, 'Should add skills config');
+		});
+	});
+
+	suite('Error Scenarios', () => {
+		test('should handle malformed .mcp.json gracefully', async () => {
+			const mcpConfigPath = URI.joinPath(testWorkspaceDir, '.mcp.json');
+			await fileService.writeFile(mcpConfigPath, VSBuffer.fromString('{ invalid json }'));
+
+			const config = await service.readSkillsConfig();
+			assert.strictEqual(config, null, 'Should return null for malformed JSON');
+		});
+
+		test('should handle missing workspace gracefully', async () => {
+			// Create a service without workspace
+			const noWorkspaceService = {
+				getWorkspace: () => ({ folders: [] }),
+				getWorkspaceFolder: () => undefined
+			} as any;
+
+			const serviceWithoutWorkspace = new SkillConfigService(fileService, noWorkspaceService);
+
+			const config = await serviceWithoutWorkspace.readSkillsConfig();
+			assert.strictEqual(config, null, 'Should return null when no workspace');
 		});
 	});
 });
