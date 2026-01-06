@@ -140,7 +140,7 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should reject invalid skill format', async () => {
-			const mockParser = instantiationService.stub(ISkillParser);
+			const mockParser = instantiationService.stub(ISkillParser, {});
 			mockParser.validateSkillFormat = async () => false;
 
 			await assert.rejects(
@@ -150,7 +150,7 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should skip validation if skipValidation flag is set', async () => {
-			const mockParser = instantiationService.stub(ISkillParser);
+			const mockParser = instantiationService.stub(ISkillParser, {});
 			let validateCalled = false;
 			mockParser.validateSkillFormat = async () => {
 				validateCalled = true;
@@ -248,7 +248,7 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should handle parser errors', async () => {
-			const mockParser = instantiationService.stub(ISkillParser);
+			const mockParser = instantiationService.stub(ISkillParser, {});
 			mockParser.parseSkillFile = async () => {
 				throw new Error('Parse error');
 			};

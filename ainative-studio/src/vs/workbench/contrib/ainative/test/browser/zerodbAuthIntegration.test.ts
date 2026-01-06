@@ -206,13 +206,12 @@ class MockFetchManager {
 suite('ZeroDB Authentication - Integration Tests', () => {
 	const disposables = new DisposableStore();
 	let authService: AINativeCloudAuthService;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let tokenService: ITokenService;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let sessionManager: SessionManager;
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	let oauthService: ZeroDBOAuthService;
+	let oauthService: any; // ZeroDBOAuthService reference temporarily disabled
 	let encryptionService: MockEncryptionService;
 	let storageService: MockStorageService;
  // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -238,10 +237,8 @@ suite('ZeroDB Authentication - Integration Tests', () => {
 			new SessionManager(tokenService, logService)
 		);
 
-		oauthService = disposables.add(
-  // @ts-expect-error - Service import issue
-  // // new ZeroDBOAuthService(storageService)
-		);
+		// ZeroDBOAuthService temporarily disabled due to import issues
+		// oauthService = disposables.add(new ZeroDBOAuthService(storageService));
 	});
 
 	teardown(() => {

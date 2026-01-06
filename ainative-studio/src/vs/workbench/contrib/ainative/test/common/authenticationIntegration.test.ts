@@ -11,10 +11,7 @@ import {
 	OAuthProvider,
 	OAuthErrorCode,
 	OAuthCallbackParams,
- // eslint-disable-next-line @typescript-eslint/no-unused-vars
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	OAuthResult
 } from '../../common/zerodbOAuthService.js';
 import { TokenService, ITokenService } from '../../common/tokenService.js';
@@ -26,35 +23,46 @@ import { IEncryptionService, KnownStorageProvider } from '../../../../../platfor
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Emitter } from '../../../../../base/common/event.js';
 
 /**
  * Mock Storage Service
  */
-// @ts-expect-error - Mock service for testing, interface compatibility handled at runtime
 class MockStorageService implements IStorageService {
 	readonly _serviceBrand: undefined;
 	private storage = new Map<string, string>();
 
-	onDidChangeValue = () => ({ dispose: () => { } }) as any;
-	onDidChangeTarget = () => ({ dispose: () => { } }) as any;
-	onWillSaveState = () => ({ dispose: () => { } }) as any;
+	onDidChangeValue(scope: StorageScope, key: string | undefined, disposable: DisposableStore): any {
+		return { dispose: () => { } };
+	}
 
+	onDidChangeTarget = { dispose: () => { } } as any;
+	onWillSaveState = { dispose: () => { } } as any;
+
+	get(key: string, scope: StorageScope, fallbackValue: string): string;
+	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 		return this.storage.get(this._makeKey(key, scope)) ?? fallbackValue;
 	}
 
-	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean {
+	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
+	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined;
+	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
 		const value = this.get(key, scope);
-		return value !== undefined ? value === 'true' : !!fallbackValue;
+		return value !== undefined ? value === 'true' : fallbackValue;
 	}
 
-	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number {
+	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
+	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined;
+	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
 		const value = this.get(key, scope);
-		return value !== undefined ? parseInt(value, 10) : (fallbackValue ?? 0);
+		return value !== undefined ? parseInt(value, 10) : fallbackValue;
+	}
+
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		return fallbackValue;
 	}
 
 	store(key: string, value: string | boolean | number | undefined | null, scope: StorageScope, target: StorageTarget): void {
@@ -75,12 +83,13 @@ class MockStorageService implements IStorageService {
 			.map(k => k.substring(scope.toString().length + 1));
 	}
 
-	logStorage(): void { }
-	migrate(): Promise<void> { return Promise.resolve(); }
 	isNew(scope: StorageScope): boolean { return false; }
 	flush(): Promise<void> { return Promise.resolve(); }
 	switch(): Promise<void> { return Promise.resolve(); }
-	hasScope(): boolean { return true; }
+	hasScope(scope: any): boolean { return true; }
+	storeAll(entries: Array<{ key: string; value: any; scope: StorageScope; target: StorageTarget }>, external: boolean): void { }
+	log(): Promise<void> { return Promise.resolve(); }
+	async optimize(scope: StorageScope): Promise<void> { }
 
 	private _makeKey(key: string, scope: StorageScope): string {
 		return `${scope}:${key}`;
@@ -90,10 +99,6 @@ class MockStorageService implements IStorageService {
 	reset(): void {
 		this.storage.clear();
 	}
-	getObject<T>(key: string, scope: StorageScope, defaultValue?: T): T | undefined { return defaultValue; }
-	storeAll(entries: any[], external: boolean): void { }
-	log(): void { }
-	async optimize(scope: StorageScope): Promise<void> { }
 }
 
 /**

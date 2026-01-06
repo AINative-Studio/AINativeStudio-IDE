@@ -17,8 +17,6 @@ import { SearchFilters } from './searchTypes.js';
  * Example 1: Search all marketplaces
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function searchAllMarketplaces(searchService: ISkillSearchService) {
 	console.log('=== Example 1: Search All Marketplaces ===');
 
@@ -38,9 +36,7 @@ async function searchAllMarketplaces(searchService: ISkillSearchService) {
 
 /**
  * Example 2: Search with filters
- // eslint-disable-next-line @typescript-eslint/no-unused-vars
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function searchWithFilters(searchService: ISkillSearchService) {
 	console.log('\n=== Example 2: Search with Filters ===');
@@ -62,11 +58,9 @@ async function searchWithFilters(searchService: ISkillSearchService) {
 	});
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 /**
  * Example 3: Sort by different criteria
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function searchWithDifferentSorts(searchService: ISkillSearchService) {
 	console.log('\n=== Example 3: Different Sort Options ===');
@@ -90,13 +84,11 @@ async function searchWithDifferentSorts(searchService: ISkillSearchService) {
 	const byDate = await searchService.search('workflow', { sortBy: 'date' });
 	console.log('\nTop 3 by Date (newest):');
 	byDate.slice(0, 3).forEach(r => console.log(`- ${r.name} (updated: ${r.updatedAt})`));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 }
 
 /**
  * Example 4: Search specific marketplaces
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function searchSpecificMarketplaces(searchService: ISkillSearchService) {
 	console.log('\n=== Example 4: Search Specific Marketplaces ===');
@@ -114,11 +106,9 @@ async function searchSpecificMarketplaces(searchService: ISkillSearchService) {
 	console.log(`Community marketplace: ${communityResults.length} results`);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 /**
  * Example 5: Empty query (returns all skills)
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function getAllSkills(searchService: ISkillSearchService) {
 	console.log('\n=== Example 5: Get All Skills ===');
@@ -132,13 +122,11 @@ async function getAllSkills(searchService: ISkillSearchService) {
 		console.log(`Sources searched: ${stats.sourcesSearched.join(', ')}`);
 		console.log(`Execution time: ${stats.executionTime}ms`);
 	}
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 }
 
 /**
  * Example 6: Complex filter combinations
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function complexFilterExample(searchService: ISkillSearchService) {
 	console.log('\n=== Example 6: Complex Filters ===');

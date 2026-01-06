@@ -6,14 +6,13 @@
 import * as assert from 'assert';
 import { validateSkillName, executeCreateCommand } from '../../common/skills/cli/createCommand.js';
 import { URI } from '../../../../../base/common/uri.js';
-import { IFileService } from '../../../../../platform/files/common/files.js';
+import { IFileService, IFileStatWithMetadata, FileType } from '../../../../../platform/files/common/files.js';
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
 import { VSBuffer } from '../../../../../base/common/buffer.js';
 
 /**
  * Mock File Service for testing
  */
-// @ts-expect-error - Mock service for testing, return type handled at runtime
 class MockFileService implements Partial<IFileService> {
 	private files: Map<string, string> = new Map();
 	private directories: Set<string> = new Set();
@@ -28,12 +27,42 @@ class MockFileService implements Partial<IFileService> {
 		throw new Error('File not found');
 	}
 
-	async createFolder(uri: URI): Promise<void> {
+	async createFolder(uri: URI): Promise<IFileStatWithMetadata> {
 		this.directories.add(uri.fsPath);
+		return {
+			resource: uri,
+			name: uri.path.split('/').pop() || '',
+			isFile: false,
+			isDirectory: true,
+			isSymbolicLink: false,
+			mtime: Date.now(),
+			ctime: Date.now(),
+			etag: 'mock-etag',
+			size: 0,
+			readonly: false,
+			locked: false,
+			children: undefined,
+			type: FileType.Directory
+		};
 	}
 
-	async writeFile(uri: URI, content: VSBuffer): Promise<void> {
+	async writeFile(uri: URI, content: VSBuffer): Promise<IFileStatWithMetadata> {
 		this.files.set(uri.fsPath, content.toString());
+		return {
+			resource: uri,
+			name: uri.path.split('/').pop() || '',
+			isFile: true,
+			isDirectory: false,
+			isSymbolicLink: false,
+			mtime: Date.now(),
+			ctime: Date.now(),
+			etag: 'mock-etag',
+			size: content.byteLength,
+			readonly: false,
+			locked: false,
+			children: undefined,
+			type: FileType.File
+		};
 	}
 
 	async readFile(uri: URI): Promise<any> {

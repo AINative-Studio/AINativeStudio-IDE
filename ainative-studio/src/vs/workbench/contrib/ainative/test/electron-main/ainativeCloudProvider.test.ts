@@ -56,8 +56,6 @@ suite('AINativeCloudProvider', () => {
 
 	test('should send chat completion request with JWT', async () => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		let errorOccurred = false;
 		const mockAuth = new MockAuthService();
 		const provider = new AINativeCloudProvider(mockAuth);
@@ -147,8 +145,6 @@ suite('AINativeCloudProvider', () => {
 	});
 
 	test('should auto-refresh token on 401 error', async () => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		let errorOccurred = false;
 		const mockAuth = new MockAuthService();

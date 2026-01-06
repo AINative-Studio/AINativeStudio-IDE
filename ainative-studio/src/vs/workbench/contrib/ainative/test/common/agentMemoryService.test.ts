@@ -11,10 +11,7 @@ import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import {
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	IAgentMemoryService,
 	AgentMemoryService,
 	MemorySearchResult,

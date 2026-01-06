@@ -423,7 +423,7 @@ suite('SkillLoader Tests', () => {
 			const skill = await loader.loadFullSkill('comprehensive-skill');
 
 			// Verify we can estimate tokens for full skill
-				// @ts-expect-error - Body checked in test context
+			assert.ok(skill.body !== undefined, 'Skill body should be defined');
 			const bodyTokens = skill.body.length / 4;
 			assert.ok(bodyTokens > 0, 'Should have measurable token usage for body');
 		});

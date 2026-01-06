@@ -17,27 +17,38 @@ suite('GitHubOAuthService', () => {
 	let storageService: IStorageService;
 	let service: GitHubOAuthService;
 
-// @ts-expect-error - Mock service for testing, interface compatibility handled at runtime
-	class MockStorageService implements IStorageService {
+class MockStorageService implements IStorageService {
 		readonly _serviceBrand = undefined;
 		private storage = new Map<string, string>();
 
+		get(key: string, scope: StorageScope, fallbackValue: string): string;
+		get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined;
 		get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 			return this.storage.get(key) ?? fallbackValue;
 		}
 
-		getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean {
+		getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
+		getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined;
+		getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
 			const value = this.storage.get(key);
-			return value !== undefined ? value === 'true' : (fallbackValue ?? false);
+			return value !== undefined ? value === 'true' : fallbackValue;
 		}
 
-		getNumber(key: string, scope: StorageScope, fallbackValue?: number): number {
+		getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
+		getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined;
+		getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
 			const value = this.storage.get(key);
-			return value !== undefined ? parseInt(value, 10) : (fallbackValue ?? 0);
+			return value !== undefined ? parseInt(value, 10) : fallbackValue;
 		}
 
-		store(key: string, value: string | boolean | number | undefined, scope: StorageScope, target: StorageTarget): void {
-			if (value === undefined) {
+		getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+		getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined;
+		getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+			return fallbackValue;
+		}
+
+		store(key: string, value: string | boolean | number | undefined | null, scope: StorageScope, target: StorageTarget): void {
+			if (value === undefined || value === null) {
 				this.storage.delete(key);
 			} else {
 				this.storage.set(key, String(value));
@@ -48,24 +59,24 @@ suite('GitHubOAuthService', () => {
 			this.storage.delete(key);
 		}
 
-		keys(scope: StorageScope, target: StorageTarget): readonly string[] {
+		keys(scope: StorageScope, target: StorageTarget): string[] {
 			return Array.from(this.storage.keys());
 		}
 
-		onDidChangeValue = () => ({ dispose: () => { } });
-		onDidChangeTarget = () => ({ dispose: () => { } });
-		onWillSaveState = () => ({ dispose: () => { } });
+		onDidChangeValue(scope: StorageScope, key: string | undefined, disposable: DisposableStore): any {
+			return { dispose: () => { } };
+		}
 
-		logStorage(): void { }
-		migrate(): Promise<void> { return Promise.resolve(); }
+		onDidChangeTarget = { dispose: () => { } } as any;
+		onWillSaveState = { dispose: () => { } } as any;
+
 		isNew(scope: StorageScope): boolean { return false; }
 		flush(reason?: number): Promise<void> { return Promise.resolve(); }
 		switch(): Promise<void> { return Promise.resolve(); }
-		hasScope(scope: StorageScope): boolean { return true; }
-	getObject<T>(key: string, scope: StorageScope, defaultValue?: T): T | undefined { return defaultValue; }
-	storeAll(items: Array<{ key: string; value: string; scope: StorageScope }>): void { }
-	log(): void { }
-	optimize(scope: StorageScope): void { }
+		hasScope(scope: any): boolean { return true; }
+		storeAll(entries: Array<{ key: string; value: any; scope: StorageScope; target: StorageTarget }>, external: boolean): void { }
+		log(): Promise<void> { return Promise.resolve(); }
+		async optimize(scope: StorageScope): Promise<void> { }
 	}
 
 	setup(() => {

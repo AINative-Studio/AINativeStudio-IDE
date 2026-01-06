@@ -49,64 +49,85 @@ class MockEncryptionService implements IEncryptionService {
 /**
  * Mock Storage Service for testing
  */
-// @ts-expect-error - Mock service for testing, interface compatibility handled at runtime
 class MockStorageService implements IStorageService {
+	readonly _serviceBrand: undefined;
 	private storage: Map<string, Map<string, string>> = new Map();
 
+	get(key: string, scope: StorageScope, fallbackValue: string): string;
+	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 		const scopeMap = this.storage.get(scope.toString());
 		return scopeMap?.get(key) ?? fallbackValue;
 	}
 
-	set(key: string, value: string | undefined, scope: StorageScope): void {
+	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
+	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined;
+	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
+		const value = this.get(key, scope);
+		return value !== undefined ? value === 'true' : fallbackValue;
+	}
+
+	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
+	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined;
+	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
+		const value = this.get(key, scope);
+		return value !== undefined ? parseInt(value, 10) : fallbackValue;
+	}
+
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		const value = this.get(key, scope);
+		return value ? JSON.parse(value) : fallbackValue;
+	}
+
+	store(key: string, value: string | boolean | number | undefined | null, scope: StorageScope, target: StorageTarget): void {
 		if (!this.storage.has(scope.toString())) {
 			this.storage.set(scope.toString(), new Map());
 		}
 		const scopeMap = this.storage.get(scope.toString())!;
-		if (value === undefined) {
+		if (value === undefined || value === null) {
 			scopeMap.delete(key);
 		} else {
-			scopeMap.set(key, value);
+			scopeMap.set(key, String(value));
 		}
 	}
 
-	delete(key: string, scope: StorageScope): void {
+	remove(key: string, scope: StorageScope): void {
 		this.storage.get(scope.toString())?.delete(key);
 	}
 
-	getObject<T>(key: string, scope: StorageScope, defaultValue?: T): T | undefined {
-		const value = this.get(key, scope);
-		return value ? JSON.parse(value) : defaultValue;
+	keys(scope: StorageScope, target: StorageTarget): string[] {
+		return [];
 	}
 
-	storeAll(entries: any[], external: boolean): void {
+	storeAll(entries: Array<{ key: string; value: any; scope: StorageScope; target: StorageTarget }>, external: boolean): void {
 		// Mock implementation
 	}
 
-	log(): void {
-		// Mock implementation
+	log(): Promise<void> {
+		return Promise.resolve();
 	}
 
 	async optimize(scope: StorageScope): Promise<void> {
 		// Mock implementation
 	}
 
-	keys(scope: StorageScope, target: any): string[] {
-		return [];
-	}
-
 	clear(): void {
 		this.storage.clear();
 	}
 
-	store(key: string, value: string | undefined, scope: StorageScope, target: any): void {
-		this.set(key, value, scope);
+	onDidChangeValue(scope: StorageScope, key: string | undefined, disposable: DisposableStore): any {
+		return { dispose: () => { } };
 	}
 
-	// Required event properties
-	onDidChangeValue = null as any;
-	onDidChangeTarget = null as any;
-	onWillSaveState = null as any;
+	onDidChangeTarget = { dispose: () => { } } as any;
+	onWillSaveState = { dispose: () => { } } as any;
+
+	isNew(scope: StorageScope): boolean { return false; }
+	flush(reason?: number): Promise<void> { return Promise.resolve(); }
+	switch(): Promise<void> { return Promise.resolve(); }
+	hasScope(scope: any): boolean { return true; }
 }
 
 /**
@@ -391,11 +412,8 @@ suite('AINativeCloudAuthService', () => {
 		});
 
 		test('should emit user update events', async () => {
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			let eventFired = false;
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		let eventFired = false;
 			const disposable = authService.onDidUpdateUser((user) => {
 				eventFired = true;
 				disposable.dispose();

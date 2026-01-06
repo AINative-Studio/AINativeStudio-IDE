@@ -157,10 +157,6 @@ suite('ZeroDBOAuthService', () => {
 		});
 
 		test('should store OAuth state after initiation', async () => {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
 

@@ -534,7 +534,6 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 	 * Map InstallSource to RegistrySource
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	private mapSourceTypeToRegistrySource(sourceType: InstallSource): 'local' | 'npm' | 'git' {
 		switch (sourceType) {
 			case 'local':
