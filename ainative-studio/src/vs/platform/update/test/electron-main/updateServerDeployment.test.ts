@@ -154,6 +154,7 @@ suite('Update Server - Production Deployment Validation', () => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // @ts-expect-error - Unused variable
 				const set1 = new Set(addresses1);
 				const set2 = new Set(addresses2);
 
@@ -646,6 +647,7 @@ suite('Update Server - Production Deployment Validation', () => {
 				// Try HTTP connection
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // @ts-expect-error - Unused variable
 				const httpUrl = UPDATE_SERVER_URL.replace('https://', 'http://');
 				const redirects = await checkHttpRedirect('api.ainative.studio', '/api/update/darwin/stable/test');
 

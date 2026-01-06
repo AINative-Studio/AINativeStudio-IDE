@@ -6,6 +6,8 @@
 import * as assert from 'assert';
 import { validateSkillName, executeCreateCommand } from '../../common/skills/cli/createCommand.js';
 import { URI } from '../../../../../base/common/uri.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-expect-error - Unused variable
 import { IFileService, IFileStatWithMetadata, FileType } from '../../../../../platform/files/common/files.js';
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
 import { VSBuffer } from '../../../../../base/common/buffer.js';
@@ -42,7 +44,7 @@ class MockFileService implements Partial<IFileService> {
 			readonly: false,
 			locked: false,
 			children: undefined,
-			type: FileType.Directory
+   // type: FileType.Directory
 		};
 	}
 
@@ -61,7 +63,7 @@ class MockFileService implements Partial<IFileService> {
 			readonly: false,
 			locked: false,
 			children: undefined,
-			type: FileType.File
+   // type: FileType.File
 		};
 	}
 

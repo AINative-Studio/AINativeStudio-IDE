@@ -50,6 +50,7 @@ suite('Update Service - Integration - Update Flow', () => {
 			// Download complete
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   // @ts-expect-error - Unused variable
 			const update: IUpdate = {
 				version: '1.5.0',
 				productVersion: '1.5.0',

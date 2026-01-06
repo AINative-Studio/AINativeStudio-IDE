@@ -14,6 +14,7 @@ import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { Schemas } from '../../../../../base/common/network.js';
 import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskFileSystemProvider.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-expect-error - Unused variable
 import { URI } from '../../../../../base/common/uri.js';
 
 suite('SkillParser Tests', () => {

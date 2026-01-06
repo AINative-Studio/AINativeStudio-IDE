@@ -5,6 +5,7 @@
 
 import * as assert from 'assert';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-expect-error - Unused variable
 import { SkillRefreshResult, SkillChange } from '../../common/skills/skillRegistryTypes.js';
 
 suite('SkillsRegistry - Refresh', () => {

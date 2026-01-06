@@ -140,6 +140,7 @@ class MockStorageService implements IStorageService {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+   // @ts-expect-error - Unused variable
 			const { state } = await service.initiateOAuthFlow();
 
 			await assert.rejects(

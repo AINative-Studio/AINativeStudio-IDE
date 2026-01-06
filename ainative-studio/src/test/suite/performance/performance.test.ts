@@ -68,7 +68,7 @@ class MockStorageService implements IStorageService {
 	getBoolean(key: string, scope: StorageScope, fallbackValue: boolean): boolean;
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean | undefined {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const value = this.get(key, scope);
+		const value = (this.get as any)(key, scope, undefined);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -78,7 +78,7 @@ class MockStorageService implements IStorageService {
 	getNumber(key: string, scope: StorageScope, fallbackValue: number): number;
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number | undefined {
-		const value = this.get(key, scope);
+		const value = (this.get as any)(key, scope, undefined);
 		if (value === undefined) {
 			return fallbackValue;
 		}
@@ -88,7 +88,7 @@ class MockStorageService implements IStorageService {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
 	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
-		const value = this.get(key, scope);
+		const value = (this.get as any)(key, scope, undefined);
 		if (value === undefined) {
 			return fallbackValue;
 		}

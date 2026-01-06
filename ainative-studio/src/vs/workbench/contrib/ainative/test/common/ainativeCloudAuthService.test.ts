@@ -413,6 +413,7 @@ suite('AINativeCloudAuthService', () => {
 
 		test('should emit user update events', async () => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-expect-error - Unused variable
 		let eventFired = false;
 			const disposable = authService.onDidUpdateUser((user) => {
 				eventFired = true;

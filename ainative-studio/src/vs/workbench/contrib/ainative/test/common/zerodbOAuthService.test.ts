@@ -158,6 +158,7 @@ suite('ZeroDBOAuthService', () => {
 
 		test('should store OAuth state after initiation', async () => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-expect-error - Unused variable
 		const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
 
 			assert.strictEqual(oauthService.isOAuthInProgress(), true);

@@ -85,12 +85,12 @@ class MockStorageService implements IStorageService {
 	}
 
 	getBoolean(key: string, scope: StorageScope, fallbackValue?: boolean): boolean {
-		const value = this.get(key, scope);
+		const value = (this.get as any)(key, scope, undefined);
 		return value !== undefined ? value === 'true' : !!fallbackValue;
 	}
 
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number {
-		const value = this.get(key, scope);
+		const value = (this.get as any)(key, scope, undefined);
 		return value !== undefined ? parseInt(value, 10) : (fallbackValue ?? 0);
 	}
 
@@ -209,8 +209,10 @@ suite('ZeroDB Authentication - Integration Tests', () => {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let tokenService: ITokenService;
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ // @ts-expect-error - Unused variable
 	let sessionManager: SessionManager;
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ // @ts-expect-error - Unused variable
 	let oauthService: any; // ZeroDBOAuthService reference temporarily disabled
 	let encryptionService: MockEncryptionService;
 	let storageService: MockStorageService;

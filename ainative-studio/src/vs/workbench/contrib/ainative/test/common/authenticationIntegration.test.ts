@@ -12,6 +12,7 @@ import {
 	OAuthErrorCode,
 	OAuthCallbackParams,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ // @ts-expect-error - Unused variable
 	OAuthResult
 } from '../../common/zerodbOAuthService.js';
 import { TokenService, ITokenService } from '../../common/tokenService.js';
@@ -23,6 +24,7 @@ import { IEncryptionService, KnownStorageProvider } from '../../../../../platfor
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-expect-error - Unused variable
 import { Emitter } from '../../../../../base/common/event.js';
 
 /**
@@ -711,6 +713,7 @@ suite('Authentication Integration Tests - Issue #77', () => {
 			await tokenService.storeTokens(expiredToken, refreshToken, false);
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+   // @ts-expect-error - Unused variable
 			let expiredEventFired = false;
 			sessionManager.onDidExpireSession(() => {
 				expiredEventFired = true;
@@ -950,6 +953,7 @@ suite('Authentication Integration Tests - Issue #77', () => {
 		});
 
 		test('8.3 XSS prevention in auth forms (data validation)', async () => {
+   // @ts-expect-error - Unused variable
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const maliciousCode = '<script>alert("xss")</script>';
 

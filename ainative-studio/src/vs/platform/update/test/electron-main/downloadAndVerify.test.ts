@@ -109,6 +109,7 @@ suite('Update Service - Integration - Download and Verify', () => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   // @ts-expect-error - Unused variable
 			const url = 'http://example.com/update.zip';
 			const destPath = path.join(testDir, 'update.zip');
 			const totalSize = 10 * 1024 * 1024; // 10MB
@@ -287,6 +288,7 @@ suite('Update Service - Integration - Download and Verify', () => {
 			// Resume from 30%
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+   // @ts-expect-error - Unused variable
 			const remainingSize = totalSize - partialSize;
 			await timeout(50); // Simulate network reconnection
 

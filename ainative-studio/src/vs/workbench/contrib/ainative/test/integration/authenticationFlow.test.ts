@@ -12,6 +12,8 @@ import { AIModelRegistryService } from '../../common/aiModelRegistryService.js';
 import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { ModelInvocationRequest, ModelCapability } from '../../common/aiModelRegistryTypes.js';
+import { IUsageTrackingService } from '../../common/usageTrackingService.js';
+import { Event, Emitter } from '../../../../../base/common/event.js';
 
 /**
  * Mock Encryption Service
@@ -118,6 +120,51 @@ class MockStorageService implements IStorageService {
 	logStorage(): void { }
 	clear(): void { this.storage.clear(); }
 	optimize(): Promise<void> { return Promise.resolve(); }
+}
+
+/**
+ * Mock Usage Tracking Service for integration testing
+ */
+class MockUsageTrackingService implements IUsageTrackingService {
+	_serviceBrand: undefined;
+
+	private _onDidUpdateUsage = new Emitter<any>();
+	private _onDidUpdateQuota = new Emitter<any>();
+
+	readonly onDidUpdateUsage: Event<any> = this._onDidUpdateUsage.event;
+	readonly onDidUpdateQuota: Event<any> = this._onDidUpdateQuota.event;
+
+	async trackUsage(modelId: string, inputTokens: number, outputTokens: number): Promise<void> {
+		// No-op for tests
+	}
+
+	async getUsage(period?: 'day' | 'week' | 'month' | 'all'): Promise<any> {
+		return { totalTokens: 0, totalRequests: 0, totalCost: 0 };
+	}
+
+	async getQuotaStatus(): Promise<any> {
+		return { used: 0, limit: 1000000, remaining: 1000000 };
+	}
+
+	async calculateCost(modelId: string, inputTokens: number, outputTokens: number): Promise<any> {
+		return { totalCost: 0, inputCost: 0, outputCost: 0 };
+	}
+
+	async syncWithCloud(): Promise<void> {
+		// No-op for tests
+	}
+
+	async clearUsage(): Promise<void> {
+		// No-op for tests
+	}
+
+	async clearLocalUsage(): Promise<void> {
+		// No-op for tests
+	}
+
+	reset(): void {
+		// No-op for tests
+	}
 }
 
 /**
@@ -257,6 +304,7 @@ suite('Authentication Integration Tests', () => {
 	const disposables = new DisposableStore();
 	let encryptionService: MockEncryptionService;
 	let storageService: MockStorageService;
+	let usageTrackingService: MockUsageTrackingService;
 	let authService: AINativeAuthService;
 	let tokenService: TokenService;
 	let modelRegistry: AIModelRegistryService;
@@ -264,9 +312,10 @@ suite('Authentication Integration Tests', () => {
 	setup(() => {
 		encryptionService = new MockEncryptionService();
 		storageService = new MockStorageService();
+		usageTrackingService = new MockUsageTrackingService();
 		authService = new AINativeAuthService(encryptionService, storageService);
 		tokenService = new TokenService(encryptionService, storageService);
-		modelRegistry = new AIModelRegistryService(authService as any, storageService);
+		modelRegistry = new AIModelRegistryService(authService as any, storageService, usageTrackingService);
 
 		disposables.add(authService);
 		disposables.add(tokenService);
