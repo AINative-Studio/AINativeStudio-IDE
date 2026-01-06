@@ -16,62 +16,22 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../platfo
 import { IAINativeCloudAuthService } from './ainativeCloudAuthTypes.js';
 import { IAIModelRegistryService } from './aiModelRegistryService.js';
 import { AIModel } from './aiModelRegistryTypes.js';
+import {
+	UsageRecord,
+	AggregatedUsage,
+	QuotaStatus,
+	CostCalculation,
+	UsagePeriod
+} from './usageTrackingTypes.js';
 
-/**
- * Usage record for a single model invocation
- */
-export interface UsageRecord {
-	readonly id: string;
-	readonly modelId: string;
-	readonly inputTokens: number;
-	readonly outputTokens: number;
-	readonly totalTokens: number;
-	readonly cost: number;
-	readonly timestamp: number;
-}
-
-/**
- * Aggregated usage statistics
- */
-export interface AggregatedUsage {
-	readonly totalCalls: number;
-	readonly totalTokens: number;
-	readonly inputTokens: number;
-	readonly outputTokens: number;
-	readonly totalCost: number;
-	readonly byModel: Record<string, {
-		readonly calls: number;
-		readonly tokens: number;
-		readonly inputTokens: number;
-		readonly outputTokens: number;
-		readonly cost: number;
-	}>;
-	readonly periodStart: number;
-	readonly periodEnd: number;
-}
-
-/**
- * Quota status information
- */
-export interface QuotaStatus {
-	readonly hasQuota: boolean;
-	readonly totalLimit: number;
-	readonly used: number;
-	readonly remaining: number;
-	readonly exceeded: boolean;
-	readonly resetDate?: string;
-	readonly warningThreshold: number; // 80% by default
-	readonly approaching: boolean; // True if usage > warningThreshold
-}
-
-/**
- * Cost calculation result
- */
-export interface CostCalculation {
-	readonly inputCost: number;
-	readonly outputCost: number;
-	readonly totalCost: number;
-}
+// Re-export types for backwards compatibility
+export {
+	UsageRecord,
+	AggregatedUsage,
+	QuotaStatus,
+	CostCalculation,
+	UsagePeriod
+} from './usageTrackingTypes.js';
 
 /**
  * Service interface for usage tracking
@@ -104,7 +64,7 @@ export interface IUsageTrackingService {
 	 * @param period Optional period filter ('day' | 'week' | 'month' | 'all')
 	 * @returns Aggregated usage statistics
 	 */
-	getUsage(period?: 'day' | 'week' | 'month' | 'all'): Promise<AggregatedUsage>;
+	getUsage(period?: UsagePeriod): Promise<AggregatedUsage>;
 
 	/**
 	 * Get quota status
@@ -229,7 +189,7 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 	/**
 	 * Get current usage statistics
 	 */
-	async getUsage(period: 'day' | 'week' | 'month' | 'all' = 'all'): Promise<AggregatedUsage> {
+	async getUsage(period: UsagePeriod = 'all'): Promise<AggregatedUsage> {
 		const now = Date.now();
 		let periodStart = 0;
 
