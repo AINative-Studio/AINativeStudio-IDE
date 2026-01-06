@@ -18,3 +18,14 @@ VSCode-darwin-arm64/
 VSCode-linux-x64/
 chat_history.txt
 .cursor/
+
+# Nix
+result
+result-*
+.direnv/
+flake.lock
+.claude/
+.claude.backup/
+
+# MCP server config (contains credentials)
+.mcp.json
