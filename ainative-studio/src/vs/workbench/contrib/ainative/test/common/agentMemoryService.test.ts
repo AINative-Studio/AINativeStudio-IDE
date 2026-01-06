@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { strictEqual, ok, /* deepStrictEqual */ } from 'assert';
 import { Emitter } from '../../../../../base/common/event.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
@@ -12,7 +11,7 @@ import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
- // @ts-expect-error - Unused variable
+	// @ts-expect-error - Unused variable
 	IAgentMemoryService,
 	AgentMemoryService,
 	MemorySearchResult,

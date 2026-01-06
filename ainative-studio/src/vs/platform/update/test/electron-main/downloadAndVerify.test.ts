@@ -8,11 +8,11 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { timeout } from '../../../../../base/common/async.js';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 
 suite('Update Service - Integration - Download and Verify', () => {
@@ -275,7 +275,7 @@ suite('Update Service - Integration - Download and Verify', () => {
 			const totalSize = 20 * 1024 * 1024; // 20MB
 
 			// First attempt - interrupted at 30%
-			const partialSize = Math.floor(totalSize * 0.3);
+// @ts-expect-error - Unused variable
 			const partialBuffer = Buffer.alloc(partialSize);
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 			crypto.randomFillSync(partialBuffer);

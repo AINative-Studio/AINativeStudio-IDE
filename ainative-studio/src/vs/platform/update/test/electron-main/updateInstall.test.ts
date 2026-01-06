@@ -8,11 +8,11 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { timeout } from '../../../../../base/common/async.js';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { State, StateType, IUpdate } from '../../common/update.js';
 

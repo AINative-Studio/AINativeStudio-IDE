@@ -14,15 +14,10 @@ import {
 } from '../../common/ainativeCloudAuthTypes.js';
 import { TokenService, ITokenService } from '../../common/tokenService.js';
 import { SessionManager } from '../../common/sessionManager.js';
+import { ZeroDBOAuthService } from '../../common/zerodbOAuthService.js';
 import { IEncryptionService, KnownStorageProvider } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// import { OAuthProvider, OAuthResult, SessionManager, OAuthService } from '../../../../platform/ainativeCloud/common/ainativeCloudAuth.js';
 
 /**
  * Mock encryption service
@@ -195,28 +190,22 @@ class MockFetchManager {
 				headers: new Map(),
 				json: async () => mockData.response
 			};
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		};
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	}
 }
- // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 suite('ZeroDB Authentication - Integration Tests', () => {
 	const disposables = new DisposableStore();
 	let authService: AINativeCloudAuthService;
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let tokenService: ITokenService;
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
- // @ts-expect-error - Unused variable
+	// @ts-expect-error - Unused variable
 	let sessionManager: SessionManager;
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
- // @ts-expect-error - Unused variable
-	let oauthService: any; // ZeroDBOAuthService reference temporarily disabled
+	// @ts-expect-error - Unused variable
+	let oauthService: ZeroDBOAuthService;
 	let encryptionService: MockEncryptionService;
 	let storageService: MockStorageService;
- // eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let logService: ILogService;
 	let fetchManager: MockFetchManager;
 
@@ -239,8 +228,9 @@ suite('ZeroDB Authentication - Integration Tests', () => {
 			new SessionManager(tokenService, logService)
 		);
 
-		// ZeroDBOAuthService temporarily disabled due to import issues
-		// oauthService = disposables.add(new ZeroDBOAuthService(storageService));
+		oauthService = disposables.add(
+			new ZeroDBOAuthService(storageService)
+		);
 	});
 
 	teardown(() => {

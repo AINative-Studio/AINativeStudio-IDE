@@ -55,16 +55,13 @@ class MockAuthService implements IAINativeAuthService {
 suite('AINativeCloudProvider', () => {
 
 	test('should send chat completion request with JWT', async () => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // @ts-expect-error - Unused variable
-		let errorOccurred = false;
 		const mockAuth = new MockAuthService();
 		const provider = new AINativeCloudProvider(mockAuth);
 
 		const messages = [{ role: 'user' as const, content: 'Hello' }];
 		let textReceived = '';
 		let finalMessageReceived = false;
-		// let errorOccurred = false; // Commented out - not used in test
+		let errorOccurred = false;
 
 		const onText: OnText = ({ fullText }) => {
 			textReceived = fullText;
@@ -99,6 +96,7 @@ suite('AINativeCloudProvider', () => {
 
 			// This will fail in RED phase - that's expected
 			assert.ok(finalMessageReceived || textReceived, 'Should have received response');
+			assert.strictEqual(errorOccurred, false, 'Should not have errors');
 		} catch (error) {
 			// Expected to fail in RED phase
 			assert.ok(true, 'Test should fail in RED phase - provider not implemented');
@@ -146,14 +144,11 @@ suite('AINativeCloudProvider', () => {
 	});
 
 	test('should auto-refresh token on 401 error', async () => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // @ts-expect-error - Unused variable
-		let errorOccurred = false;
 		const mockAuth = new MockAuthService();
 		const provider = new AINativeCloudProvider(mockAuth);
 
 		const messages = [{ role: 'user' as const, content: 'Test 401' }];
-		// let errorOccurred = false; // Commented out - not used in test
+		let errorOccurred = false;
 
 		const onText: OnText = () => { };
 		const onFinalMessage: OnFinalMessage = () => { };
@@ -178,6 +173,7 @@ suite('AINativeCloudProvider', () => {
 
 			// Verify token was refreshed
 			assert.ok(mockAuth.refreshCallCount > 0, 'Should have called refreshToken on 401');
+			assert.strictEqual(errorOccurred, false, 'Should not have errors after token refresh');
 		} catch (error) {
 			// Expected to fail in RED phase
 			assert.ok(true, 'Test should fail in RED phase - 401 handling not implemented');

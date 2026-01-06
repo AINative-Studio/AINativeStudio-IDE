@@ -75,7 +75,7 @@ class MockStorageService implements IStorageService {
 		switch(): Promise<void> { return Promise.resolve(); }
 		hasScope(scope: any): boolean { return true; }
 		storeAll(entries: Array<{ key: string; value: any; scope: StorageScope; target: StorageTarget }>, external: boolean): void { }
-		log(): Promise<void> { return Promise.resolve(); }
+		log(): void { }
 		async optimize(scope: StorageScope): Promise<void> { }
 	}
 

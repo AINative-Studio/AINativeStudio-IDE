@@ -5,11 +5,11 @@
 
 import assert from 'assert';
 import * as https from 'https';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { timeout } from '../../../../../base/common/async.js';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 
 suite('Update Server - Integration Tests', () => {

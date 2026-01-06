@@ -148,8 +148,9 @@ suite('ZeroDBOAuthService', () => {
 			assert.ok(result.authUrl.includes('code_challenge=') || true); // May not have crypto.subtle in test env
 		});
 
-		test('should NOT include PKCE parameters for GitHub', async () => {			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const result = await oauthService.initiateOAuthFlow(OAuthProvider.GitHub);
+		test('should NOT include PKCE parameters for GitHub', async () => {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const result = await oauthService.initiateOAuthFlow(OAuthProvider.GitHub);
 
 			// GitHub OAuth Apps don't support PKCE
 			assert.ok(!result.authUrl.includes('code_challenge='));
@@ -157,9 +158,9 @@ suite('ZeroDBOAuthService', () => {
 		});
 
 		test('should store OAuth state after initiation', async () => {
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // @ts-expect-error - Unused variable
-		const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			// @ts-expect-error - Unused variable
+			const result = await oauthService.initiateOAuthFlow(OAuthProvider.AINative);
 
 			assert.strictEqual(oauthService.isOAuthInProgress(), true);
 		});

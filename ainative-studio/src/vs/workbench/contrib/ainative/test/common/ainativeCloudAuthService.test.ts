@@ -4,9 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { strictEqual, ok } from 'assert';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
@@ -105,8 +102,8 @@ class MockStorageService implements IStorageService {
 		// Mock implementation
 	}
 
-	log(): Promise<void> {
-		return Promise.resolve();
+	log(): void {
+		// Mock implementation
 	}
 
 	async optimize(scope: StorageScope): Promise<void> {

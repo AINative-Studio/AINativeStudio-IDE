@@ -4,16 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { timeout } from '../../../../../base/common/async.js';
-// @ts-ignore - Path resolution issue in platform tests
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-expect-error - Path resolution issue in platform tests
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { StateType, IUpdate } from '../../common/update.js';
 
 suite('Update Service - Integration - Update Flow', () => {
@@ -41,7 +37,6 @@ suite('Update Service - Integration - Update Flow', () => {
  // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 			// Update available
-			states.push(StateType.Downloading);
 
 			await timeout(100); // Simulate download
 

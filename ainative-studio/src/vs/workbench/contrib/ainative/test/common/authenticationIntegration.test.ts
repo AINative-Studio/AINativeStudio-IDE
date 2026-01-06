@@ -12,7 +12,7 @@ import {
 	OAuthErrorCode,
 	OAuthCallbackParams,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
- // @ts-expect-error - Unused variable
+	// @ts-expect-error - Unused variable
 	OAuthResult
 } from '../../common/zerodbOAuthService.js';
 import { TokenService, ITokenService } from '../../common/tokenService.js';
@@ -90,7 +90,7 @@ class MockStorageService implements IStorageService {
 	switch(): Promise<void> { return Promise.resolve(); }
 	hasScope(scope: any): boolean { return true; }
 	storeAll(entries: Array<{ key: string; value: any; scope: StorageScope; target: StorageTarget }>, external: boolean): void { }
-	log(): Promise<void> { return Promise.resolve(); }
+	log(): void { }
 	async optimize(scope: StorageScope): Promise<void> { }
 
 	private _makeKey(key: string, scope: StorageScope): string {
@@ -713,7 +713,7 @@ suite('Authentication Integration Tests - Issue #77', () => {
 			await tokenService.storeTokens(expiredToken, refreshToken, false);
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-   // @ts-expect-error - Unused variable
+		// @ts-expect-error - Unused variable
 			let expiredEventFired = false;
 			sessionManager.onDidExpireSession(() => {
 				expiredEventFired = true;
@@ -953,8 +953,8 @@ suite('Authentication Integration Tests - Issue #77', () => {
 		});
 
 		test('8.3 XSS prevention in auth forms (data validation)', async () => {
-   // @ts-expect-error - Unused variable
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			// @ts-expect-error - Unused variable
 			const maliciousCode = '<script>alert("xss")</script>';
 
 			// OAuth should not execute or return malicious code

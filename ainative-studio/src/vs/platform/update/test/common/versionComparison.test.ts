@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-// @ts-ignore - Path resolution issue in platform tests
+// @ts-expect-error - Path resolution issue in platform tests
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 
 suite('Update Service - Version Comparison', () => {

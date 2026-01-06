@@ -7,7 +7,6 @@ import { URI } from '../../../../base/common/uri.js';
 import { IURLHandler, IURLService } from '../../../../platform/url/common/url.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IZeroDBOAuthService, OAuthCallbackParams } from '../common/zerodbOAuthService.js';
-import { IAINativeAuthService } from '../common/ainativeAuthService.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
 import { IWorkbenchContribution, WorkbenchPhase, registerWorkbenchContribution2 } from '../../../common/contributions.js';
@@ -30,10 +29,6 @@ export class ZeroDBOAuthUrlHandler extends Disposable implements IURLHandler, IW
 	constructor(
 		@ILogService private readonly logService: ILogService,
 		@IZeroDBOAuthService private readonly zerodbOAuthService: IZeroDBOAuthService,
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// @ts-ignore - used by protocol handler
-			@IAINativeAuthService private readonly _ainativeAuthService: IAINativeAuthService,
 		@IEncryptionService private readonly encryptionService: IEncryptionService,
 		@IStorageService private readonly storageService: IStorageService,
 		@INotificationService private readonly notificationService: INotificationService,
