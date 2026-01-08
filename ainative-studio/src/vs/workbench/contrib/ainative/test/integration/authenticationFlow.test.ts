@@ -130,9 +130,13 @@ class MockUsageTrackingService implements IUsageTrackingService {
 
 	private _onDidUpdateUsage = new Emitter<any>();
 	private _onDidUpdateQuota = new Emitter<any>();
+	private _onDidUpdateCredits = new Emitter<any>();
+	private _onCreditsLow = new Emitter<any>();
 
 	readonly onDidUpdateUsage: Event<any> = this._onDidUpdateUsage.event;
 	readonly onDidUpdateQuota: Event<any> = this._onDidUpdateQuota.event;
+	readonly onDidUpdateCredits: Event<any> = this._onDidUpdateCredits.event;
+	readonly onCreditsLow: Event<any> = this._onCreditsLow.event;
 
 	async trackUsage(modelId: string, inputTokens: number, outputTokens: number): Promise<void> {
 		// No-op for tests
@@ -164,6 +168,35 @@ class MockUsageTrackingService implements IUsageTrackingService {
 
 	reset(): void {
 		// No-op for tests
+	}
+
+	async trackManagedUsage(modelId: string, tokensUsed: number, creditsConsumed: number): Promise<void> {
+		// No-op for tests
+	}
+
+	async getCreditsStatus(): Promise<any> {
+		return {
+			used: 0,
+			remaining: 1000,
+			total: 1000,
+			percentUsed: 0,
+			isLow: false,
+			planTier: 'free'
+		};
+	}
+
+	isCreditsLow(): boolean {
+		return false;
+	}
+
+	async getCreditsHistory(days?: number): Promise<any> {
+		return {
+			period: { start: new Date(), end: new Date() },
+			dailyUsage: [],
+			totalCreditsUsed: 0,
+			totalRequests: 0,
+			totalTokens: 0
+		};
 	}
 }
 
