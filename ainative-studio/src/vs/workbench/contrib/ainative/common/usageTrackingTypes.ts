@@ -311,3 +311,116 @@ export interface UsageSyncStatus {
 	 */
 	readonly pendingRecords: number;
 }
+
+/**
+ * Managed usage record with credits tracking
+ */
+export interface ManagedUsageRecord extends UsageRecord {
+	/**
+	 * Credits consumed for this invocation
+	 */
+	readonly creditsConsumed: number;
+
+	/**
+	 * Credits remaining after this invocation
+	 */
+	readonly creditsRemaining: number;
+
+	/**
+	 * User's plan tier at time of invocation
+	 */
+	readonly planTier: string;
+}
+
+/**
+ * Credits status information
+ */
+export interface CreditsStatus {
+	/**
+	 * Total credits used in current period
+	 */
+	readonly used: number;
+
+	/**
+	 * Credits remaining in current period
+	 */
+	readonly remaining: number;
+
+	/**
+	 * Total credits allocated for the period
+	 */
+	readonly total: number;
+
+	/**
+	 * Percentage of credits used (0-100)
+	 */
+	readonly percentUsed: number;
+
+	/**
+	 * Whether credits are running low (< 20% remaining)
+	 */
+	readonly isLow: boolean;
+
+	/**
+	 * User's current plan tier
+	 */
+	readonly planTier: string;
+
+	/**
+	 * Date when credits reset (ISO string)
+	 */
+	readonly resetDate?: string;
+}
+
+/**
+ * Credits usage history for a time period
+ */
+export interface CreditsHistory {
+	/**
+	 * Time period for this history
+	 */
+	readonly period: {
+		readonly start: Date;
+		readonly end: Date;
+	};
+
+	/**
+	 * Daily usage breakdown
+	 */
+	readonly dailyUsage: Array<{
+		/**
+		 * Date in YYYY-MM-DD format
+		 */
+		readonly date: string;
+
+		/**
+		 * Credits consumed on this date
+		 */
+		readonly creditsUsed: number;
+
+		/**
+		 * Number of requests made
+		 */
+		readonly requestCount: number;
+
+		/**
+		 * Total tokens used
+		 */
+		readonly tokensUsed: number;
+	}>;
+
+	/**
+	 * Total credits used in period
+	 */
+	readonly totalCreditsUsed: number;
+
+	/**
+	 * Total requests in period
+	 */
+	readonly totalRequests: number;
+
+	/**
+	 * Total tokens in period
+	 */
+	readonly totalTokens: number;
+}

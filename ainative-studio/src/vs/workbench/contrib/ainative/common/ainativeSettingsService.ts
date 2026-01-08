@@ -16,7 +16,7 @@ import {
 	VOID_SETTINGS_STORAGE_KEY,
 	LEGACY_VOID_SETTINGS_STORAGE_KEY
 } from './storageKeys.js';
-import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, VoidStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './ainativeSettingsTypes.js';
+import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, VoidStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState, defaultManagedAPISettings } from './ainativeSettingsTypes.js';
 
 
 // name is the name in the dropdown
@@ -295,9 +295,14 @@ class AINativeSettingsService extends Disposable implements IAINativeSettingsSer
 			}
 			// add disableSystemMessage feature
 			if (readS.globalSettings.disableSystemMessage === undefined) readS.globalSettings.disableSystemMessage = false;
-			
+
 			// add autoAcceptLLMChanges feature
 			if (readS.globalSettings.autoAcceptLLMChanges === undefined) readS.globalSettings.autoAcceptLLMChanges = false;
+
+			// Phase 2: add managedAPI settings
+			if (!readS.globalSettings.managedAPI) {
+				readS.globalSettings.managedAPI = deepClone(defaultManagedAPISettings);
+			}
 		}
 		catch (e) {
 			readS = defaultState()

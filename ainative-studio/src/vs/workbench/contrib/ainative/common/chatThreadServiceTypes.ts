@@ -56,17 +56,45 @@ export type ChatMessage =
 		state: {
 			stagingSelections: StagingSelectionItem[];
 			isBeingEdited: boolean;
-		}
+		};
+		metadata?: MessageMetadata; // optional metadata for managed API usage
 	} | {
 		role: 'assistant';
 		displayContent: string; // content received from LLM  - allowed to be '', will be replaced with (empty)
 		reasoning: string; // reasoning from the LLM, used for step-by-step thinking
 
 		anthropicReasoning: AnthropicReasoning[] | null; // anthropic reasoning
+		metadata?: MessageMetadata; // optional metadata for managed API usage
 	}
 	| ToolMessage<ToolName>
 	| DecorativeCanceledTool
 	| CheckpointEntry
+
+/**
+ * Metadata for messages when using managed API
+ */
+export interface MessageMetadata {
+	// Credits and cost tracking
+	creditsConsumed?: number;
+	creditsRemaining?: number;
+
+	// Token usage
+	tokensUsed?: number;
+	promptTokens?: number;
+	completionTokens?: number;
+
+	// Model information
+	model?: string;
+	provider?: string;
+
+	// Tool usage tracking
+	toolsUsed?: string[]; // e.g., ['code_intelligence', 'web_fetch']
+	toolExecutionTimeMs?: number;
+
+	// Request tracking
+	requestId?: string;
+	timestamp?: number;
+}
 
 
 // one of the square items that indicates a selection in a chat bubble

@@ -39,6 +39,11 @@ import { IDirectoryStrService } from '../common/directoryStrService.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IMCPService } from '../common/mcpService.js';
 import { RawMCPToolCall } from '../common/mcpServiceTypes.js';
+import { IManagedChatAPIService, ChatRequest as ManagedChatRequest, ChatResponse, ManagedChatAPIError } from '../common/managedChatAPIService.js';
+import { ICodeIntelligenceService } from '../common/codeIntelligenceService.js';
+import { IWebFetchService } from '../common/webFetchService.js';
+import { IUsageTrackingService } from '../common/usageTrackingService.js';
+import { MessageMetadata } from '../common/chatThreadServiceTypes.js';
 
 
 // related to retrying when LLM message has error
@@ -327,6 +332,10 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		@IDirectoryStrService private readonly _directoryStringService: IDirectoryStrService,
 		@IFileService private readonly _fileService: IFileService,
 		@IMCPService private readonly _mcpService: IMCPService,
+		@IManagedChatAPIService private readonly _managedChatAPI: IManagedChatAPIService,
+		@ICodeIntelligenceService private readonly _codeIntelligenceService: ICodeIntelligenceService,
+		@IWebFetchService private readonly _webFetchService: IWebFetchService,
+		@IUsageTrackingService private readonly _usageTrackingService: IUsageTrackingService,
 	) {
 		super()
 		this.state = { allThreads: {}, currentThreadId: null as unknown as string } // default state
@@ -1902,6 +1911,289 @@ We only need to do it for files that were edited since `from`, ie files between 
 		this._setCurrentMessageState(newState, messageIdx)
 	}
 
+	// ========== MANAGED API INTEGRATION ==========
+
+	/**
+	 * Send message using managed API with tool calling
+	 * This is an alternative to the regular BYOK chat flow
+	 */
+	async sendMessageWithManagedAPI(
+		userMessage: string,
+		threadId: string,
+		context?: {
+			selectedCode?: string;
+			selectedLanguage?: string;
+			currentFile?: URI;
+		}
+	): Promise<void> {
+		const thread = this.state.allThreads[threadId];
+		if (!thread) return;
+
+		try {
+			// Select tools based on context
+			const tools = this._selectToolsForContext(userMessage, context);
+
+			// Convert chat messages to managed API format
+			const messages = this._convertToManagedAPIMessages(thread.messages);
+
+			// Add the new user message
+			messages.push({
+				role: 'user',
+				content: userMessage
+			});
+
+			// Send request to managed API
+			const request: ManagedChatRequest = {
+				messages,
+				tools: tools.length > 0 ? tools : undefined,
+				preferred_model: this._getPreferredManagedModel(),
+				max_iterations: 5,
+				temperature: 0.7,
+				stream: false
+			};
+
+			this._setStreamState(threadId, { isRunning: 'LLM', llmInfo: { displayContentSoFar: '', reasoningSoFar: '', toolCallSoFar: null }, interrupt: Promise.resolve(() => { }) });
+
+			const response = await this._managedChatAPI.sendChatCompletion(request);
+
+			// Extract response
+			const assistantMessage = response.choices[0]?.message.content || '';
+
+			// Detect which tools were used from the response
+			const toolsUsed = this._detectToolUsageFromResponse(assistantMessage, tools);
+
+			// Create metadata
+			const metadata: MessageMetadata = {
+				creditsConsumed: response.credits_consumed,
+				creditsRemaining: response.credits_remaining,
+				tokensUsed: response.usage.total_tokens,
+				promptTokens: response.usage.prompt_tokens,
+				completionTokens: response.usage.completion_tokens,
+				model: response.model,
+				provider: response.provider,
+				toolsUsed: toolsUsed,
+				requestId: response.id,
+				timestamp: Date.now()
+			};
+
+			// Add messages to thread with metadata
+			this._addMessageToThread(threadId, {
+				role: 'user',
+				content: userMessage,
+				displayContent: userMessage,
+				selections: thread.state.stagingSelections,
+				state: defaultMessageState,
+				metadata
+			});
+
+			this._addMessageToThread(threadId, {
+				role: 'assistant',
+				displayContent: assistantMessage,
+				reasoning: '',
+				anthropicReasoning: null,
+				metadata
+			});
+
+			// Track usage
+			await this._usageTrackingService.trackManagedUsage(
+				response.model,
+				response.usage.total_tokens,
+				response.credits_consumed
+			);
+
+			// Update credits display
+			this._updateCreditsDisplay(response.credits_remaining);
+
+			this._setStreamState(threadId, undefined);
+
+			// Add checkpoint
+			this._addUserCheckpoint({ threadId });
+
+		} catch (error) {
+			console.error('[ChatThreadService] Managed API error:', error);
+
+			// Handle specific error types
+			if (error instanceof ManagedChatAPIError) {
+				this._handleManagedAPIError(error, threadId);
+			} else {
+				this._setStreamState(threadId, {
+					isRunning: undefined,
+					error: {
+						message: 'An unexpected error occurred with the managed API.',
+						fullError: error instanceof Error ? error : null
+					}
+				});
+			}
+		}
+	}
+
+	/**
+	 * Select tools based on message context
+	 */
+	private _selectToolsForContext(
+		message: string,
+		context?: {
+			selectedCode?: string;
+			selectedLanguage?: string;
+			currentFile?: URI;
+		}
+	): Array<any> {
+		const tools: Array<any> = [];
+
+		// If code is selected, enable code_intelligence
+		if (context?.selectedCode) {
+			tools.push(this._codeIntelligenceService.getToolSchema());
+		}
+
+		// If message mentions docs/documentation, enable web_fetch
+		const lowerMessage = message.toLowerCase();
+		if (lowerMessage.includes('docs') ||
+		    lowerMessage.includes('documentation') ||
+		    lowerMessage.includes('api reference') ||
+		    lowerMessage.includes('official')) {
+			tools.push(this._webFetchService.getToolSchema());
+		}
+
+		// Check user settings for auto tool calling
+		const settings = this._settingsService.state.globalSettings;
+		// TODO: Add managedAPI settings when available
+		// if (settings.managedAPI?.autoToolCalling) {
+		// 	// Add default tools based on settings
+		// }
+
+		return tools;
+	}
+
+	/**
+	 * Convert chat messages to managed API format
+	 */
+	private _convertToManagedAPIMessages(messages: ChatMessage[]): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
+		const converted: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
+
+		for (const msg of messages) {
+			if (msg.role === 'user') {
+				converted.push({
+					role: 'user',
+					content: msg.displayContent || msg.content
+				});
+			} else if (msg.role === 'assistant') {
+				converted.push({
+					role: 'assistant',
+					content: msg.displayContent
+				});
+			}
+			// Skip tool messages, checkpoints, etc. for managed API
+		}
+
+		return converted;
+	}
+
+	/**
+	 * Get preferred model for managed API
+	 */
+	private _getPreferredManagedModel(): string {
+		// TODO: Get from settings when available
+		// const settings = this._settingsService.state.globalSettings;
+		// return settings.managedAPI?.preferredModel || 'llama-3.3-70b-instruct';
+		return 'llama-3.3-70b-instruct';
+	}
+
+	/**
+	 * Detect which tools were used from assistant response
+	 */
+	private _detectToolUsageFromResponse(content: string, availableTools: Array<any>): string[] {
+		const toolsUsed: string[] = [];
+		const lowerContent = content.toLowerCase();
+
+		// Look for tool mentions in response
+		if (availableTools.some(t => t.name === 'code_intelligence')) {
+			if (lowerContent.includes('analyzed the code') ||
+			    lowerContent.includes('code analysis') ||
+			    lowerContent.includes('code_intelligence')) {
+				toolsUsed.push('code_intelligence');
+			}
+		}
+
+		if (availableTools.some(t => t.name === 'web_fetch')) {
+			if (lowerContent.includes('fetched documentation') ||
+			    lowerContent.includes('from the documentation') ||
+			    lowerContent.includes('web_fetch')) {
+				toolsUsed.push('web_fetch');
+			}
+		}
+
+		return toolsUsed;
+	}
+
+	/**
+	 * Update credits display (fires event for UI)
+	 */
+	private _updateCreditsDisplay(creditsRemaining: number): void {
+		// The usage tracking service will fire the onDidUpdateCredits event
+		// UI components can listen to this event to update displays
+		console.log(`[ChatThreadService] Credits remaining: ${creditsRemaining}`);
+	}
+
+	/**
+	 * Handle managed API specific errors
+	 */
+	private _handleManagedAPIError(error: ManagedChatAPIError, threadId: string): void {
+		let errorMessage = error.message;
+		let actionLabel: string | undefined;
+		let actionCallback: (() => void) | undefined;
+
+		if (error.isInsufficientCredits()) {
+			errorMessage = 'Insufficient credits. Please upgrade your plan to continue using the managed API.';
+			actionLabel = 'Upgrade Plan';
+			actionCallback = () => {
+				const upgradeUrl = error.getUpgradeURL() || 'https://ainative.studio/pricing';
+				// TODO: Open upgrade URL in external browser
+				console.log('Opening upgrade URL:', upgradeUrl);
+			};
+		} else if (error.isModelNotAvailable()) {
+			errorMessage = 'The selected model is not available for your plan. Please upgrade or select a different model.';
+			actionLabel = 'View Plans';
+			actionCallback = () => {
+				console.log('Opening pricing page');
+			};
+		} else if (error.isRateLimited()) {
+			errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
+		} else if (error.isAuthError()) {
+			errorMessage = 'Authentication error. Please log in again.';
+			actionLabel = 'Log In';
+			actionCallback = () => {
+				console.log('Triggering login');
+			};
+		}
+
+		this._setStreamState(threadId, {
+			isRunning: undefined,
+			error: {
+				message: errorMessage,
+				fullError: error
+			}
+		});
+
+		// Show notification with action if available
+		if (actionLabel && actionCallback) {
+			this._notificationService.notify({
+				severity: Severity.Error,
+				message: errorMessage,
+				actions: {
+					primary: [{
+						id: 'managedAPI.action',
+						label: actionLabel,
+						run: actionCallback,
+						enabled: true,
+						tooltip: '',
+						class: undefined
+					}]
+				}
+			});
+		}
+	}
+
+	// ========== END MANAGED API INTEGRATION ==========
 
 
 }

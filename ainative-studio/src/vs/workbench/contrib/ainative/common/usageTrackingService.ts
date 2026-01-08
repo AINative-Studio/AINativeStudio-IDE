@@ -21,7 +21,10 @@ import {
 	AggregatedUsage,
 	QuotaStatus,
 	CostCalculation,
-	UsagePeriod
+	UsagePeriod,
+	ManagedUsageRecord,
+	CreditsStatus,
+	CreditsHistory
 } from './usageTrackingTypes.js';
 
 // Re-export types for backwards compatibility
@@ -30,7 +33,10 @@ export {
 	AggregatedUsage,
 	QuotaStatus,
 	CostCalculation,
-	UsagePeriod
+	UsagePeriod,
+	ManagedUsageRecord,
+	CreditsStatus,
+	CreditsHistory
 } from './usageTrackingTypes.js';
 
 /**
@@ -50,6 +56,16 @@ export interface IUsageTrackingService {
 	 * Event fired when quota status changes
 	 */
 	readonly onDidUpdateQuota: Event<QuotaStatus>;
+
+	/**
+	 * Event fired when credits status is updated
+	 */
+	readonly onDidUpdateCredits: Event<CreditsStatus>;
+
+	/**
+	 * Event fired when credits are running low
+	 */
+	readonly onCreditsLow: Event<CreditsStatus>;
 
 	/**
 	 * Track a model invocation
@@ -95,6 +111,33 @@ export interface IUsageTrackingService {
 	 * Reset usage tracking (called on logout)
 	 */
 	reset(): void;
+
+	/**
+	 * Track managed API usage with credits
+	 * @param modelId Model identifier
+	 * @param tokensUsed Total tokens consumed
+	 * @param creditsConsumed Credits charged for this invocation
+	 */
+	trackManagedUsage(modelId: string, tokensUsed: number, creditsConsumed: number): Promise<void>;
+
+	/**
+	 * Get current credits status from backend
+	 * @returns Current credits status
+	 */
+	getCreditsStatus(): Promise<CreditsStatus>;
+
+	/**
+	 * Check if credits are running low (< 20% remaining)
+	 * @returns True if credits are low
+	 */
+	isCreditsLow(): boolean;
+
+	/**
+	 * Get credits usage history
+	 * @param days Number of days to retrieve (default: 30)
+	 * @returns Credits usage history
+	 */
+	getCreditsHistory(days?: number): Promise<CreditsHistory>;
 }
 
 /**
@@ -105,6 +148,8 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 
 	private static readonly STORAGE_KEY_USAGE_RECORDS = 'ainative.usage.records';
 	private static readonly STORAGE_KEY_LAST_SYNC = 'ainative.usage.lastSync';
+	private static readonly STORAGE_KEY_CREDITS_STATUS = 'ainative.usage.creditsStatus';
+	private static readonly STORAGE_KEY_MANAGED_USAGE = 'ainative.usage.managedRecords';
 	private static readonly SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 	private static readonly QUOTA_WARNING_THRESHOLD = 0.8; // 80%
 	private static readonly MAX_LOCAL_RECORDS = 10000; // Limit local storage
@@ -115,8 +160,16 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 	private readonly _onDidUpdateQuota = this._register(new Emitter<QuotaStatus>());
 	readonly onDidUpdateQuota = this._onDidUpdateQuota.event;
 
+	private readonly _onDidUpdateCredits = this._register(new Emitter<CreditsStatus>());
+	readonly onDidUpdateCredits = this._onDidUpdateCredits.event;
+
+	private readonly _onCreditsLow = this._register(new Emitter<CreditsStatus>());
+	readonly onCreditsLow = this._onCreditsLow.event;
+
 	private _usageRecords: UsageRecord[] = [];
+	private _managedUsageRecords: ManagedUsageRecord[] = [];
 	private _quotaStatus: QuotaStatus | null = null;
+	private _creditsStatus: CreditsStatus | null = null;
 	private _syncTimer: any = null;
 	private _modelCache: Map<string, AIModel> = new Map();
 
@@ -128,6 +181,7 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 		super();
 
 		this._loadFromStorage();
+		this._loadManagedUsageFromStorage();
 		this._startSyncTimer();
 
 		// Listen to auth state changes
@@ -135,6 +189,9 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 			if (state === 'authenticated') {
 				this.syncWithCloud().catch(err =>
 					console.error('[UsageTrackingService] Failed to sync on auth:', err)
+				);
+				this._syncCreditsStatus().catch(err =>
+					console.error('[UsageTrackingService] Failed to sync credits on auth:', err)
 				);
 			} else if (state === 'unauthenticated') {
 				this.reset();
@@ -349,12 +406,16 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 	 */
 	reset(): void {
 		this._usageRecords = [];
+		this._managedUsageRecords = [];
 		this._quotaStatus = null;
+		this._creditsStatus = null;
 		this._modelCache.clear();
 
 		// Clear storage
 		this.storageService.remove(UsageTrackingService.STORAGE_KEY_USAGE_RECORDS, StorageScope.APPLICATION);
 		this.storageService.remove(UsageTrackingService.STORAGE_KEY_LAST_SYNC, StorageScope.APPLICATION);
+		this.storageService.remove(UsageTrackingService.STORAGE_KEY_CREDITS_STATUS, StorageScope.APPLICATION);
+		this.storageService.remove(UsageTrackingService.STORAGE_KEY_MANAGED_USAGE, StorageScope.APPLICATION);
 
 		console.log('[UsageTrackingService] Reset completed');
 	}
@@ -494,6 +555,257 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 	 */
 	private _generateId(): string {
 		return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+	}
+
+	/**
+	 * Track managed API usage with credits
+	 */
+	async trackManagedUsage(modelId: string, tokensUsed: number, creditsConsumed: number): Promise<void> {
+		try {
+			// Fetch current credits status to get remaining balance and plan tier
+			const creditsStatus = await this.getCreditsStatus();
+
+			// Create managed usage record
+			const record: ManagedUsageRecord = {
+				id: this._generateId(),
+				modelId,
+				inputTokens: 0, // Managed API tracks total tokens
+				outputTokens: 0,
+				totalTokens: tokensUsed,
+				cost: 0, // Cost is tracked via credits
+				timestamp: Date.now(),
+				creditsConsumed,
+				creditsRemaining: creditsStatus.remaining,
+				planTier: creditsStatus.planTier
+			};
+
+			// Add to managed usage records
+			this._managedUsageRecords.push(record);
+
+			// Trim if exceeding max records
+			if (this._managedUsageRecords.length > UsageTrackingService.MAX_LOCAL_RECORDS) {
+				this._managedUsageRecords = this._managedUsageRecords.slice(-UsageTrackingService.MAX_LOCAL_RECORDS);
+			}
+
+			// Save to storage
+			await this._saveManagedUsageToStorage();
+
+			// Update credits status
+			await this._syncCreditsStatus();
+
+			console.log(`[UsageTrackingService] Tracked managed usage: ${modelId}, ${tokensUsed} tokens, ${creditsConsumed} credits`);
+
+		} catch (error) {
+			console.error('[UsageTrackingService] Failed to track managed usage:', error);
+		}
+	}
+
+	/**
+	 * Get current credits status from backend
+	 */
+	async getCreditsStatus(): Promise<CreditsStatus> {
+		if (!this.cloudAuthService.isAuthenticated()) {
+			console.log('[UsageTrackingService] Not authenticated, returning default credits status');
+			return this._getDefaultCreditsStatus();
+		}
+
+		try {
+			// Sync with backend
+			await this._syncCreditsStatus();
+
+			return this._creditsStatus ?? this._getDefaultCreditsStatus();
+
+		} catch (error) {
+			console.error('[UsageTrackingService] Failed to get credits status:', error);
+			return this._creditsStatus ?? this._getDefaultCreditsStatus();
+		}
+	}
+
+	/**
+	 * Check if credits are running low (< 20% remaining)
+	 */
+	isCreditsLow(): boolean {
+		if (!this._creditsStatus) {
+			return false;
+		}
+
+		return this._creditsStatus.isLow;
+	}
+
+	/**
+	 * Get credits usage history
+	 */
+	async getCreditsHistory(days: number = 30): Promise<CreditsHistory> {
+		try {
+			// TODO: This will be replaced with actual backend API call when ManagedChatAPIService is implemented
+			// For now, calculate from local managed usage records
+
+			const now = Date.now();
+			const startTime = now - (days * 24 * 60 * 60 * 1000);
+
+			// Filter records by time period
+			const periodRecords = this._managedUsageRecords.filter(r => r.timestamp >= startTime);
+
+			// Group by date
+			const dailyUsageMap = new Map<string, { creditsUsed: number; requestCount: number; tokensUsed: number }>();
+
+			for (const record of periodRecords) {
+				const date = new Date(record.timestamp).toISOString().split('T')[0];
+
+				if (!dailyUsageMap.has(date)) {
+					dailyUsageMap.set(date, { creditsUsed: 0, requestCount: 0, tokensUsed: 0 });
+				}
+
+				const dayData = dailyUsageMap.get(date)!;
+				dayData.creditsUsed += record.creditsConsumed;
+				dayData.requestCount++;
+				dayData.tokensUsed += record.totalTokens;
+			}
+
+			// Convert to array and sort by date
+			const dailyUsage = Array.from(dailyUsageMap.entries())
+				.map(([date, data]) => ({
+					date,
+					creditsUsed: data.creditsUsed,
+					requestCount: data.requestCount,
+					tokensUsed: data.tokensUsed
+				}))
+				.sort((a, b) => a.date.localeCompare(b.date));
+
+			// Calculate totals
+			const totalCreditsUsed = periodRecords.reduce((sum, r) => sum + r.creditsConsumed, 0);
+			const totalRequests = periodRecords.length;
+			const totalTokens = periodRecords.reduce((sum, r) => sum + r.totalTokens, 0);
+
+			return {
+				period: {
+					start: new Date(startTime),
+					end: new Date(now)
+				},
+				dailyUsage,
+				totalCreditsUsed,
+				totalRequests,
+				totalTokens
+			};
+
+		} catch (error) {
+			console.error('[UsageTrackingService] Failed to get credits history:', error);
+			// Return empty history on error
+			return {
+				period: {
+					start: new Date(),
+					end: new Date()
+				},
+				dailyUsage: [],
+				totalCreditsUsed: 0,
+				totalRequests: 0,
+				totalTokens: 0
+			};
+		}
+	}
+
+	/**
+	 * Sync credits status with backend
+	 * NOTE: This is a placeholder implementation. Will be replaced with actual ManagedChatAPIService call.
+	 */
+	private async _syncCreditsStatus(): Promise<void> {
+		if (!this.cloudAuthService.isAuthenticated()) {
+			this._creditsStatus = this._getDefaultCreditsStatus();
+			return;
+		}
+
+		try {
+			// TODO: Replace with actual backend API call
+			// const status = await this.managedChatAPI.getUserUsage('monthly');
+
+			// For now, calculate from local records or use cached status
+			if (!this._creditsStatus) {
+				// Load from storage if available
+				const stored = this.storageService.get(
+					UsageTrackingService.STORAGE_KEY_CREDITS_STATUS,
+					StorageScope.APPLICATION
+				);
+
+				if (stored) {
+					this._creditsStatus = JSON.parse(stored);
+				} else {
+					this._creditsStatus = this._getDefaultCreditsStatus();
+				}
+			}
+
+			// Fire events
+			if (this._creditsStatus) {
+				this._onDidUpdateCredits.fire(this._creditsStatus);
+
+				if (this._creditsStatus.isLow) {
+					this._onCreditsLow.fire(this._creditsStatus);
+				}
+			}
+
+			// Save to storage
+			this.storageService.store(
+				UsageTrackingService.STORAGE_KEY_CREDITS_STATUS,
+				JSON.stringify(this._creditsStatus),
+				StorageScope.APPLICATION,
+				StorageTarget.MACHINE
+			);
+
+			console.log('[UsageTrackingService] Credits status synced');
+
+		} catch (error) {
+			console.error('[UsageTrackingService] Failed to sync credits status:', error);
+			this._creditsStatus = this._getDefaultCreditsStatus();
+		}
+	}
+
+	/**
+	 * Get default credits status
+	 */
+	private _getDefaultCreditsStatus(): CreditsStatus {
+		return {
+			used: 0,
+			remaining: 0,
+			total: 0,
+			percentUsed: 0,
+			isLow: false,
+			planTier: 'free'
+		};
+	}
+
+	/**
+	 * Save managed usage records to storage
+	 */
+	private async _saveManagedUsageToStorage(): Promise<void> {
+		try {
+			this.storageService.store(
+				UsageTrackingService.STORAGE_KEY_MANAGED_USAGE,
+				JSON.stringify(this._managedUsageRecords),
+				StorageScope.APPLICATION,
+				StorageTarget.MACHINE
+			);
+		} catch (error) {
+			console.error('[UsageTrackingService] Failed to save managed usage to storage:', error);
+		}
+	}
+
+	/**
+	 * Load managed usage records from storage
+	 */
+	private _loadManagedUsageFromStorage(): void {
+		try {
+			const data = this.storageService.get(
+				UsageTrackingService.STORAGE_KEY_MANAGED_USAGE,
+				StorageScope.APPLICATION
+			);
+
+			if (data) {
+				this._managedUsageRecords = JSON.parse(data);
+				console.log(`[UsageTrackingService] Loaded ${this._managedUsageRecords.length} managed usage records from storage`);
+			}
+		} catch (error) {
+			console.error('[UsageTrackingService] Failed to load managed usage from storage:', error);
+			this._managedUsageRecords = [];
+		}
 	}
 
 	override dispose(): void {

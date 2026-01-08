@@ -450,6 +450,16 @@ export const isFeatureNameDisabled = (featureName: FeatureName, settingsState: V
 
 export type ChatMode = 'agent' | 'gather' | 'normal'
 
+// Managed API Settings for Phase 2 integration
+export type ManagedAPISettings = {
+	enabled: boolean;
+	autoToolCalling: boolean;
+	preferredModel: string;
+	maxIterations: number; // 1-10
+	showCreditsInChat: boolean;
+	showToolExecutions: boolean;
+	quotaWarningThreshold: number; // 0.1-0.5 (10-50%)
+}
 
 export type GlobalSettings = {
 	autoRefreshModels: boolean;
@@ -465,6 +475,17 @@ export type GlobalSettings = {
 	isOnboardingComplete: boolean;
 	disableSystemMessage: boolean;
 	autoAcceptLLMChanges: boolean;
+	managedAPI: ManagedAPISettings;
+}
+
+export const defaultManagedAPISettings: ManagedAPISettings = {
+	enabled: false,
+	autoToolCalling: true,
+	preferredModel: 'llama-3.3-70b-instruct',
+	maxIterations: 5,
+	showCreditsInChat: true,
+	showToolExecutions: true,
+	quotaWarningThreshold: 0.2, // 20%
 }
 
 export const defaultGlobalSettings: GlobalSettings = {
@@ -481,6 +502,7 @@ export const defaultGlobalSettings: GlobalSettings = {
 	isOnboardingComplete: false,
 	disableSystemMessage: false,
 	autoAcceptLLMChanges: false,
+	managedAPI: defaultManagedAPISettings,
 }
 
 export type GlobalSettingName = keyof GlobalSettings

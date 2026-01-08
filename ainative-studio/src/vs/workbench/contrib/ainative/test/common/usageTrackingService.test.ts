@@ -3,22 +3,20 @@
  *  Licensed under the MIT License.
  *--------------------------------------------------------------------------------------------*/
 
-import { strictEqual, ok, deepStrictEqual } from 'assert';
+import { strictEqual, ok } from 'assert';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import {
 	UsageTrackingService,
 	IUsageTrackingService,
-	UsageRecord,
 	AggregatedUsage,
-	QuotaStatus,
-	CostCalculation
+	QuotaStatus
 } from '../../common/usageTrackingService.js';
 import { IAINativeCloudAuthService, CloudAuthState } from '../../common/ainativeCloudAuthTypes.js';
 import { IAIModelRegistryService } from '../../common/aiModelRegistryService.js';
 import { AIModel, PricingTier, ModelCapability, QuotaInfo, UsageStats } from '../../common/aiModelRegistryTypes.js';
-import { Event, Emitter } from '../../../../../base/common/event.js';
+import { Emitter } from '../../../../../base/common/event.js';
 
 /**
  * Mock Storage Service for testing
@@ -26,6 +24,12 @@ import { Event, Emitter } from '../../../../../base/common/event.js';
 class MockStorageService implements IStorageService {
 	readonly _serviceBrand: undefined;
 	private storage: Map<string, Map<string, string>> = new Map();
+	private readonly _onDidChangeValueEmitter = new Emitter<any>();
+	readonly onDidChangeValue = this._onDidChangeValueEmitter.event;
+	private readonly _onDidChangeTargetEmitter = new Emitter<any>();
+	readonly onDidChangeTarget = this._onDidChangeTargetEmitter.event;
+	private readonly _onWillSaveStateEmitter = new Emitter<any>();
+	readonly onWillSaveState = this._onWillSaveStateEmitter.event;
 
 	get(key: string, scope: StorageScope, fallbackValue: string): string;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined;
@@ -101,6 +105,18 @@ class MockStorageService implements IStorageService {
 
 	log(): void {
 		// No-op for testing
+	}
+
+	storeAll(toStore: [key: string, value: any][], overwrite: boolean): Promise<void> {
+		for (const [key, value] of toStore) {
+			// Simplified - using StorageScope.PROFILE as default
+			this.store(key, value, StorageScope.PROFILE, StorageTarget.MACHINE);
+		}
+		return Promise.resolve();
+	}
+
+	optimize(scope: StorageScope): Promise<void> {
+		return Promise.resolve();
 	}
 }
 
