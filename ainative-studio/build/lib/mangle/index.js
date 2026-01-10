@@ -288,6 +288,8 @@ const skippedExportMangledProjects = [
     'microsoft-authentication',
     'github-authentication',
     'html-language-features/server',
+    // Skip google-auth-library due to overlapping edits bug
+    'google-auth-library',
 ];
 const skippedExportMangledSymbols = [
     // Don't mangle extension entry points
