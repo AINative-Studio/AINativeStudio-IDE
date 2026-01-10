@@ -6,10 +6,9 @@
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
-import Severity from '../../../../base/common/severity.js';
 import { IAINativeCloudAuthService, CloudAuthState, CloudUser } from '../common/ainativeCloudAuthTypes.js';
 import { IAIModelRegistryService } from '../common/aiModelRegistryService.js';
-import { AINativeAuthUIHandler, UIMessage, UIResponse } from './ainativeAuthUIHandler.js';
+import { AINativeAuthUIHandler, UIResponse } from './ainativeAuthUIHandler.js';
 
 /**
  * View types for authentication webview
@@ -51,7 +50,7 @@ export class AINativeAuthWebview extends Disposable {
 	private _isShowing = false;
 
 	constructor(
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
+		@IInstantiationService _instantiationService: IInstantiationService,
 		@IDialogService private readonly dialogService: IDialogService,
 		@IAINativeCloudAuthService private readonly authService: IAINativeCloudAuthService,
 		@IAIModelRegistryService private readonly modelRegistryService: IAIModelRegistryService
@@ -127,10 +126,11 @@ export class AINativeAuthWebview extends Disposable {
 
 	/**
 	 * Handle incoming message from webview
+	 * This will be used when React components are ready
 	 */
-	private async _handleIncomingMessage(message: UIMessage): Promise<void> {
-		await this.uiHandler.handleMessage(message);
-	}
+	// private async _handleIncomingMessage(message: UIMessage): Promise<void> {
+	// 	await this.uiHandler.handleMessage(message);
+	// }
 
 	/**
 	 * Show placeholder dialog
@@ -182,6 +182,8 @@ export class AINativeAuthWebview extends Disposable {
 	 * Generate webview HTML
 	 * This will be used when React components are ready
 	 */
+	// @ts-ignore - Will be used when React components are integrated
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	private _getWebviewHTML(initialState: WebviewInitialState): string {
 		return `<!DOCTYPE html>
 <html lang="en">

@@ -159,3 +159,123 @@ export interface CodeContext {
 	selectedLanguage?: string;
 	currentFile?: string;
 }
+
+/**
+ * SSE streaming event types
+ */
+export type StreamEventType =
+	| 'chunk'           // Text delta chunk
+	| 'tool_start'      // Tool execution started
+	| 'tool_progress'   // Tool execution progress
+	| 'tool_complete'   // Tool execution completed
+	| 'thinking'        // Model thinking/reasoning
+	| 'error'           // Error during streaming
+	| 'done';           // Stream completed
+
+/**
+ * Base streaming event
+ */
+export interface BaseStreamEvent {
+	type: StreamEventType;
+	timestamp: number;
+}
+
+/**
+ * Text chunk event
+ */
+export interface ChunkStreamEvent extends BaseStreamEvent {
+	type: 'chunk';
+	delta: string;
+	index: number;
+}
+
+/**
+ * Tool start event
+ */
+export interface ToolStartStreamEvent extends BaseStreamEvent {
+	type: 'tool_start';
+	tool_name: string;
+	tool_id: string;
+	parameters: Record<string, any>;
+}
+
+/**
+ * Tool progress event
+ */
+export interface ToolProgressStreamEvent extends BaseStreamEvent {
+	type: 'tool_progress';
+	tool_id: string;
+	progress: number;
+	message?: string;
+}
+
+/**
+ * Tool complete event
+ */
+export interface ToolCompleteStreamEvent extends BaseStreamEvent {
+	type: 'tool_complete';
+	tool_id: string;
+	result: any;
+	success: boolean;
+	error?: string;
+}
+
+/**
+ * Thinking/reasoning event
+ */
+export interface ThinkingStreamEvent extends BaseStreamEvent {
+	type: 'thinking';
+	content: string;
+}
+
+/**
+ * Error event
+ */
+export interface ErrorStreamEvent extends BaseStreamEvent {
+	type: 'error';
+	error: string;
+	code?: string;
+	recoverable: boolean;
+}
+
+/**
+ * Done event (stream completion)
+ */
+export interface DoneStreamEvent extends BaseStreamEvent {
+	type: 'done';
+	finish_reason: 'stop' | 'length' | 'tool_calls' | 'content_filter';
+	usage?: {
+		prompt_tokens: number;
+		completion_tokens: number;
+		total_tokens: number;
+	};
+	credits_consumed?: number;
+	credits_remaining?: number;
+}
+
+/**
+ * Union type for all streaming events
+ */
+export type StreamEvent =
+	| ChunkStreamEvent
+	| ToolStartStreamEvent
+	| ToolProgressStreamEvent
+	| ToolCompleteStreamEvent
+	| ThinkingStreamEvent
+	| ErrorStreamEvent
+	| DoneStreamEvent;
+
+/**
+ * Callback for streaming events
+ */
+export type StreamEventCallback = (event: StreamEvent) => void;
+
+/**
+ * Stream controller for interruption
+ */
+export interface StreamController {
+	abort: () => void;
+	pause: () => void;
+	resume: () => void;
+	isActive: () => boolean;
+}

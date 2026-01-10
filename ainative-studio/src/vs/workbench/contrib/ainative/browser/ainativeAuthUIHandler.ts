@@ -7,7 +7,7 @@ import { Disposable } from '../../../../base/common/lifecycle.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { IAINativeCloudAuthService, CloudAuthState, CloudUser, CloudAuthErrorCode } from '../common/ainativeCloudAuthTypes.js';
 import { IAIModelRegistryService } from '../common/aiModelRegistryService.js';
-import { AIModel, ModelSelectionConfig } from '../common/aiModelRegistryTypes.js';
+import { ModelSelectionConfig } from '../common/aiModelRegistryTypes.js';
 
 /**
  * Message types for UI communication

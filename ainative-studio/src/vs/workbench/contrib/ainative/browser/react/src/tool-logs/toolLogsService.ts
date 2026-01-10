@@ -19,7 +19,7 @@ import {
 	ToolLogsStatistics,
 	ToolType,
 	ExecutionStatus
-} from './types';
+} from './types.js';
 
 /**
  * Check if backend endpoint is available

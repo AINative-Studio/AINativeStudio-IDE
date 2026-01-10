@@ -9,7 +9,7 @@
  */
 
 import * as assert from 'assert';
-import { ManagedChatAPIService, IManagedChatAPIService, ManagedChatAPIError, ChatRequest, ChatResponse } from '../../common/managedChatAPIService.js';
+import { ManagedChatAPIService, IManagedChatAPIService, ManagedChatAPIError, ChatRequest } from '../../common/managedChatAPIService.js';
 import { IAINativeCloudAuthService } from '../../common/ainativeCloudAuthTypes.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 
@@ -20,7 +20,6 @@ class MockAuthService implements IAINativeCloudAuthService {
 	readonly _serviceBrand: undefined;
 
 	private _accessToken: string | null = 'mock_access_token';
-	private _refreshToken: string | null = 'mock_refresh_token';
 	private _shouldFailRefresh = false;
 	private _onDidChangeAuthState = { event: () => ({ dispose: () => { } }) };
 
@@ -31,12 +30,12 @@ class MockAuthService implements IAINativeCloudAuthService {
 		return this._accessToken;
 	}
 
-	async refreshToken(): Promise<boolean> {
+	async refreshToken(): Promise<string> {
 		if (this._shouldFailRefresh) {
-			return false;
+			throw new Error('Token refresh failed');
 		}
 		this._accessToken = 'new_mock_access_token';
-		return true;
+		return this._accessToken;
 	}
 
 	isAuthenticated(): boolean {
@@ -52,9 +51,20 @@ class MockAuthService implements IAINativeCloudAuthService {
 	}
 
 	// Stub other methods
-	async login(): Promise<void> { }
+	onDidUpdateUser = () => ({ dispose: () => { } }) as any;
+	async register(): Promise<any> { return { success: true }; }
+	async login(): Promise<any> { return { success: true }; }
 	async logout(): Promise<void> { }
-	async getUser(): Promise<any> { return null; }
+	async requestPasswordReset(): Promise<any> { return { success: true }; }
+	async confirmPasswordReset(): Promise<any> { return { success: true }; }
+	async changePassword(): Promise<any> { return { success: true }; }
+	async validateToken(): Promise<any> { return { valid: true }; }
+	getAccessTokenSync(): string | null { return this._accessToken; }
+	async getCurrentUser(): Promise<any> { return null; }
+	getUser(): any { return null; }
+	getAuthState(): any { return this._accessToken ? 'authenticated' : 'unauthenticated'; }
+	async resendEmailVerification(): Promise<any> { return { success: true }; }
+	async verifyEmail(): Promise<any> { return { success: true }; }
 }
 
 /**

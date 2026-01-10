@@ -24,12 +24,14 @@ import { Emitter } from '../../../../../base/common/event.js';
 class MockStorageService implements IStorageService {
 	readonly _serviceBrand: undefined;
 	private storage: Map<string, Map<string, string>> = new Map();
-	private readonly _onDidChangeValueEmitter = new Emitter<any>();
-	readonly onDidChangeValue = this._onDidChangeValueEmitter.event;
 	private readonly _onDidChangeTargetEmitter = new Emitter<any>();
 	readonly onDidChangeTarget = this._onDidChangeTargetEmitter.event;
 	private readonly _onWillSaveStateEmitter = new Emitter<any>();
 	readonly onWillSaveState = this._onWillSaveStateEmitter.event;
+
+	onDidChangeValue(): any {
+		return { dispose: () => { } };
+	}
 
 	get(key: string, scope: StorageScope, fallbackValue: string): string;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined;
@@ -107,12 +109,10 @@ class MockStorageService implements IStorageService {
 		// No-op for testing
 	}
 
-	storeAll(toStore: [key: string, value: any][], overwrite: boolean): Promise<void> {
-		for (const [key, value] of toStore) {
-			// Simplified - using StorageScope.PROFILE as default
-			this.store(key, value, StorageScope.PROFILE, StorageTarget.MACHINE);
+	storeAll(entries: Array<any>, external: boolean): void {
+		for (const entry of entries) {
+			this.store(entry.key, entry.value, entry.scope, entry.target);
 		}
-		return Promise.resolve();
 	}
 
 	optimize(scope: StorageScope): Promise<void> {
@@ -437,8 +437,8 @@ suite('UsageTrackingService', () => {
 		await usageTrackingService.trackUsage('claude-3-opus', 1000, 500);
 
 		ok(eventFired, 'Usage update event should fire');
-		ok(receivedUsage);
-		strictEqual(receivedUsage.totalCalls, 1);
+		ok(receivedUsage, 'Usage should be received');
+		strictEqual((receivedUsage as AggregatedUsage).totalCalls, 1);
 	});
 
 	test('should get quota status when unauthenticated', async () => {
@@ -551,8 +551,6 @@ suite('UsageTrackingService', () => {
 	});
 
 	test('should sync to cloud on authentication', async () => {
-		let syncCalled = false;
-
 		// Start unauthenticated
 		cloudAuthService.setAuthenticated(false);
 

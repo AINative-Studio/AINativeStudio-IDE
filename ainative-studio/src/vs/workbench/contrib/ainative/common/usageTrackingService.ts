@@ -153,6 +153,7 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 	private static readonly SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 	private static readonly QUOTA_WARNING_THRESHOLD = 0.8; // 80%
 	private static readonly MAX_LOCAL_RECORDS = 10000; // Limit local storage
+	// private static readonly CREDITS_LOW_THRESHOLD = 0.2; // 20% - defined for reference but not currently used
 
 	private readonly _onDidUpdateUsage = this._register(new Emitter<AggregatedUsage>());
 	readonly onDidUpdateUsage = this._onDidUpdateUsage.event;
@@ -734,11 +735,12 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 			}
 
 			// Fire events
-			if (this._creditsStatus) {
-				this._onDidUpdateCredits.fire(this._creditsStatus);
+			const currentCreditsStatus = this._creditsStatus;
+			if (currentCreditsStatus) {
+				this._onDidUpdateCredits.fire(currentCreditsStatus);
 
-				if (this._creditsStatus.isLow) {
-					this._onCreditsLow.fire(this._creditsStatus);
+				if (currentCreditsStatus.isLow) {
+					this._onCreditsLow.fire(currentCreditsStatus);
 				}
 			}
 

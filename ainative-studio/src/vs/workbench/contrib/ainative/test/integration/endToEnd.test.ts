@@ -9,10 +9,6 @@
  */
 
 import * as assert from 'assert';
-import { IManagedChatAPIService, ChatRequest, ChatResponse, ManagedChatAPIError } from '../../common/managedChatAPIService.js';
-import { ICodeIntelligenceService } from '../../common/codeIntelligenceService.js';
-import { IWebFetchService } from '../../common/webFetchService.js';
-import { IUsageTrackingService, CreditsStatus } from '../../common/usageTrackingService.js';
 
 suite('End-to-End Integration Tests - Phase 2 Managed API', () => {
 
@@ -391,8 +387,8 @@ suite('End-to-End Integration Tests - Phase 2 Managed API', () => {
 				fallbackSucceeded: true
 			};
 
-			assert.ok(fallbackFallback.suggestedModel);
-			assert.ok(fallbackFallback.fallbackSucceeded);
+			assert.ok(modelFallback.suggestedModel);
+			assert.ok(modelFallback.fallbackSucceeded);
 		});
 	});
 

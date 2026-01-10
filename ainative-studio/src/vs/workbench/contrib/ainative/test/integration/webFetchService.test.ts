@@ -9,7 +9,7 @@
  */
 
 import * as assert from 'assert';
-import { WebFetchService, IWebFetchService, WebFetchErrorCode, DocumentationResult } from '../../common/webFetchService.js';
+import { WebFetchService, IWebFetchService, WebFetchErrorCode } from '../../common/webFetchService.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 
 suite('WebFetchService - Integration Tests', () => {

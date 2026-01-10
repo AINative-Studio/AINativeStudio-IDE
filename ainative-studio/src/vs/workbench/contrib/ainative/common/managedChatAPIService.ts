@@ -244,12 +244,14 @@ export interface IManagedChatAPIService {
 	sendChatCompletion(request: ChatRequest): Promise<ChatResponse>;
 
 	/**
-	 * Send a streaming chat completion request
+	 * Send a streaming chat completion request with SSE
+	 * Returns a controller to manage the stream
 	 */
 	sendStreamingChatCompletion(
 		request: ChatRequest,
-		onEvent: (event: any) => void
-	): Promise<void>;
+		onEvent: (event: any) => void,
+		onError?: (error: Error) => void
+	): Promise<{ abort: () => void }>;
 
 	/**
 	 * Get current usage statistics
@@ -329,73 +331,240 @@ export class ManagedChatAPIService extends Disposable implements IManagedChatAPI
 	/**
 	 * Send a streaming chat completion request
 	 * Uses Server-Sent Events (SSE) for real-time updates
+	 * Returns a controller to abort the stream
 	 */
 	async sendStreamingChatCompletion(
 		request: ChatRequest,
-		onEvent: (event: any) => void
-	): Promise<void> {
+		onEvent: (event: any) => void,
+		onError?: (error: Error) => void
+	): Promise<{ abort: () => void }> {
 		const token = await this._getAccessToken();
 
-		try {
-			const response = await fetch(`${this.baseURL}/chat/completions`, {
-				method: 'POST',
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					...request,
-					stream: true
-				})
-			});
+		// Create abort controller for stream interruption
+		const abortController = new AbortController();
+		let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+		let streamActive = true;
+		let reconnectAttempts = 0;
+		const MAX_RECONNECT_ATTEMPTS = 3;
+		const RECONNECT_DELAY_MS = 2000;
 
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw this._createAPIError(response.status, errorData);
+		const abort = () => {
+			streamActive = false;
+			abortController.abort();
+			if (reader) {
+				reader.cancel().catch(() => {
+					// Ignore cancel errors
+				});
+				reader = null;
 			}
+		};
 
-			// Parse SSE stream
-			const reader = response.body?.getReader();
-			if (!reader) {
-				throw new Error('Response body is not readable');
-			}
+		// Start streaming in background
+		(async () => {
+			while (streamActive && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+				try {
+					const response = await fetch(`${this.baseURL}/chat/completions`, {
+						method: 'POST',
+						headers: {
+							'Authorization': `Bearer ${token}`,
+							'Content-Type': 'application/json',
+							'Accept': 'text/event-stream'
+						},
+						body: JSON.stringify({
+							...request,
+							stream: true
+						}),
+						signal: abortController.signal
+					});
 
-			const decoder = new TextDecoder();
-			let buffer = '';
+					// Handle authentication errors
+					if (response.status === 401) {
+						console.log('[ManagedChatAPIService] Token expired during streaming, refreshing...');
+						await this.authService.refreshToken();
+						reconnectAttempts++;
+						await this._sleep(RECONNECT_DELAY_MS);
+						continue; // Retry with new token
+					}
 
-			while (true) {
-				const { done, value } = await reader.read();
+					// Handle other errors
+					if (!response.ok) {
+						const errorData = await response.json();
+						const apiError = this._createAPIError(response.status, errorData);
+						if (onError) {
+							onError(apiError);
+						}
+						throw apiError;
+					}
 
-				if (done) {
+					// Check for SSE content type
+					const contentType = response.headers.get('content-type');
+					if (!contentType || !contentType.includes('text/event-stream')) {
+						throw new Error(`Expected text/event-stream but got ${contentType}`);
+					}
+
+					// Parse SSE stream
+					const bodyReader = response.body?.getReader();
+					if (!bodyReader) {
+						throw new Error('Response body is not readable');
+					}
+					reader = bodyReader;
+
+					const decoder = new TextDecoder();
+					let buffer = '';
+					let chunkIndex = 0;
+
+					while (streamActive) {
+						const { done, value } = await reader.read();
+
+						if (done) {
+							// Process any remaining buffer
+							if (buffer.trim()) {
+								this._processSSSELine(buffer, chunkIndex++, onEvent, onError);
+							}
+							break;
+						}
+
+						buffer += decoder.decode(value, { stream: true });
+						const lines = buffer.split('\n');
+
+						// Keep last incomplete line in buffer
+						buffer = lines.pop() || '';
+
+						for (const line of lines) {
+							if (!streamActive) break;
+							this._processSSSELine(line, chunkIndex++, onEvent, onError);
+						}
+					}
+
+					// Successfully completed stream
 					break;
-				}
 
-				buffer += decoder.decode(value, { stream: true });
-				const lines = buffer.split('\n');
+				} catch (error) {
+					// Handle abort
+					if (error instanceof Error && error.name === 'AbortError') {
+						console.log('[ManagedChatAPIService] Stream aborted by user');
+						break;
+					}
 
-				// Keep last incomplete line in buffer
-				buffer = lines.pop() || '';
+					// Handle network errors with reconnection
+					if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && this._isNetworkError(error)) {
+						reconnectAttempts++;
+						console.warn(`[ManagedChatAPIService] Network error, reconnecting (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+						await this._sleep(RECONNECT_DELAY_MS * reconnectAttempts);
+						continue;
+					}
 
-				for (const line of lines) {
-					if (line.startsWith('data: ')) {
-						const data = line.slice(6);
-						if (data === '[DONE]') {
-							continue;
-						}
-
-						try {
-							const event = JSON.parse(data);
-							onEvent(event);
-						} catch (e) {
-							console.error('[ManagedChatAPIService] Failed to parse SSE event:', e);
-						}
+					// Fatal error
+					const handledError = this._handleError(error);
+					if (onError) {
+						onError(handledError);
+					}
+					throw handledError;
+				} finally {
+					if (reader) {
+						reader.cancel().catch(() => {
+							// Ignore cancel errors
+						});
+						reader = null;
 					}
 				}
 			}
 
-		} catch (error) {
-			throw this._handleError(error);
+			// Max reconnect attempts reached
+			if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+				const error = new ManagedChatAPIError(
+					0,
+					'max_reconnect_attempts',
+					'Maximum reconnection attempts reached'
+				);
+				if (onError) {
+					onError(error);
+				}
+			}
+		})().catch((error) => {
+			console.error('[ManagedChatAPIService] Unhandled streaming error:', error);
+			if (onError) {
+				onError(error);
+			}
+		});
+
+		return { abort };
+	}
+
+	/**
+	 * Process a single SSE line
+	 */
+	private _processSSSELine(
+		line: string,
+		chunkIndex: number,
+		onEvent: (event: any) => void,
+		onError?: (error: Error) => void
+	): void {
+		// Trim whitespace
+		const trimmedLine = line.trim();
+
+		// Skip empty lines and comments
+		if (!trimmedLine || trimmedLine.startsWith(':')) {
+			return;
 		}
+
+		// Parse SSE format: "data: {...}"
+		if (trimmedLine.startsWith('data: ')) {
+			const data = trimmedLine.slice(6).trim();
+
+			// Handle [DONE] marker
+			if (data === '[DONE]') {
+				onEvent({
+					type: 'done',
+					timestamp: Date.now(),
+					finish_reason: 'stop'
+				});
+				return;
+			}
+
+			// Parse JSON event
+			try {
+				const event = JSON.parse(data);
+
+				// Enrich event with metadata
+				const enrichedEvent = {
+					...event,
+					timestamp: event.timestamp || Date.now(),
+					index: chunkIndex
+				};
+
+				onEvent(enrichedEvent);
+			} catch (e) {
+				console.error('[ManagedChatAPIService] Failed to parse SSE event:', data, e);
+				if (onError) {
+					onError(new Error(`Failed to parse SSE event: ${e}`));
+				}
+			}
+		}
+		// Handle other SSE fields (id:, event:, retry:)
+		else if (trimmedLine.startsWith('id: ') || trimmedLine.startsWith('event: ') || trimmedLine.startsWith('retry: ')) {
+			// These are SSE metadata fields, we can log or use them if needed
+			console.debug('[ManagedChatAPIService] SSE metadata:', trimmedLine);
+		}
+	}
+
+	/**
+	 * Check if error is a network error that can be retried
+	 */
+	private _isNetworkError(error: any): boolean {
+		if (!error) return false;
+
+		// Check for common network error types
+		if (error.name === 'TypeError' || error.name === 'NetworkError') {
+			return true;
+		}
+
+		// Check for network-related messages
+		const message = error.message?.toLowerCase() || '';
+		return message.includes('network') ||
+		       message.includes('fetch') ||
+		       message.includes('connection') ||
+		       message.includes('timeout');
 	}
 
 	/**

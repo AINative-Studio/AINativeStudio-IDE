@@ -7,7 +7,7 @@
  * Utility functions for Tool Logs Panel
  */
 
-import { ExecutionStatus, ToolType } from './types';
+import { ExecutionStatus, ToolType } from './types.js';
 
 /**
  * Format duration in milliseconds to human-readable string

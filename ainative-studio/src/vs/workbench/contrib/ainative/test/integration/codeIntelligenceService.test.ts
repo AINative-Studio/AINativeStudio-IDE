@@ -48,7 +48,7 @@ class MockManagedChatAPIService implements IManagedChatAPIService {
 		return response;
 	}
 
-	async sendStreamingChatCompletion(request: ChatRequest, onEvent: (event: any) => void): Promise<void> {
+	async sendStreamingChatCompletion(request: ChatRequest, onEvent: (event: any) => void, onError?: (error: Error) => void): Promise<{ abort: () => void }> {
 		throw new Error('Not implemented for testing');
 	}
 
@@ -751,7 +751,7 @@ import './styles.css';
 			assert.ok(schema.input_schema.properties.operation);
 			assert.ok(schema.input_schema.properties.code);
 			assert.ok(schema.input_schema.properties.language);
-			assert.strictEqual(schema.input_schema.required.length, 3);
+			assert.strictEqual(schema.input_schema.required?.length, 3);
 		});
 	});
 

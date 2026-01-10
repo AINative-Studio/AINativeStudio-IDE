@@ -260,15 +260,10 @@ export class WebFetchService extends Disposable implements IWebFetchService {
 	 */
 	private readonly CACHE_TTL_MS = 60 * 60 * 1000;
 
-	/**
-	 * Default fetch timeout in milliseconds
-	 */
-	private readonly DEFAULT_TIMEOUT_MS = 30000;
-
-	/**
-	 * Maximum content length in characters
-	 */
-	private readonly DEFAULT_MAX_LENGTH = 10000;
+	// Note: These constants are defined for reference but not currently used
+	// as the actual fetching happens server-side via the managed chat API
+	// private readonly DEFAULT_TIMEOUT_MS = 30000;
+	// private readonly DEFAULT_MAX_LENGTH = 10000;
 
 	constructor() {
 		super();

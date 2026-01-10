@@ -9,10 +9,10 @@
  */
 
 import * as assert from 'assert';
-import { UsageTrackingService, IUsageTrackingService, UsageRecord, CreditsStatus, UsagePeriod } from '../../common/usageTrackingService.js';
+import { UsageTrackingService, IUsageTrackingService, UsageRecord } from '../../common/usageTrackingService.js';
 import { IAINativeCloudAuthService } from '../../common/ainativeCloudAuthTypes.js';
-import { IAIModelRegistryService, AIModelQuota } from '../../common/aiModelRegistryService.js';
-import { AIModel } from '../../common/aiModelRegistryTypes.js';
+import { IAIModelRegistryService } from '../../common/aiModelRegistryService.js';
+import { AIModel, PricingTier, QuotaInfo } from '../../common/aiModelRegistryTypes.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { Emitter } from '../../../../../base/common/event.js';
@@ -24,9 +24,17 @@ class MockStorageService implements IStorageService {
 	readonly _serviceBrand: undefined;
 
 	private storage: Map<string, string> = new Map();
-	readonly onDidChangeValue = new Emitter<any>().event;
-	readonly onWillSaveState = new Emitter<any>().event;
+	private readonly _onDidChangeTarget = new Emitter<any>();
+	readonly onDidChangeTarget = this._onDidChangeTarget.event;
+	private readonly _onWillSaveState = new Emitter<any>();
+	readonly onWillSaveState = this._onWillSaveState.event;
 
+	onDidChangeValue(): any {
+		return { dispose: () => { } };
+	}
+
+	get(key: string, scope: StorageScope, fallbackValue: string): string;
+	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined;
 	get(key: string, scope: StorageScope, fallbackValue?: string): string | undefined {
 		return this.storage.get(key) ?? fallbackValue;
 	}
@@ -39,6 +47,13 @@ class MockStorageService implements IStorageService {
 	getNumber(key: string, scope: StorageScope, fallbackValue?: number): number {
 		const value = this.storage.get(key);
 		return value !== undefined ? parseFloat(value) : (fallbackValue ?? 0);
+	}
+
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue: T): T;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined;
+	getObject<T extends object>(key: string, scope: StorageScope, fallbackValue?: T): T | undefined {
+		const value = this.storage.get(key);
+		return value ? JSON.parse(value) : fallbackValue;
 	}
 
 	store(key: string, value: any, scope: StorageScope, target: StorageTarget): void {
@@ -71,6 +86,26 @@ class MockStorageService implements IStorageService {
 
 	logStorage(): void { }
 
+	storeAll(entries: Array<any>, external: boolean): void {
+		for (const entry of entries) {
+			this.store(entry.key, entry.value, entry.scope, entry.target);
+		}
+	}
+
+	log(): void { }
+
+	switch(): Promise<void> {
+		return Promise.resolve();
+	}
+
+	hasScope(): boolean {
+		return true;
+	}
+
+	optimize(): Promise<void> {
+		return Promise.resolve();
+	}
+
 	// Stub for testing
 	getAll(): Map<string, string> {
 		return this.storage;
@@ -84,9 +119,11 @@ class MockAuthService implements IAINativeCloudAuthService {
 	readonly _serviceBrand: undefined;
 
 	private _isAuthenticated = false;
-	private _onDidChangeAuthState = new Emitter<string>();
+	private _onDidChangeAuthState = new Emitter<any>();
+	private _onDidUpdateUser = new Emitter<any>();
 
 	readonly onDidChangeAuthState = this._onDidChangeAuthState.event;
+	readonly onDidUpdateUser = this._onDidUpdateUser.event;
 
 	isAuthenticated(): boolean {
 		return this._isAuthenticated;
@@ -101,14 +138,27 @@ class MockAuthService implements IAINativeCloudAuthService {
 		return this._isAuthenticated ? 'mock_token' : null;
 	}
 
-	async refreshToken(): Promise<boolean> {
-		return this._isAuthenticated;
+	async refreshToken(): Promise<string> {
+		if (!this._isAuthenticated) {
+			throw new Error('Not authenticated');
+		}
+		return 'mock_token';
 	}
 
 	// Stub other methods
-	async login(): Promise<void> { }
+	async register(): Promise<any> { return { success: true }; }
+	async login(): Promise<any> { return { success: true }; }
 	async logout(): Promise<void> { }
-	async getUser(): Promise<any> { return null; }
+	async requestPasswordReset(): Promise<any> { return { success: true }; }
+	async confirmPasswordReset(): Promise<any> { return { success: true }; }
+	async changePassword(): Promise<any> { return { success: true }; }
+	async validateToken(): Promise<any> { return { valid: true }; }
+	getAccessTokenSync(): string | null { return this._isAuthenticated ? 'mock_token' : null; }
+	async getCurrentUser(): Promise<any> { return null; }
+	getUser(): any { return null; }
+	getAuthState(): any { return this._isAuthenticated ? 'authenticated' : 'unauthenticated'; }
+	async resendEmailVerification(): Promise<any> { return { success: true }; }
+	async verifyEmail(): Promise<any> { return { success: true }; }
 }
 
 /**
@@ -118,16 +168,16 @@ class MockModelRegistryService implements IAIModelRegistryService {
 	readonly _serviceBrand: undefined;
 
 	private mockModels: Map<string, AIModel> = new Map();
-	private mockQuota: AIModelQuota = {
+	private mockQuota: QuotaInfo = {
 		totalLimit: 1000,
 		used: 100,
 		remaining: 900,
 		exceeded: false,
-		resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+		resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 	};
 
 	readonly onDidChangeModels = new Emitter<void>().event;
-	readonly onDidChangeQuota = new Emitter<AIModelQuota>().event;
+	readonly onDidChangeQuota = new Emitter<QuotaInfo>().event;
 
 	async getModel(modelId: string): Promise<AIModel> {
 		const model = this.mockModels.get(modelId);
@@ -137,7 +187,7 @@ class MockModelRegistryService implements IAIModelRegistryService {
 		return model;
 	}
 
-	async getQuota(): Promise<AIModelQuota> {
+	async getQuota(): Promise<QuotaInfo> {
 		return this.mockQuota;
 	}
 
@@ -145,11 +195,21 @@ class MockModelRegistryService implements IAIModelRegistryService {
 		this.mockModels.set(modelId, model);
 	}
 
-	setMockQuota(quota: AIModelQuota): void {
+	setMockQuota(quota: QuotaInfo): void {
 		this.mockQuota = quota;
 	}
 
 	// Stub other methods
+	onDidUpdateModels = () => ({ dispose: () => { } }) as any;
+	onDidChangeModelSelection = () => ({ dispose: () => { } }) as any;
+	async listModels(): Promise<AIModel[]> {
+		return Array.from(this.mockModels.values());
+	}
+	async getSelectedModel(): Promise<AIModel | null> { return null; }
+	async selectModel(): Promise<void> { }
+	async invokeModel(): Promise<any> { return {}; }
+	async streamModel(): Promise<any> { return {}; }
+	async getUsageStats(): Promise<any> { return {}; }
 	async getAllModels(): Promise<AIModel[]> {
 		return Array.from(this.mockModels.values());
 	}
@@ -174,32 +234,36 @@ suite('UsageTrackingService - Integration Tests', () => {
 			id: 'gpt-4o-mini',
 			name: 'GPT-4o Mini',
 			provider: 'openai',
-			contextWindow: 128000,
-			maxOutput: 16384,
-			pricing: {
-				inputTokenCost: 0.15,
-				outputTokenCost: 0.60,
-				requestCost: 0
-			},
+			description: 'GPT-4o Mini model',
 			capabilities: [],
-			description: '',
-			available: true
+			pricing: {
+				tier: PricingTier.Free,
+				inputCost: 0.15,
+				outputCost: 0.60,
+				requestCost: 0,
+				currency: 'USD'
+			},
+			parameters: [],
+			maxContextLength: 128000,
+			maxOutputLength: 16384
 		} as AIModel);
 
 		modelRegistryService.setMockModel('llama-3.3-70b-instruct', {
 			id: 'llama-3.3-70b-instruct',
 			name: 'Llama 3.3 70B',
 			provider: 'groq',
-			contextWindow: 128000,
-			maxOutput: 8192,
-			pricing: {
-				inputTokenCost: 0.59,
-				outputTokenCost: 0.79,
-				requestCost: 0
-			},
+			description: 'Llama 3.3 70B model',
 			capabilities: [],
-			description: '',
-			available: true
+			pricing: {
+				tier: PricingTier.Free,
+				inputCost: 0.59,
+				outputCost: 0.79,
+				requestCost: 0,
+				currency: 'USD'
+			},
+			parameters: [],
+			maxContextLength: 128000,
+			maxOutputLength: 8192
 		} as AIModel);
 
 		authService.setAuthenticated(true);
@@ -287,9 +351,6 @@ suite('UsageTrackingService - Integration Tests', () => {
 	suite('Usage Period Filtering', () => {
 
 		test('should filter usage by day', async () => {
-			const now = Date.now();
-			const yesterday = now - (25 * 60 * 60 * 1000); // 25 hours ago
-
 			// Track current usage
 			await usageTrackingService.trackUsage('gpt-4o-mini', 1000, 500);
 
@@ -373,7 +434,7 @@ suite('UsageTrackingService - Integration Tests', () => {
 				used: 850, // 85% used
 				remaining: 150,
 				exceeded: false,
-				resetDate: new Date()
+				resetDate: new Date().toISOString()
 			});
 
 			const quota = await usageTrackingService.getQuotaStatus();
@@ -387,7 +448,7 @@ suite('UsageTrackingService - Integration Tests', () => {
 				used: 1200,
 				remaining: 0,
 				exceeded: true,
-				resetDate: new Date()
+				resetDate: new Date().toISOString()
 			});
 
 			const quota = await usageTrackingService.getQuotaStatus();

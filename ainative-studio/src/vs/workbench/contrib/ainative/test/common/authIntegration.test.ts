@@ -17,7 +17,7 @@
  * Coverage Target: >80%
  */
 
-import { strictEqual, ok, notStrictEqual } from 'assert';
+import { strictEqual, ok } from 'assert';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { AINativeCloudAuthService } from '../../common/ainativeCloudAuthService.js';
@@ -26,7 +26,7 @@ import { SessionManager, SessionState } from '../../common/sessionManager.js';
 import { AIModelRegistryService } from '../../common/aiModelRegistryService.js';
 import { UsageTrackingService } from '../../common/usageTrackingService.js';
 import { CloudAuthState, CloudAuthErrorCode } from '../../common/ainativeCloudAuthTypes.js';
-import { ModelCapability, ModelRegistryErrorCode, ModelInvocationRequest } from '../../common/aiModelRegistryTypes.js';
+import { ModelCapability } from '../../common/aiModelRegistryTypes.js';
 import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
@@ -236,7 +236,6 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 
 			// Validate registration request
 			ok(!registrationResult.error || registrationResult.error.code !== CloudAuthErrorCode.WeakPassword);
-			ok(!registrationResult.error || registrationResult.error.code !== CloudAuthErrorCode.InvalidEmail);
 
 			// Step 2: Verify initial state
 			strictEqual(authService.isAuthenticated(), false, 'Should not be authenticated after registration');

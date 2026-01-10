@@ -37,7 +37,6 @@ import {
 	CodeIntelligenceError,
 	CodeIntelligenceErrorCode,
 	FunctionComplexity,
-	Symbol as CodeSymbol,
 	ComplexityRank
 } from './codeIntelligenceTypes.js';
 
@@ -723,7 +722,7 @@ export class CodeIntelligenceService extends Disposable implements ICodeIntellig
 	/**
 	 * Map backend symbol to our interface
 	 */
-	private _mapSymbol(sym: any): CodeSymbol {
+	private _mapSymbol(sym: any): any {
 		return {
 			name: sym.name,
 			type: sym.type,

@@ -12,8 +12,7 @@ import { IStorageService, InMemoryStorageService } from '../../../../../platform
 import { IAINativeCloudAuthService, CloudAuthState } from '../../common/ainativeCloudAuthTypes.js';
 import { IUsageTrackingService } from '../../common/usageTrackingService.js';
 import {
-	AIModelRegistryService,
-	IAIModelRegistryService
+	AIModelRegistryService
 } from '../../common/aiModelRegistryService.js';
 import {
 	AIModel,
@@ -21,7 +20,6 @@ import {
 	PricingTier,
 	ModelParameterType,
 	ModelInvocationRequest,
-	ModelResponse,
 	ModelStreamChunk,
 	UsageStats,
 	QuotaInfo,
@@ -634,7 +632,7 @@ describe('AIModelRegistryService', () => {
 		});
 
 		it('should get quota information from API', async () => {
-			const mockQuota: QuotaInfo = {
+			const quotaInfo: QuotaInfo = {
 				totalLimit: 1000000,
 				used: 500000,
 				remaining: 500000,
@@ -646,21 +644,21 @@ describe('AIModelRegistryService', () => {
 				ok: true,
 				status: 200,
 				json: sinon.stub().resolves({
-					total_limit: 1000000,
-					used: 500000,
-					remaining: 500000,
-					reset_date: '2024-02-01',
-					exceeded: false
+					total_limit: quotaInfo.totalLimit,
+					used: quotaInfo.used,
+					remaining: quotaInfo.remaining,
+					reset_date: quotaInfo.resetDate,
+					exceeded: quotaInfo.exceeded
 				})
 			};
 			fetchStub.resolves(mockResponse as any);
 
 			const quota = await service.getQuota();
 
-			assert.strictEqual(quota.totalLimit, 1000000);
-			assert.strictEqual(quota.used, 500000);
-			assert.strictEqual(quota.remaining, 500000);
-			assert.strictEqual(quota.exceeded, false);
+			assert.strictEqual(quota.totalLimit, quotaInfo.totalLimit);
+			assert.strictEqual(quota.used, quotaInfo.used);
+			assert.strictEqual(quota.remaining, quotaInfo.remaining);
+			assert.strictEqual(quota.exceeded, quotaInfo.exceeded);
 		});
 
 		it('should throw error when getting usage without authentication', async () => {

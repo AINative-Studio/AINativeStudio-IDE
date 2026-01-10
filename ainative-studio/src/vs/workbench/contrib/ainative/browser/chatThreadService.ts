@@ -39,7 +39,7 @@ import { IDirectoryStrService } from '../common/directoryStrService.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IMCPService } from '../common/mcpService.js';
 import { RawMCPToolCall } from '../common/mcpServiceTypes.js';
-import { IManagedChatAPIService, ChatRequest as ManagedChatRequest, ChatResponse, ManagedChatAPIError } from '../common/managedChatAPIService.js';
+import { IManagedChatAPIService, ChatRequest as ManagedChatRequest, ManagedChatAPIError } from '../common/managedChatAPIService.js';
 import { ICodeIntelligenceService } from '../common/codeIntelligenceService.js';
 import { IWebFetchService } from '../common/webFetchService.js';
 import { IUsageTrackingService } from '../common/usageTrackingService.js';
@@ -1920,6 +1920,7 @@ We only need to do it for files that were edited since `from`, ie files between 
 	async sendMessageWithManagedAPI(
 		userMessage: string,
 		threadId: string,
+		useStreaming: boolean = true,
 		context?: {
 			selectedCode?: string;
 			selectedLanguage?: string;
@@ -1949,65 +1950,15 @@ We only need to do it for files that were edited since `from`, ie files between 
 				preferred_model: this._getPreferredManagedModel(),
 				max_iterations: 5,
 				temperature: 0.7,
-				stream: false
+				stream: useStreaming
 			};
 
-			this._setStreamState(threadId, { isRunning: 'LLM', llmInfo: { displayContentSoFar: '', reasoningSoFar: '', toolCallSoFar: null }, interrupt: Promise.resolve(() => { }) });
-
-			const response = await this._managedChatAPI.sendChatCompletion(request);
-
-			// Extract response
-			const assistantMessage = response.choices[0]?.message.content || '';
-
-			// Detect which tools were used from the response
-			const toolsUsed = this._detectToolUsageFromResponse(assistantMessage, tools);
-
-			// Create metadata
-			const metadata: MessageMetadata = {
-				creditsConsumed: response.credits_consumed,
-				creditsRemaining: response.credits_remaining,
-				tokensUsed: response.usage.total_tokens,
-				promptTokens: response.usage.prompt_tokens,
-				completionTokens: response.usage.completion_tokens,
-				model: response.model,
-				provider: response.provider,
-				toolsUsed: toolsUsed,
-				requestId: response.id,
-				timestamp: Date.now()
-			};
-
-			// Add messages to thread with metadata
-			this._addMessageToThread(threadId, {
-				role: 'user',
-				content: userMessage,
-				displayContent: userMessage,
-				selections: thread.state.stagingSelections,
-				state: defaultMessageState,
-				metadata
-			});
-
-			this._addMessageToThread(threadId, {
-				role: 'assistant',
-				displayContent: assistantMessage,
-				reasoning: '',
-				anthropicReasoning: null,
-				metadata
-			});
-
-			// Track usage
-			await this._usageTrackingService.trackManagedUsage(
-				response.model,
-				response.usage.total_tokens,
-				response.credits_consumed
-			);
-
-			// Update credits display
-			this._updateCreditsDisplay(response.credits_remaining);
-
-			this._setStreamState(threadId, undefined);
-
-			// Add checkpoint
-			this._addUserCheckpoint({ threadId });
+			// Use streaming if requested
+			if (useStreaming) {
+				await this._sendStreamingManagedAPIRequest(userMessage, threadId, request, tools);
+			} else {
+				await this._sendNonStreamingManagedAPIRequest(userMessage, threadId, request, tools);
+			}
 
 		} catch (error) {
 			console.error('[ChatThreadService] Managed API error:', error);
@@ -2025,6 +1976,279 @@ We only need to do it for files that were edited since `from`, ie files between 
 				});
 			}
 		}
+	}
+
+	/**
+	 * Send streaming managed API request
+	 */
+	private async _sendStreamingManagedAPIRequest(
+		userMessage: string,
+		threadId: string,
+		request: ManagedChatRequest,
+		tools: Array<any>
+	): Promise<void> {
+		const thread = this.state.allThreads[threadId];
+		if (!thread) return;
+
+		// State for accumulating streaming response
+		let accumulatedContent = '';
+		let accumulatedReasoning = '';
+		let currentToolCall: any = null;
+		let finalMetadata: MessageMetadata | undefined;
+
+		// Set initial streaming state
+		this._setStreamState(threadId, {
+			isRunning: 'LLM',
+			llmInfo: {
+				displayContentSoFar: '',
+				reasoningSoFar: '',
+				toolCallSoFar: null
+			},
+			interrupt: Promise.resolve(() => { })
+		});
+
+		try {
+			// Start streaming
+			const { abort } = await this._managedChatAPI.sendStreamingChatCompletion(
+				request,
+				(event: any) => {
+					// Handle different event types
+					if (event.type === 'chunk') {
+						// Accumulate text delta
+						accumulatedContent += event.delta || '';
+						this._setStreamState(threadId, {
+							isRunning: 'LLM',
+							llmInfo: {
+								displayContentSoFar: accumulatedContent,
+								reasoningSoFar: accumulatedReasoning,
+								toolCallSoFar: currentToolCall
+							},
+							interrupt: Promise.resolve(abort)
+						});
+					}
+					else if (event.type === 'thinking') {
+						// Accumulate reasoning/thinking
+						accumulatedReasoning += event.content || '';
+						this._setStreamState(threadId, {
+							isRunning: 'LLM',
+							llmInfo: {
+								displayContentSoFar: accumulatedContent,
+								reasoningSoFar: accumulatedReasoning,
+								toolCallSoFar: currentToolCall
+							},
+							interrupt: Promise.resolve(abort)
+						});
+					}
+					else if (event.type === 'tool_start') {
+						// Tool execution started
+						currentToolCall = {
+							name: event.tool_name,
+							id: event.tool_id,
+							rawParams: event.parameters
+						};
+						this._setStreamState(threadId, {
+							isRunning: 'tool',
+							toolInfo: {
+								toolName: event.tool_name,
+								toolParams: event.parameters,
+								id: event.tool_id,
+								content: 'Tool executing...',
+								rawParams: event.parameters,
+								mcpServerName: undefined
+							},
+							interrupt: Promise.resolve(abort)
+						});
+					}
+					else if (event.type === 'tool_progress') {
+						// Update tool progress
+						this._setStreamState(threadId, {
+							isRunning: 'tool',
+							toolInfo: {
+								...(this.streamState[threadId] as any).toolInfo,
+								content: event.message || `Progress: ${event.progress}%`
+							},
+							interrupt: Promise.resolve(abort)
+						});
+					}
+					else if (event.type === 'tool_complete') {
+						// Tool execution completed
+						currentToolCall = null;
+						this._setStreamState(threadId, {
+							isRunning: 'LLM',
+							llmInfo: {
+								displayContentSoFar: accumulatedContent,
+								reasoningSoFar: accumulatedReasoning,
+								toolCallSoFar: null
+							},
+							interrupt: Promise.resolve(abort)
+						});
+					}
+					else if (event.type === 'done') {
+						// Stream completed
+						finalMetadata = {
+							creditsConsumed: event.credits_consumed || 0,
+							creditsRemaining: event.credits_remaining || 0,
+							tokensUsed: event.usage?.total_tokens || 0,
+							promptTokens: event.usage?.prompt_tokens || 0,
+							completionTokens: event.usage?.completion_tokens || 0,
+							model: request.preferred_model || 'llama-3.3-70b-instruct',
+							provider: 'managed',
+							toolsUsed: this._detectToolUsageFromResponse(accumulatedContent, tools),
+							requestId: event.id || '',
+							timestamp: Date.now()
+						};
+					}
+				},
+				(error: Error) => {
+					// Handle streaming errors
+					console.error('[ChatThreadService] Streaming error:', error);
+					this._setStreamState(threadId, {
+						isRunning: undefined,
+						error: {
+							message: error.message,
+							fullError: error
+						}
+					});
+				}
+			);
+
+			// Store abort function for interruption
+			this._setStreamState(threadId, {
+				isRunning: 'LLM',
+				llmInfo: {
+					displayContentSoFar: accumulatedContent,
+					reasoningSoFar: accumulatedReasoning,
+					toolCallSoFar: currentToolCall
+				},
+				interrupt: Promise.resolve(abort)
+			});
+
+			// Wait for completion (the stream will call onEvent until done)
+			// The streaming is handled asynchronously, so we need to wait
+			// This is a simplified approach; in production you'd use a promise
+			await new Promise<void>((resolve) => {
+				const checkInterval = setInterval(() => {
+					if (finalMetadata) {
+						clearInterval(checkInterval);
+						resolve();
+					}
+				}, 100);
+
+				// Timeout after 5 minutes
+				setTimeout(() => {
+					clearInterval(checkInterval);
+					resolve();
+				}, 5 * 60 * 1000);
+			});
+
+			// Add messages to thread with metadata
+			this._addMessageToThread(threadId, {
+				role: 'user',
+				content: userMessage,
+				displayContent: userMessage,
+				selections: thread.state.stagingSelections,
+				state: defaultMessageState,
+				metadata: finalMetadata
+			});
+
+			this._addMessageToThread(threadId, {
+				role: 'assistant',
+				displayContent: accumulatedContent,
+				reasoning: accumulatedReasoning,
+				anthropicReasoning: null,
+				metadata: finalMetadata
+			});
+
+			// Track usage
+			if (finalMetadata) {
+				await this._usageTrackingService.trackManagedUsage(
+					finalMetadata.model || 'unknown',
+					finalMetadata.tokensUsed || 0,
+					finalMetadata.creditsConsumed || 0
+				);
+
+				// Update credits display
+				this._updateCreditsDisplay(finalMetadata.creditsRemaining || 0);
+			}
+
+			this._setStreamState(threadId, undefined);
+
+			// Add checkpoint
+			this._addUserCheckpoint({ threadId });
+
+		} catch (error) {
+			throw error;
+		}
+	}
+
+	/**
+	 * Send non-streaming managed API request (original implementation)
+	 */
+	private async _sendNonStreamingManagedAPIRequest(
+		userMessage: string,
+		threadId: string,
+		request: ManagedChatRequest,
+		tools: Array<any>
+	): Promise<void> {
+		const thread = this.state.allThreads[threadId];
+		if (!thread) return;
+
+		this._setStreamState(threadId, { isRunning: 'LLM', llmInfo: { displayContentSoFar: '', reasoningSoFar: '', toolCallSoFar: null }, interrupt: Promise.resolve(() => { }) });
+
+		const response = await this._managedChatAPI.sendChatCompletion(request);
+
+		// Extract response
+		const assistantMessage = response.choices[0]?.message.content || '';
+
+		// Detect which tools were used from the response
+		const toolsUsed = this._detectToolUsageFromResponse(assistantMessage, tools);
+
+		// Create metadata
+		const metadata: MessageMetadata = {
+			creditsConsumed: response.credits_consumed,
+			creditsRemaining: response.credits_remaining,
+			tokensUsed: response.usage.total_tokens,
+			promptTokens: response.usage.prompt_tokens,
+			completionTokens: response.usage.completion_tokens,
+			model: response.model,
+			provider: response.provider,
+			toolsUsed: toolsUsed,
+			requestId: response.id,
+			timestamp: Date.now()
+		};
+
+		// Add messages to thread with metadata
+		this._addMessageToThread(threadId, {
+			role: 'user',
+			content: userMessage,
+			displayContent: userMessage,
+			selections: thread.state.stagingSelections,
+			state: defaultMessageState,
+			metadata
+		});
+
+		this._addMessageToThread(threadId, {
+			role: 'assistant',
+			displayContent: assistantMessage,
+			reasoning: '',
+			anthropicReasoning: null,
+			metadata
+		});
+
+		// Track usage
+		await this._usageTrackingService.trackManagedUsage(
+			response.model,
+			response.usage.total_tokens,
+			response.credits_consumed
+		);
+
+		// Update credits display
+		this._updateCreditsDisplay(response.credits_remaining);
+
+		this._setStreamState(threadId, undefined);
+
+		// Add checkpoint
+		this._addUserCheckpoint({ threadId });
 	}
 
 	/**
@@ -2055,8 +2279,8 @@ We only need to do it for files that were edited since `from`, ie files between 
 		}
 
 		// Check user settings for auto tool calling
-		const settings = this._settingsService.state.globalSettings;
 		// TODO: Add managedAPI settings when available
+		// const settings = this._settingsService.state.globalSettings;
 		// if (settings.managedAPI?.autoToolCalling) {
 		// 	// Add default tools based on settings
 		// }

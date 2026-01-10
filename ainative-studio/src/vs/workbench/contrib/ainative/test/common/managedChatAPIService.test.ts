@@ -104,7 +104,8 @@ class FetchMock {
 			arrayBuffer: async () => new ArrayBuffer(0),
 			blob: async () => new Blob(),
 			formData: async () => new FormData(),
-			text: async () => JSON.stringify(data)
+			text: async () => JSON.stringify(data),
+			bytes: async () => new Uint8Array()
 		} as Response;
 	}
 
@@ -561,6 +562,349 @@ suite('ManagedChatAPIService', () => {
 				{ upgrade_url: 'https://www.ainative.studio/pricing' }
 			);
 			assert.strictEqual(error.getUpgradeURL(), 'https://www.ainative.studio/pricing');
+		});
+	});
+
+	suite('sendStreamingChatCompletion', () => {
+		/**
+		 * Create a mock streaming response using ReadableStream
+		 */
+		function createStreamingResponse(events: string[]): Response {
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				async start(controller) {
+					for (const event of events) {
+						controller.enqueue(encoder.encode(event + '\n'));
+						// Small delay to simulate network latency
+						await new Promise(resolve => setTimeout(resolve, 10));
+					}
+					controller.close();
+				}
+			});
+
+			return {
+				ok: true,
+				status: 200,
+				headers: new Headers({ 'content-type': 'text/event-stream' }),
+				body: stream,
+				json: async () => ({}),
+				text: async () => '',
+				arrayBuffer: async () => new ArrayBuffer(0),
+				blob: async () => new Blob(),
+				formData: async () => new FormData(),
+				bytes: async () => new Uint8Array(),
+				clone: () => createStreamingResponse(events),
+				bodyUsed: false,
+				redirected: false,
+				statusText: 'OK',
+				type: 'basic',
+				url: ''
+			} as Response;
+		}
+
+		test('should stream text chunks successfully', async () => {
+			const events = [
+				'data: {"type":"chunk","delta":"Hello","index":0}',
+				'data: {"type":"chunk","delta":" world","index":1}',
+				'data: {"type":"done","finish_reason":"stop"}',
+				'data: [DONE]'
+			];
+
+			global.fetch = async () => createStreamingResponse(events);
+
+			const receivedEvents: any[] = [];
+			const request: ChatRequest = {
+				messages: [{ role: 'user', content: 'Hi' }],
+				stream: true
+			};
+
+			await service.sendStreamingChatCompletion(
+				request,
+				(event) => {
+					receivedEvents.push(event);
+				}
+			);
+
+			// Wait for streaming to complete
+			await new Promise(resolve => setTimeout(resolve, 200));
+
+			assert.strictEqual(receivedEvents.length, 3);
+			assert.strictEqual(receivedEvents[0].type, 'chunk');
+			assert.strictEqual(receivedEvents[0].delta, 'Hello');
+			assert.strictEqual(receivedEvents[1].type, 'chunk');
+			assert.strictEqual(receivedEvents[1].delta, ' world');
+			assert.strictEqual(receivedEvents[2].type, 'done');
+		});
+
+		test('should handle tool execution events', async () => {
+			const events = [
+				'data: {"type":"chunk","delta":"Let me search for that","index":0}',
+				'data: {"type":"tool_start","tool_name":"web_fetch","tool_id":"tool-123","parameters":{"url":"https://example.com"}}',
+				'data: {"type":"tool_progress","tool_id":"tool-123","progress":50,"message":"Fetching URL..."}',
+				'data: {"type":"tool_complete","tool_id":"tool-123","result":"Success","success":true}',
+				'data: {"type":"chunk","delta":"Here is what I found","index":1}',
+				'data: {"type":"done","finish_reason":"stop"}',
+				'data: [DONE]'
+			];
+
+			global.fetch = async () => createStreamingResponse(events);
+
+			const receivedEvents: any[] = [];
+			const request: ChatRequest = {
+				messages: [{ role: 'user', content: 'Search for something' }],
+				stream: true
+			};
+
+			await service.sendStreamingChatCompletion(
+				request,
+				(event) => {
+					receivedEvents.push(event);
+				}
+			);
+
+			await new Promise(resolve => setTimeout(resolve, 200));
+
+			assert.ok(receivedEvents.some(e => e.type === 'tool_start'));
+			assert.ok(receivedEvents.some(e => e.type === 'tool_progress'));
+			assert.ok(receivedEvents.some(e => e.type === 'tool_complete'));
+
+			const toolStart = receivedEvents.find(e => e.type === 'tool_start');
+			assert.strictEqual(toolStart.tool_name, 'web_fetch');
+			assert.strictEqual(toolStart.tool_id, 'tool-123');
+		});
+
+		test('should handle thinking/reasoning events', async () => {
+			const events = [
+				'data: {"type":"thinking","content":"I need to analyze this request..."}',
+				'data: {"type":"chunk","delta":"Based on my analysis","index":0}',
+				'data: {"type":"done","finish_reason":"stop"}',
+				'data: [DONE]'
+			];
+
+			global.fetch = async () => createStreamingResponse(events);
+
+			const receivedEvents: any[] = [];
+			const request: ChatRequest = {
+				messages: [{ role: 'user', content: 'Analyze this' }],
+				stream: true
+			};
+
+			await service.sendStreamingChatCompletion(
+				request,
+				(event) => {
+					receivedEvents.push(event);
+				}
+			);
+
+			await new Promise(resolve => setTimeout(resolve, 200));
+
+			const thinkingEvent = receivedEvents.find(e => e.type === 'thinking');
+			assert.ok(thinkingEvent);
+			assert.strictEqual(thinkingEvent.content, 'I need to analyze this request...');
+		});
+
+		test('should handle stream abortion', async () => {
+			const events = [
+				'data: {"type":"chunk","delta":"This is a long","index":0}',
+				'data: {"type":"chunk","delta":" response that","index":1}',
+				'data: {"type":"chunk","delta":" will be interrupted","index":2}',
+			];
+
+			// Create a stream that never completes
+			global.fetch = async () => createStreamingResponse(events);
+
+			const receivedEvents: any[] = [];
+			const request: ChatRequest = {
+				messages: [{ role: 'user', content: 'Tell me a story' }],
+				stream: true
+			};
+
+			const { abort } = await service.sendStreamingChatCompletion(
+				request,
+				(event) => {
+					receivedEvents.push(event);
+				}
+			);
+
+			// Wait a bit for some events to arrive
+			await new Promise(resolve => setTimeout(resolve, 50));
+
+			// Abort the stream
+			abort();
+
+			// Wait to ensure no more events come through
+			const eventCountBeforeWait = receivedEvents.length;
+			await new Promise(resolve => setTimeout(resolve, 100));
+			const eventCountAfterWait = receivedEvents.length;
+
+			// Event count should not increase after abort
+			assert.strictEqual(eventCountBeforeWait, eventCountAfterWait);
+		});
+
+		test('should handle streaming errors', async () => {
+			global.fetch = async () => {
+				return {
+					ok: false,
+					status: 500,
+					json: async () => ({
+						error: {
+							code: 'internal_error',
+							message: 'Internal server error'
+						}
+					}),
+					headers: new Headers(),
+					body: null,
+					bodyUsed: false,
+					redirected: false,
+					statusText: 'Internal Server Error',
+					type: 'basic',
+					url: '',
+					clone: () => { throw new Error('Cannot clone'); },
+					arrayBuffer: async () => new ArrayBuffer(0),
+					blob: async () => new Blob(),
+					formData: async () => new FormData(),
+					text: async () => '',
+					bytes: async () => new Uint8Array()
+				} as Response;
+			};
+
+			const request: ChatRequest = {
+				messages: [{ role: 'user', content: 'Hello' }],
+				stream: true
+			};
+
+			let errorReceived = false;
+			await service.sendStreamingChatCompletion(
+				request,
+				() => { },
+				(error) => {
+					errorReceived = true;
+					assert.ok(error instanceof ManagedChatAPIError);
+				}
+			);
+
+			await new Promise(resolve => setTimeout(resolve, 100));
+			assert.ok(errorReceived, 'Error callback should have been called');
+		});
+
+		test('should handle malformed SSE events gracefully', async () => {
+			const events = [
+				'data: {"type":"chunk","delta":"Valid event","index":0}',
+				'data: {invalid json}', // Malformed JSON
+				'data: {"type":"chunk","delta":"Another valid event","index":1}',
+				'data: [DONE]'
+			];
+
+			global.fetch = async () => createStreamingResponse(events);
+
+			const receivedEvents: any[] = [];
+			let errorCount = 0;
+
+			const request: ChatRequest = {
+				messages: [{ role: 'user', content: 'Test' }],
+				stream: true
+			};
+
+			await service.sendStreamingChatCompletion(
+				request,
+				(event) => {
+					receivedEvents.push(event);
+				},
+				() => {
+					errorCount++;
+				}
+			);
+
+			await new Promise(resolve => setTimeout(resolve, 200));
+
+			// Should still receive valid events despite malformed ones
+			assert.ok(receivedEvents.length >= 2);
+			assert.strictEqual(receivedEvents[0].delta, 'Valid event');
+		});
+
+		test('should handle token refresh during streaming', async () => {
+			let callCount = 0;
+			global.fetch = async () => {
+				callCount++;
+				if (callCount === 1) {
+					// First call returns 401
+					return {
+						ok: false,
+						status: 401,
+						json: async () => ({
+							error: { code: 'token_expired', message: 'Token expired' }
+						}),
+						headers: new Headers(),
+						body: null,
+						bodyUsed: false,
+						redirected: false,
+						statusText: 'Unauthorized',
+						type: 'basic',
+						url: '',
+						clone: () => { throw new Error('Cannot clone'); },
+						arrayBuffer: async () => new ArrayBuffer(0),
+						blob: async () => new Blob(),
+						formData: async () => new FormData(),
+						text: async () => '',
+						bytes: async () => new Uint8Array()
+					} as Response;
+				}
+				// Second call succeeds
+				return createStreamingResponse([
+					'data: {"type":"chunk","delta":"Success after refresh","index":0}',
+					'data: [DONE]'
+				]);
+			};
+
+			const receivedEvents: any[] = [];
+			const request: ChatRequest = {
+				messages: [{ role: 'user', content: 'Test' }],
+				stream: true
+			};
+
+			await service.sendStreamingChatCompletion(
+				request,
+				(event) => {
+					receivedEvents.push(event);
+				}
+			);
+
+			await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for retry
+
+			assert.strictEqual(mockAuthService.getRefreshCount(), 1);
+			assert.ok(receivedEvents.length > 0);
+		});
+
+		test('should handle done event with usage statistics', async () => {
+			const events = [
+				'data: {"type":"chunk","delta":"Response text","index":0}',
+				`data: {"type":"done","finish_reason":"stop","usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15},"credits_consumed":0.5,"credits_remaining":999.5}`,
+				'data: [DONE]'
+			];
+
+			global.fetch = async () => createStreamingResponse(events);
+
+			const receivedEvents: any[] = [];
+			const request: ChatRequest = {
+				messages: [{ role: 'user', content: 'Test' }],
+				stream: true
+			};
+
+			await service.sendStreamingChatCompletion(
+				request,
+				(event) => {
+					receivedEvents.push(event);
+				}
+			);
+
+			await new Promise(resolve => setTimeout(resolve, 200));
+
+			const doneEvent = receivedEvents.find(e => e.type === 'done');
+			assert.ok(doneEvent);
+			assert.strictEqual(doneEvent.finish_reason, 'stop');
+			assert.ok(doneEvent.usage);
+			assert.strictEqual(doneEvent.usage.total_tokens, 15);
+			assert.strictEqual(doneEvent.credits_consumed, 0.5);
 		});
 	});
 });
