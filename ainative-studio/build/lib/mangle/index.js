@@ -549,6 +549,10 @@ class Mangler {
         const result = new Map();
         let savedBytes = 0;
         for (const item of service.getProgram().getSourceFiles()) {
+            // Skip files from problematic node_modules packages
+            if (item.fileName.includes('node_modules/google-auth-library/')) {
+                continue;
+            }
             const { mapRoot, sourceRoot } = service.getProgram().getCompilerOptions();
             const projectDir = path_1.default.dirname(this.projectPath);
             const sourceMapRoot = mapRoot ?? (0, url_1.pathToFileURL)(sourceRoot ?? projectDir).toString();
