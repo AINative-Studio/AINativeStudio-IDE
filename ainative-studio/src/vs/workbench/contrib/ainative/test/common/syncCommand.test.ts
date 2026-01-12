@@ -9,8 +9,8 @@ import { ISkillsRegistry, SkillRefreshResult } from '../../common/skills/skillRe
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
 import { URI } from '../../../../../base/common/uri.js';
-import * as symlinkUtils from '../../common/skills/symlinkUtils.js';
-import * as gitOperations from '../../common/skills/gitOperations.js';
+import * as symlinkUtils from '../../node/skills/symlinkUtils.js';
+import * as gitOperations from '../../node/skills/cli/gitOperations.js';
 
 /**
  * Mock SkillsRegistry for testing

@@ -6,7 +6,7 @@
 import { ISkillsRegistry, SkillRefreshResult } from '../skillRegistryTypes.js';
 import { ILogService } from '../../../../../../platform/log/common/log.js';
 import { INativeEnvironmentService } from '../../../../../../platform/environment/common/environment.js';
-import { checkSymlink, getSymlinkSetupInstructions } from '../symlinkUtils.js';
+import { checkSymlink, getSymlinkSetupInstructions } from '../../../node/skills/symlinkUtils.js';
 import {
 	isGitRepo,
 	getGitStatus,

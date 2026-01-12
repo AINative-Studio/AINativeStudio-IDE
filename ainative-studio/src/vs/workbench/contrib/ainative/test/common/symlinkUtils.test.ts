@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { getSymlinkSetupInstructions } from '../../common/skills/symlinkUtils.js';
+import { getSymlinkSetupInstructions } from '../../node/skills/symlinkUtils.js';
 
 suite('SymlinkUtils', () => {
 

@@ -1404,8 +1404,16 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   left: 0px;
 }
 
+.ainative-scope .ainative-left-3 {
+  left: 0.75rem;
+}
+
 .ainative-scope .ainative-right-0 {
   right: 0px;
+}
+
+.ainative-scope .ainative-right-2 {
+  right: 0.5rem;
 }
 
 .ainative-scope .ainative-top-0 {
@@ -1416,12 +1424,20 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   top: 50%;
 }
 
+.ainative-scope .ainative-top-2 {
+  top: 0.5rem;
+}
+
 .ainative-scope .ainative-z-0 {
   z-index: 0;
 }
 
 .ainative-scope .ainative-z-10 {
   z-index: 10;
+}
+
+.ainative-scope .ainative-z-20 {
+  z-index: 20;
 }
 
 .ainative-scope .ainative-z-\[1000\] {
@@ -1489,6 +1505,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   margin-bottom: 0.25rem;
 }
 
+.ainative-scope .ainative-mb-1\.5 {
+  margin-bottom: 0.375rem;
+}
+
 .ainative-scope .ainative-mb-10 {
   margin-bottom: 2.5rem;
 }
@@ -1507,6 +1527,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-mb-4 {
   margin-bottom: 1rem;
+}
+
+.ainative-scope .ainative-mb-6 {
+  margin-bottom: 1.5rem;
 }
 
 .ainative-scope .ainative-mb-auto {
@@ -1561,12 +1585,30 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   margin-top: 1rem;
 }
 
+.ainative-scope .ainative-mt-6 {
+  margin-top: 1.5rem;
+}
+
 .ainative-scope .ainative-mt-8 {
   margin-top: 2rem;
 }
 
 .ainative-scope .ainative-mt-auto {
   margin-top: auto;
+}
+
+.ainative-scope .ainative-line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.ainative-scope .ainative-line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .ainative-scope .ainative-block {
@@ -1583,6 +1625,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-inline-flex {
   display: inline-flex;
+}
+
+.ainative-scope .ainative-grid {
+  display: grid;
 }
 
 .ainative-scope .ainative-hidden {
@@ -1640,12 +1686,20 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   height: 3rem;
 }
 
+.ainative-scope .ainative-h-16 {
+  height: 4rem;
+}
+
 .ainative-scope .ainative-h-2 {
   height: 0.5rem;
 }
 
 .ainative-scope .ainative-h-2\.5 {
   height: 0.625rem;
+}
+
+.ainative-scope .ainative-h-20 {
+  height: 5rem;
 }
 
 .ainative-scope .ainative-h-3 {
@@ -1660,12 +1714,24 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   height: 1rem;
 }
 
+.ainative-scope .ainative-h-48 {
+  height: 12rem;
+}
+
 .ainative-scope .ainative-h-5 {
   height: 1.25rem;
 }
 
 .ainative-scope .ainative-h-6 {
   height: 1.5rem;
+}
+
+.ainative-scope .ainative-h-64 {
+  height: 16rem;
+}
+
+.ainative-scope .ainative-h-8 {
+  height: 2rem;
 }
 
 .ainative-scope .ainative-h-\[1px\] {
@@ -1705,6 +1771,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   max-height: 8rem;
 }
 
+.ainative-scope .ainative-max-h-64 {
+  max-height: 16rem;
+}
+
 .ainative-scope .ainative-max-h-80 {
   max-height: 20rem;
 }
@@ -1729,6 +1799,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   max-height: 100%;
 }
 
+.ainative-scope .ainative-min-h-\[2\.5rem\] {
+  min-height: 2.5rem;
+}
+
 .ainative-scope .ainative-min-h-\[200px\] {
   min-height: 200px;
 }
@@ -1743,6 +1817,14 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-w-1 {
   width: 0.25rem;
+}
+
+.ainative-scope .ainative-w-1\/2 {
+  width: 50%;
+}
+
+.ainative-scope .ainative-w-1\/3 {
+  width: 33.333333%;
 }
 
 .ainative-scope .ainative-w-10 {
@@ -1773,6 +1855,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   width: 0.875rem;
 }
 
+.ainative-scope .ainative-w-32 {
+  width: 8rem;
+}
+
 .ainative-scope .ainative-w-4 {
   width: 1rem;
 }
@@ -1783,6 +1869,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-w-5 {
   width: 1.25rem;
+}
+
+.ainative-scope .ainative-w-64 {
+  width: 16rem;
 }
 
 .ainative-scope .ainative-w-7 {
@@ -1819,6 +1909,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   min-width: 100%;
 }
 
+.ainative-scope .ainative-max-w-2xl {
+  max-width: 42rem;
+}
+
 .ainative-scope .ainative-max-w-32 {
   max-width: 8rem;
 }
@@ -1829,6 +1923,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-max-w-48 {
   max-width: 12rem;
+}
+
+.ainative-scope .ainative-max-w-7xl {
+  max-width: 80rem;
 }
 
 .ainative-scope .ainative-max-w-\[20px\] {
@@ -1941,6 +2039,11 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
+.ainative-scope .ainative-rotate-180 {
+  --tw-rotate: 180deg;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
 .ainative-scope .ainative-rotate-90 {
   --tw-rotate: 90deg;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
@@ -1948,6 +2051,16 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-transform {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+@keyframes ainative-pulse {
+  50% {
+    opacity: .5;
+  }
+}
+
+.ainative-scope .ainative-animate-pulse {
+  animation: ainative-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 @keyframes ainative-spin {
@@ -2004,6 +2117,24 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-list-decimal {
   list-style-type: decimal;
+}
+
+.ainative-scope .ainative-appearance-none {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+}
+
+.ainative-scope .ainative-grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.ainative-scope .ainative-grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ainative-scope .ainative-grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .ainative-scope .ainative-flex-row {
@@ -2113,6 +2244,18 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   row-gap: 2rem;
 }
 
+.ainative-scope .ainative-space-y-1\.5 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.375rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.375rem * var(--tw-space-y-reverse));
+}
+
+.ainative-scope .ainative-space-y-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.5rem * var(--tw-space-y-reverse));
+}
+
 .ainative-scope .ainative-space-y-3 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
   margin-top: calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));
@@ -2123,6 +2266,12 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   --tw-space-y-reverse: 0;
   margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
   margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+}
+
+.ainative-scope .ainative-space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(1.5rem * var(--tw-space-y-reverse));
 }
 
 .ainative-scope .ainative-space-y-\[1px\] > :not([hidden]) ~ :not([hidden]) {
@@ -2145,6 +2294,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-overflow-hidden {
   overflow: hidden;
+}
+
+.ainative-scope .ainative-overflow-visible {
+  overflow: visible;
 }
 
 .ainative-scope .ainative-overflow-x-auto {
@@ -2246,6 +2399,15 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   border-style: none;
 }
 
+.ainative-scope .ainative-border-\[\#0e70c0\] {
+  --tw-border-opacity: 1;
+  border-color: rgb(14 112 192 / var(--tw-border-opacity, 1));
+}
+
+.ainative-scope .ainative-border-\[\#0e70c0\]\/20 {
+  border-color: rgb(14 112 192 / 0.2);
+}
+
 .ainative-scope .ainative-border-\[var\(--vscode-keybindingLabel-border\)\] {
   border-color: var(--vscode-keybindingLabel-border);
 }
@@ -2289,9 +2451,17 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   border-color: rgb(254 202 202 / var(--tw-border-opacity, 1));
 }
 
+.ainative-scope .ainative-border-red-500\/20 {
+  border-color: rgb(239 68 68 / 0.2);
+}
+
 .ainative-scope .ainative-border-yellow-500 {
   --tw-border-opacity: 1;
   border-color: rgb(234 179 8 / var(--tw-border-opacity, 1));
+}
+
+.ainative-scope .ainative-border-yellow-500\/20 {
+  border-color: rgb(234 179 8 / 0.2);
 }
 
 .ainative-scope .ainative-border-zinc-300\/10 {
@@ -2301,6 +2471,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 .ainative-scope .ainative-bg-\[\#0e70c0\] {
   --tw-bg-opacity: 1;
   background-color: rgb(14 112 192 / var(--tw-bg-opacity, 1));
+}
+
+.ainative-scope .ainative-bg-\[\#0e70c0\]\/10 {
+  background-color: rgb(14 112 192 / 0.1);
 }
 
 .ainative-scope .ainative-bg-\[\#0e70c0\]\/80 {
@@ -2397,6 +2571,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   background-color: rgb(239 68 68 / var(--tw-bg-opacity, 1));
 }
 
+.ainative-scope .ainative-bg-red-500\/10 {
+  background-color: rgb(239 68 68 / 0.1);
+}
+
 .ainative-scope .ainative-bg-transparent {
   background-color: transparent;
 }
@@ -2417,6 +2595,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 .ainative-scope .ainative-bg-yellow-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(234 179 8 / var(--tw-bg-opacity, 1));
+}
+
+.ainative-scope .ainative-bg-yellow-500\/10 {
+  background-color: rgb(234 179 8 / 0.1);
 }
 
 .ainative-scope .ainative-bg-zinc-100 {
@@ -2478,6 +2660,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   padding: 0.25rem;
 }
 
+.ainative-scope .ainative-p-1\.5 {
+  padding: 0.375rem;
+}
+
 .ainative-scope .ainative-p-2 {
   padding: 0.5rem;
 }
@@ -2492,6 +2678,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-p-6 {
   padding: 1.5rem;
+}
+
+.ainative-scope .ainative-p-8 {
+  padding: 2rem;
 }
 
 .ainative-scope .ainative-p-\[2px\] {
@@ -2567,9 +2757,19 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   padding-bottom: 0.375rem;
 }
 
+.ainative-scope .ainative-py-12 {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
 .ainative-scope .ainative-py-2 {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
+}
+
+.ainative-scope .ainative-py-24 {
+  padding-top: 6rem;
+  padding-bottom: 6rem;
 }
 
 .ainative-scope .ainative-py-3 {
@@ -2615,6 +2815,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   padding-left: 1.5rem;
 }
 
+.ainative-scope .ainative-pl-9 {
+  padding-left: 2.25rem;
+}
+
 .ainative-scope .ainative-pr-1 {
   padding-right: 0.25rem;
 }
@@ -2623,12 +2827,24 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   padding-right: 1rem;
 }
 
+.ainative-scope .ainative-pr-6 {
+  padding-right: 1.5rem;
+}
+
+.ainative-scope .ainative-pr-8 {
+  padding-right: 2rem;
+}
+
 .ainative-scope .ainative-pt-16 {
   padding-top: 4rem;
 }
 
 .ainative-scope .ainative-pt-3 {
   padding-top: 0.75rem;
+}
+
+.ainative-scope .ainative-pt-6 {
+  padding-top: 1.5rem;
 }
 
 .ainative-scope .ainative-pt-8 {
@@ -2641,6 +2857,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-text-center {
   text-align: center;
+}
+
+.ainative-scope .ainative-text-right {
+  text-align: right;
 }
 
 .ainative-scope .ainative-align-top {
@@ -2720,6 +2940,14 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   font-weight: 600;
 }
 
+.ainative-scope .ainative-uppercase {
+  text-transform: uppercase;
+}
+
+.ainative-scope .ainative-capitalize {
+  text-transform: capitalize;
+}
+
 .ainative-scope .ainative-italic {
   font-style: italic;
 }
@@ -2751,6 +2979,18 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-text-\[var\(--vscode-keybindingLabel-foreground\)\] {
   color: var(--vscode-keybindingLabel-foreground);
+}
+
+.ainative-scope .ainative-text-ainative-bg-1 {
+  color: var(--ainative-bg-1);
+}
+
+.ainative-scope .ainative-text-ainative-bg-2 {
+  color: var(--ainative-bg-2);
+}
+
+.ainative-scope .ainative-text-ainative-border-2 {
+  color: var(--ainative-border-2);
 }
 
 .ainative-scope .ainative-text-ainative-fg-1 {
@@ -2798,6 +3038,11 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   color: rgb(16 185 129 / var(--tw-text-opacity, 1));
 }
 
+.ainative-scope .ainative-text-green-500 {
+  --tw-text-opacity: 1;
+  color: rgb(34 197 94 / var(--tw-text-opacity, 1));
+}
+
 .ainative-scope .ainative-text-orange-500 {
   --tw-text-opacity: 1;
   color: rgb(249 115 22 / var(--tw-text-opacity, 1));
@@ -2806,6 +3051,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 .ainative-scope .ainative-text-red-500 {
   --tw-text-opacity: 1;
   color: rgb(239 68 68 / var(--tw-text-opacity, 1));
+}
+
+.ainative-scope .ainative-text-red-500\/80 {
+  color: rgb(239 68 68 / 0.8);
 }
 
 .ainative-scope .ainative-text-red-600 {
@@ -2835,6 +3084,11 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-text-white\/80 {
   color: rgb(255 255 255 / 0.8);
+}
+
+.ainative-scope .ainative-text-yellow-500 {
+  --tw-text-opacity: 1;
+  color: rgb(234 179 8 / var(--tw-text-opacity, 1));
 }
 
 .ainative-scope .ainative-text-zinc-900 {
@@ -2924,8 +3178,23 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
+.ainative-scope .ainative-ring-2 {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.ainative-scope .ainative-ring-\[\#0e70c0\]\/20 {
+  --tw-ring-color: rgb(14 112 192 / 0.2);
+}
+
 .ainative-scope .ainative-brightness-90 {
   --tw-brightness: brightness(.9);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+.ainative-scope .ainative-drop-shadow-md {
+  --tw-drop-shadow: drop-shadow(0 4px 3px rgb(0 0 0 / 0.07)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.06));
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }
 
@@ -2971,6 +3240,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .ainative-duration-300 {
   transition-duration: 300ms;
+}
+
+.ainative-scope .ainative-duration-500 {
+  transition-duration: 500ms;
 }
 
 .ainative-scope .ainative-ease-\[cubic-bezier\(0\.4\,0\,0\.2\,1\)\] {
@@ -3292,6 +3565,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   color: var(--ainative-fg-3);
 }
 
+.ainative-scope .last\:ainative-border-b-0:last-child {
+  border-bottom-width: 0px;
+}
+
 .ainative-scope .focus-within\:ainative-border-ainative-border-1:focus-within {
   border-color: var(--ainative-border-1);
 }
@@ -3317,6 +3594,14 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   background-color: var(--vscode-button-secondaryHoverBackground);
 }
 
+.ainative-scope .hover\:ainative-bg-ainative-bg-2:hover {
+  background-color: var(--ainative-bg-2);
+}
+
+.ainative-scope .hover\:ainative-bg-ainative-bg-2-hover:hover {
+  background-color: var(--ainative-bg-2-hover);
+}
+
 .ainative-scope .hover\:ainative-bg-black\/10:hover {
   background-color: rgb(0 0 0 / 0.1);
 }
@@ -3335,6 +3620,19 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   background-color: rgb(63 63 70 / 0.1);
 }
 
+.ainative-scope .hover\:ainative-fill-current:hover {
+  fill: currentColor;
+}
+
+.ainative-scope .hover\:ainative-text-\[\#0e70c0\]:hover {
+  --tw-text-opacity: 1;
+  color: rgb(14 112 192 / var(--tw-text-opacity, 1));
+}
+
+.ainative-scope .hover\:ainative-text-ainative-fg-0:hover {
+  color: var(--ainative-fg-0);
+}
+
 .ainative-scope .hover\:ainative-text-ainative-fg-1:hover {
   color: var(--ainative-fg-1);
 }
@@ -3348,12 +3646,26 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   color: rgb(255 255 255 / 0.8);
 }
 
+.ainative-scope .hover\:ainative-opacity-10:hover {
+  opacity: 0.1;
+}
+
 .ainative-scope .hover\:ainative-opacity-100:hover {
   opacity: 1;
 }
 
+.ainative-scope .hover\:ainative-opacity-80:hover {
+  opacity: 0.8;
+}
+
 .ainative-scope .hover\:ainative-opacity-90:hover {
   opacity: 0.9;
+}
+
+.ainative-scope .hover\:ainative-shadow-lg:hover {
+  --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
 .ainative-scope .hover\:ainative-brightness-110:hover {
@@ -3385,6 +3697,11 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   border-color: var(--ainative-border-1);
 }
 
+.ainative-scope .focus\:ainative-outline-none:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
 .ainative-scope .active\:ainative-cursor-grabbing:active {
   cursor: grabbing;
 }
@@ -3395,6 +3712,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 .ainative-scope .disabled\:ainative-opacity-50:disabled {
   opacity: 0.5;
+}
+
+.ainative-scope .ainative-group:hover .group-hover\:ainative-block {
+  display: block;
 }
 
 .ainative-scope .ainative-group:hover .group-hover\:ainative-translate-x-1 {
@@ -3606,12 +3927,34 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
     width: 25%;
   }
 
+  .ainative-scope .md\:ainative-grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .ainative-scope .md\:ainative-flex-row {
     flex-direction: row;
   }
 
   .ainative-scope .md\:ainative-flex-col {
     flex-direction: column;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ainative-scope .lg\:ainative-grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ainative-scope .lg\:ainative-grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ainative-scope .lg\:ainative-grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ainative-scope .lg\:ainative-flex-row {
+    flex-direction: row;
   }
 }
 

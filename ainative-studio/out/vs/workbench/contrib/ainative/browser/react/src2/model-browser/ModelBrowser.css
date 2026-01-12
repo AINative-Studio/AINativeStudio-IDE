@@ -1,0 +1,245 @@
+/*--------------------------------------------------------------------------------------
+ *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
+ *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *--------------------------------------------------------------------------------------*/
+
+/* Model Browser Styles */
+
+/* Ensure consistent scrollbar styling */
+.model-browser-container::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+.model-browser-container::-webkit-scrollbar-track {
+	background: var(--ainative-bg-2);
+}
+
+.model-browser-container::-webkit-scrollbar-thumb {
+	background: var(--ainative-fg-4);
+	border-radius: 4px;
+}
+
+.model-browser-container::-webkit-scrollbar-thumb:hover {
+	background: var(--ainative-fg-3);
+}
+
+/* Model Card Hover Effects */
+.model-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.model-card:hover {
+	transform: translateY(-2px);
+}
+
+.model-card:focus {
+	outline: 2px solid var(--ainative-ring-color);
+	outline-offset: 2px;
+}
+
+/* Usage Dashboard Progress Bar Animation */
+.usage-progress-bar {
+	transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Filter Panel Transitions */
+.filter-section {
+	transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.filter-section.collapsed {
+	max-height: 0;
+	opacity: 0;
+	overflow: hidden;
+}
+
+.filter-section.expanded {
+	max-height: 500px;
+	opacity: 1;
+}
+
+/* Modal Backdrop Animation */
+.modal-backdrop {
+	animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.modal-content {
+	animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+	from {
+		transform: translateY(20px);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+/* Capability Badge Styles */
+.capability-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	background-color: var(--ainative-bg-2);
+	color: var(--ainative-fg-3);
+	border-radius: 4px;
+	font-size: 12px;
+	white-space: nowrap;
+	transition: background-color 0.2s ease;
+}
+
+.capability-badge:hover {
+	background-color: var(--ainative-bg-2-hover);
+}
+
+/* Pricing Tier Colors */
+.pricing-free {
+	color: #10b981;
+}
+
+.pricing-pay-as-you-go {
+	color: #3b82f6;
+}
+
+.pricing-subscription {
+	color: #8b5cf6;
+}
+
+.pricing-enterprise {
+	color: #f59e0b;
+}
+
+/* Quota Warning States */
+.quota-normal {
+	background-color: #0e70c0;
+}
+
+.quota-warning {
+	background-color: #f59e0b;
+}
+
+.quota-exceeded {
+	background-color: #ef4444;
+}
+
+/* Loading Skeleton */
+.skeleton {
+	background: linear-gradient(
+		90deg,
+		var(--ainative-bg-2) 0%,
+		var(--ainative-bg-2-hover) 50%,
+		var(--ainative-bg-2) 100%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
+	border-radius: 4px;
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+/* Search Input Focus State */
+.search-input:focus {
+	box-shadow: 0 0 0 2px rgba(14, 112, 192, 0.2);
+}
+
+/* Grid Layout Responsive */
+@media (max-width: 768px) {
+	.model-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+	.model-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+@media (min-width: 1025px) {
+	.model-grid {
+		grid-template-columns: repeat(3, 1fr);
+	}
+}
+
+/* Accessibility Improvements */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border-width: 0;
+}
+
+/* Focus Visible Styles */
+*:focus-visible {
+	outline: 2px solid var(--ainative-ring-color);
+	outline-offset: 2px;
+}
+
+/* Tooltip Styles */
+.ainative-max-w-\[300px\] {
+	max-width: 300px !important;
+	word-wrap: break-word;
+}
+
+/* Line Clamp Utilities */
+.line-clamp-1 {
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+/* Custom Checkbox/Radio Styles */
+input[type='checkbox'],
+input[type='radio'] {
+	accent-color: #0e70c0;
+}
+
+input[type='checkbox']:disabled,
+input[type='radio']:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Select Dropdown Arrow */
+select {
+	appearance: none;
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+	background-repeat: no-repeat;
+	background-position: right 8px center;
+	background-size: 16px;
+	padding-right: 32px;
+}
