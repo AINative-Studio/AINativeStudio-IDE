@@ -318,8 +318,8 @@ suite('SkillsRegistry Tests', () => {
 			await fileService.createFolder(skillsDir);
 
 			const registryFile = URI.joinPath(skillsDir, 'registry.json');
-			const { VSBuffer } = await import('../../../../../base/common/buffer.js');
-			await fileService.writeFile(registryFile, VSBuffer.fromString('{ invalid json content }'));
+			const bufferModule = await import('../../../../../base/common/buffer.js');
+			await fileService.writeFile(registryFile, bufferModule.VSBuffer.fromString('{ invalid json content }'));
 
 			// Create a new registry instance
 			const mockEnvService: INativeEnvironmentService = {

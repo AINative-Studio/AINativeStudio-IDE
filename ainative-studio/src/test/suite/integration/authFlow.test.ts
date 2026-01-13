@@ -7,7 +7,7 @@ import { strictEqual, ok, notStrictEqual } from 'assert';
 import { DisposableStore } from '../../../vs/base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../vs/base/test/common/utils.js';
 import { AINativeAuthService, AuthState } from '../../../vs/workbench/contrib/ainative/common/ainativeAuthService.js';
-import { IEncryptionService } from '../../../vs/platform/encryption/common/encryptionService.js';
+import { ICommonEncryptionService } from '../../../vs/platform/encryption/common/encryptionService.js';
 import { IStorageService, IStorageEntry, StorageScope, StorageTarget } from '../../../vs/platform/storage/common/storage.js';
 import { StorageValue } from '../../../vs/base/parts/storage/common/storage.js';
 import { Event, Emitter } from '../../../vs/base/common/event.js';
@@ -17,7 +17,7 @@ import { IUserDataProfile } from '../../../vs/platform/userDataProfile/common/us
 /**
  * Mock Encryption Service for integration testing
  */
-class MockEncryptionService implements IEncryptionService {
+class MockEncryptionService implements ICommonEncryptionService {
 	_serviceBrand: undefined;
 
 	async encrypt(value: string): Promise<string> {
@@ -179,7 +179,7 @@ suite('Integration - Full Authentication Flow', () => {
 
 		// Step 2: Verify state transitions
 		let stateChanges: AuthState[] = [];
-		disposables.add(authService.onDidChangeAuthState((state) => {
+		disposables.add(authService.onDidChangeAuthState((state: AuthState) => {
 			stateChanges.push(state);
 		}));
 
@@ -282,7 +282,7 @@ suite('Integration - Full Authentication Flow', () => {
 	test('should emit auth state change events correctly', async () => {
 		const stateChanges: AuthState[] = [];
 
-		disposables.add(authService.onDidChangeAuthState((state) => {
+		disposables.add(authService.onDidChangeAuthState((state: AuthState) => {
 			stateChanges.push(state);
 		}));
 

@@ -10,7 +10,7 @@ import { ILogService, NullLogService } from '../../../../../platform/log/common/
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
 import { URI } from '../../../../../base/common/uri.js';
 import * as symlinkUtils from '../../node/skills/symlinkUtils.js';
-import * as gitOperations from '../../node/skills/cli/gitOperations.js';
+import * as gitOperations from '../../node/skills/gitOperations.js';
 
 /**
  * Mock SkillsRegistry for testing

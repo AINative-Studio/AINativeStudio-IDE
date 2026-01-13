@@ -12,7 +12,7 @@ import {
 	AINativeAuthError,
 	AINativeAuthErrorCode
 } from '../../../vs/workbench/contrib/ainative/common/ainativeAuthService.js';
-import { IEncryptionService } from '../../../vs/platform/encryption/common/encryptionService.js';
+import { ICommonEncryptionService } from '../../../vs/platform/encryption/common/encryptionService.js';
 import { IStorageService, IStorageEntry, StorageScope, StorageTarget } from '../../../vs/platform/storage/common/storage.js';
 import { StorageValue } from '../../../vs/base/parts/storage/common/storage.js';
 import { Event, Emitter } from '../../../vs/base/common/event.js';
@@ -22,7 +22,7 @@ import { IUserDataProfile } from '../../../vs/platform/userDataProfile/common/us
 /**
  * Mock Encryption Service for error handling tests
  */
-class MockEncryptionService implements IEncryptionService {
+class MockEncryptionService implements ICommonEncryptionService {
 	_serviceBrand: undefined;
 	private shouldThrowOnEncrypt = false;
 	private shouldThrowOnDecrypt = false;
@@ -363,7 +363,7 @@ suite('Integration - Error Handling and Retry Logic', () => {
 	test('should handle auth state transitions correctly on errors', async () => {
 		const stateChanges: AuthState[] = [];
 
-		disposables.add(authService.onDidChangeAuthState((state) => {
+		disposables.add(authService.onDidChangeAuthState((state: AuthState) => {
 			stateChanges.push(state);
 		}));
 

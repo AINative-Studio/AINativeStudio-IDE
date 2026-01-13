@@ -1,2 +1,8 @@
-out/
+out/*.js
+out/**/*.js
 src2/
+
+# Keep TypeScript declarations for type safety
+!out/**/*.d.ts
+!out/*.d.ts
+!out/README.md

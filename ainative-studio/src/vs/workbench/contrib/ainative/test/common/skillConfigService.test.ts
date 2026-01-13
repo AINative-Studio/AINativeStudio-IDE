@@ -39,10 +39,10 @@ suite('SkillConfigService Tests', () => {
 		await fileService.createFolder(testWorkspaceDir);
 
 		// Mock workspace service
-		const { WorkspaceFolder } = await import('../../../../../platform/workspace/common/workspace.js');
+		const workspaceModule = await import('../../../../../platform/workspace/common/workspace.js');
 		const workspace = new Workspace(
 			'test-workspace',
-			[new WorkspaceFolder({ uri: testWorkspaceDir, name: 'test', index: 0 }, undefined)],
+			[new workspaceModule.WorkspaceFolder({ uri: testWorkspaceDir, name: 'test', index: 0 }, undefined)],
 			false,
 			null,
 			() => false

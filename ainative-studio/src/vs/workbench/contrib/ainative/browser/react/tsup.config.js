@@ -21,7 +21,7 @@ export default defineConfig({
 	format: ['esm'],
 	splitting: false,
 
-	// dts: true,
+	// dts: true, // Disabled - causes OOM errors with large VS Code types
 	// sourcemap: true,
 
 	clean: false,

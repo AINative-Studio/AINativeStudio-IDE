@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { formatGitPullOutput } from '../../node/skills/cli/gitOperations.js';
-import { GitOperationResult } from '../../node/skills/cli/gitOperations.js';
+import { formatGitPullOutput, GitOperationResult } from '../../node/skills/gitOperations.js';
 
 suite('GitOperations', () => {
 

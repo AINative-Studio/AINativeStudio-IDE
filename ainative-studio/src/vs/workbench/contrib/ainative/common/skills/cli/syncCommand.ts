@@ -14,7 +14,7 @@ import {
 	gitPull,
 	formatGitPullOutput,
 	GitOperationResult
-} from '../gitOperations.js';
+} from '../../../node/skills/gitOperations.js';
 import { join } from 'path';
 
 /**

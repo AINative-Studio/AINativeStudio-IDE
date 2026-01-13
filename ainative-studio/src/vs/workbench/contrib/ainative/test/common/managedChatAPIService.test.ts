@@ -330,9 +330,26 @@ suite('ManagedChatAPIService', () => {
 			fetchMock.fetch = async (url: string, options?: RequestInit) => {
 				callCount++;
 				if (callCount === 1) {
-					return fetchMock['createResponse'](401, {
-						error: { code: 'token_expired', message: 'Token expired' }
-					});
+					return {
+						ok: false,
+						status: 401,
+						json: async () => ({
+							error: { code: 'token_expired', message: 'Token expired' }
+						}),
+						headers: new Headers(),
+						body: null,
+						bodyUsed: false,
+						redirected: false,
+						statusText: 'Unauthorized',
+						type: 'basic',
+						url: '',
+						clone: () => { throw new Error('Cannot clone'); },
+						arrayBuffer: async () => new ArrayBuffer(0),
+						blob: async () => new Blob(),
+						formData: async () => new FormData(),
+						text: async () => '',
+						bytes: async () => new Uint8Array()
+					} as Response;
 				}
 				return originalFetch(url, options);
 			};
