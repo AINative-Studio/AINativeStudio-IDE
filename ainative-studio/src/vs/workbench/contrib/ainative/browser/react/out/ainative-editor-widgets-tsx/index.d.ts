@@ -7,7 +7,8 @@ import { ServicesAccessor } from '../../../../../../../editor/browser/editorExte
 
 export interface MountResult {
 	dispose: () => void;
+	rerender: (props?: any) => void;
 }
 
-export function mountAINativeSelectionHelper(container: HTMLElement, accessor: ServicesAccessor): MountResult | undefined;
-export function mountAINativeCommandBar(container: HTMLElement, accessor: ServicesAccessor): MountResult | undefined;
+export function mountAINativeSelectionHelper(container: HTMLElement, accessor: ServicesAccessor, props?: any): MountResult | undefined;
+export function mountAINativeCommandBar(container: HTMLElement, accessor: ServicesAccessor, props?: any): MountResult | undefined;

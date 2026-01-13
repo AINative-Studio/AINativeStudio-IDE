@@ -7,6 +7,7 @@ import { ServicesAccessor } from '../../../../../../../editor/browser/editorExte
 
 export interface MountResult {
 	dispose: () => void;
+	rerender: (props?: any) => void;
 }
 
-export function mountCtrlK(container: HTMLElement, accessor: ServicesAccessor): MountResult | undefined;
+export function mountCtrlK(container: HTMLElement, accessor: ServicesAccessor, props?: any): MountResult | undefined;
