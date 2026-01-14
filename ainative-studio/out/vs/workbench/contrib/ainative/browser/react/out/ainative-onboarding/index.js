@@ -42,8 +42,7 @@ import { IMCPService } from '../../../../common/mcpService.js';
 import { IStorageService } from '../../../../../../../platform/storage/common/storage.js';
 import '../../../../common/storageKeys.js';
 import { AuthState, IAINativeAuthService } from '../../../../common/ainativeAuthService.js';
-import { providerNames, localProviderNames, displayInfoOfProviderName, isFeatureNameDisabled } from '../../../../common/voidSettingsTypes.js';
-import { isProviderNameDisabled, customSettingNamesOfProvider, displayInfoOfProviderName as displayInfoOfProviderName$1, subTextMdOfProviderName, providerNames as providerNames$1, displayInfoOfSettingName } from '../../../../common/ainativeSettingsTypes.js';
+import { providerNames, localProviderNames, displayInfoOfProviderName, isFeatureNameDisabled, isProviderNameDisabled, customSettingNamesOfProvider, subTextMdOfProviderName, displayInfoOfSettingName } from '../../../../common/ainativeSettingsTypes.js';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 import { convertToVscodeLang, detectLanguage } from '../../../../common/helpers/languageHelpers.js';
 import { URI } from '../../../../../../../base/common/uri.js';
@@ -26017,7 +26016,7 @@ var SimpleModelSettingsDialog = ({
                 "Change Defaults for ",
                 modelName,
                 " (",
-                displayInfoOfProviderName$1(providerName).title,
+                displayInfoOfProviderName(providerName).title,
                 ")"
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
@@ -26075,7 +26074,7 @@ var ModelDump = ({ filteredProviders }) => {
   const [modelName, setModelName] = (0, import_react17.useState)("");
   const [errorString, setErrorString] = (0, import_react17.useState)("");
   const modelDump = [];
-  const providersToShow = filteredProviders || providerNames$1;
+  const providersToShow = filteredProviders || providerNames;
   for (let providerName of providersToShow) {
     const providerSettings = settingsState2.settingsOfProvider[providerName];
     modelDump.push(...providerSettings.models.map((model) => ({ ...model, providerName, providerEnabled: !!providerSettings._didFillInProviderSettings })));
@@ -26110,7 +26109,7 @@ var ModelDump = ({ filteredProviders }) => {
     modelDump.map((m, i) => {
       const { isHidden, type, modelName: modelName2, providerName, providerEnabled } = m;
       const isNewProviderName = (i > 0 ? modelDump[i - 1] : void 0)?.providerName !== providerName;
-      const providerTitle = displayInfoOfProviderName$1(providerName).title;
+      const providerTitle = displayInfoOfProviderName(providerName).title;
       const disabled = !providerEnabled;
       const value = disabled ? false : !isHidden;
       const tooltipName = disabled ? `Add ${providerTitle} to enable` : value === true ? "Show in Dropdown" : "Hide from Dropdown";
@@ -26181,8 +26180,8 @@ var ModelDump = ({ filteredProviders }) => {
             options: providersToShow,
             selectedOption: userChosenProviderName,
             onChangeOption: (pn) => setUserChosenProviderName(pn),
-            getOptionDisplayName: (pn) => pn ? displayInfoOfProviderName$1(pn).title : "Provider Name",
-            getOptionDropdownName: (pn) => pn ? displayInfoOfProviderName$1(pn).title : "Provider Name",
+            getOptionDisplayName: (pn) => pn ? displayInfoOfProviderName(pn).title : "Provider Name",
+            getOptionDropdownName: (pn) => pn ? displayInfoOfProviderName(pn).title : "Provider Name",
             getOptionsEqual: (a, b) => a === b,
             className: "ainative-max-w-32 ainative-mx-2 ainative-w-full ainative-resize-none ainative-bg-ainative-bg-1 ainative-text-ainative-fg-1 placeholder:ainative-text-ainative-fg-3 ainative-border ainative-border-ainative-border-2 focus:ainative-border-ainative-border-1 ainative-py-1 ainative-px-2 ainative-rounded",
             arrowTouchesText: false
@@ -26274,7 +26273,7 @@ var SettingsForProvider = ({ providerName, showProviderTitle, showProviderSugges
   const voidSettingsState = useSettingsState();
   const needsModel = isProviderNameDisabled(providerName, voidSettingsState) === "addModel";
   const settingNames = customSettingNamesOfProvider(providerName);
-  const { title: providerTitle } = displayInfoOfProviderName$1(providerName);
+  const { title: providerTitle } = displayInfoOfProviderName(providerName);
   return /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { children: [
     /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "ainative-flex ainative-items-center ainative-w-full ainative-gap-4", children: showProviderTitle && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("h3", { className: "ainative-text-xl ainative-truncate", children: providerTitle }) }),
     /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "ainative-px-0", children: [

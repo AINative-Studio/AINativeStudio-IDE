@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useCommandBarState, useCommandBarURIListener, useSettingsState } from '../util/services.js'
 import { usePromise, useRefState } from '../util/helpers.js'
-import { isFeatureNameDisabled } from '../../../../common/voidSettingsTypes.js'
+import { isFeatureNameDisabled } from '../../../../common/ainativeSettingsTypes.js'
 import { URI } from '../../../../../../../base/common/uri.js'
 import { FileSymlink, LucideIcon, RotateCw, Terminal } from 'lucide-react'
 import { Check, X, Square, Copy, Play, } from 'lucide-react'
