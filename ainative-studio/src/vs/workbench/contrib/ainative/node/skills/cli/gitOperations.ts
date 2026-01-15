@@ -22,6 +22,8 @@ export interface GitOperationResult {
 	stderr: string;
 	/** Error message if operation failed */
 	error?: string;
+	/** Alias for error (for compatibility) */
+	errorMessage?: string;
 }
 
 /**
@@ -234,4 +236,72 @@ export class GitOperations {
 			};
 		}
 	}
+}
+
+// Export function wrappers for compatibility with test files
+// These wrap the class methods so tests can import them as functions
+
+/**
+ * Check if a directory is a git repository
+ * @param repoPath - Path to check
+ * @returns True if it's a git repository
+ */
+export async function isGitRepo(repoPath: string): Promise<boolean> {
+	return GitOperations.isGitRepository(repoPath);
+}
+
+/**
+ * Get git status for a repository
+ * @param repoPath - Absolute path to repository
+ * @returns Git status information
+ */
+export async function getGitStatus(repoPath: string): Promise<GitStatus> {
+	return GitOperations.getStatus(repoPath);
+}
+
+/**
+ * Get the current branch name
+ * @param repoPath - Absolute path to repository
+ * @returns Current branch name
+ */
+export async function getCurrentBranch(repoPath: string): Promise<string> {
+	return GitOperations.getCurrentBranch(repoPath);
+}
+
+/**
+ * Pull latest changes from remote repository
+ * @param repoPath - Absolute path to repository
+ * @param branch - Branch to pull (defaults to 'main')
+ * @returns Result of git pull operation
+ */
+export async function gitPull(repoPath: string, branch: string = 'main'): Promise<GitOperationResult> {
+	return GitOperations.pull(repoPath, branch);
+}
+
+/**
+ * Format git pull output for display
+ * @param result - Git operation result
+ * @returns Formatted output string
+ */
+export function formatGitPullOutput(result: GitOperationResult): string {
+	if (!result.success) {
+		return `✗ ${result.errorMessage || result.error || 'Git pull failed'}`;
+	}
+
+	const output = result.stdout || result.stderr;
+
+	// Check for different types of pull results
+	if (output.includes('Already up to date') || output.includes('Already up-to-date')) {
+		return '✓ Repository is already up to date';
+	}
+
+	if (output.includes('Fast-forward')) {
+		return '✓ Repository updated successfully (fast-forward)';
+	}
+
+	if (output.includes('Merge made')) {
+		return '✓ Repository updated successfully (merge)';
+	}
+
+	return '✓ Repository updated successfully';
 }
