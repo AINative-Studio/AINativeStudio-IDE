@@ -385,16 +385,28 @@ jobs:
           echo "ZIP file size: $(du -h "$ZIP_NAME" | cut -f1)"
           
           # Submit without --wait to get submission ID immediately
+          echo "Attempting notarization submission..."
+          set +e  # Don't exit on error
           SUBMIT_OUTPUT=$(xcrun notarytool submit "$ZIP_NAME" \
             --key AuthKey.p8 \
             --key-id "${{ secrets.APPLE_KEY_ID }}" \
             --issuer "${{ secrets.APPLE_ISSUER_ID }}" \
             --output-format json 2>&1)
-          
-          echo "Submit output: $SUBMIT_OUTPUT"
-          
+          SUBMIT_EXIT_CODE=$?
+          set -e  # Re-enable exit on error
+
+          echo "Submit exit code: $SUBMIT_EXIT_CODE"
+          echo "Submit output:"
+          echo "$SUBMIT_OUTPUT"
+
+          if [ $SUBMIT_EXIT_CODE -ne 0 ]; then
+            echo "::error::notarytool submit failed with exit code $SUBMIT_EXIT_CODE"
+            echo "::error::Output: $SUBMIT_OUTPUT"
+            exit 1
+          fi
+
           SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | jq -r '.id' 2>/dev/null)
-          
+
           if [ "$SUBMISSION_ID" = "null" ] || [ -z "$SUBMISSION_ID" ]; then
             echo "::error::Failed to get submission ID from notarization"
             echo "::error::Full output was: $SUBMIT_OUTPUT"
