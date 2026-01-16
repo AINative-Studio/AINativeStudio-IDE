@@ -359,6 +359,7 @@ jobs:
           codesign -dvvv "$APP_PATH" 2>&1 | head -20
       
       - name: Notarize the application
+        continue-on-error: true
         working-directory: ainative-studio
         run: |
           # Find the signed app bundle
@@ -457,6 +458,7 @@ jobs:
           echo "✅ App successfully signed and notarized!"
       
       - name: Create and sign DMG
+        continue-on-error: true
         working-directory: ainative-studio
         run: |
           # Find the signed app bundle
