@@ -8,9 +8,9 @@
  * Integrates with AINative's AI Model Registry for browsing, selecting, and invoking AI models
  */
 
-import { Event, Emitter } from '../../../../base/common/event.js';
+import { Emitter } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
+import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IAINativeCloudAuthService } from './ainativeCloudAuthTypes.js';
@@ -27,89 +27,14 @@ import {
 	ModelRegistryErrorCode,
 	ModelCapability,
 	PricingTier,
-	ModelParameterType
+	ModelParameterType,
+	IAIModelRegistryService
 } from './aiModelRegistryTypes.js';
 import { IModelConfigManager, ModelConfigManager } from './aiModelConfig.js';
-import { IUsageTrackingService } from './usageTrackingService.js';
+import { IUsageTrackingService } from './usageTrackingTypes.js';
 
-/**
- * Service interface for AI Model Registry
- */
-export const IAIModelRegistryService = createDecorator<IAIModelRegistryService>('aiModelRegistryService');
-
-export interface IAIModelRegistryService {
-	readonly _serviceBrand: undefined;
-
-	/**
-	 * Event fired when model list is updated
-	 */
-	readonly onDidUpdateModels: Event<AIModel[]>;
-
-	/**
-	 * Event fired when model selection changes
-	 */
-	readonly onDidChangeModelSelection: Event<ModelSelectionConfig>;
-
-	/**
-	 * List available AI models
-	 * @param filters Optional filters to apply
-	 * @returns List of matching models
-	 */
-	listModels(filters?: ModelFilters): Promise<AIModel[]>;
-
-	/**
-	 * Get a specific model by ID
-	 * @param modelId Model identifier
-	 * @returns Model details
-	 */
-	getModel(modelId: string): Promise<AIModel>;
-
-	/**
-	 * Select a model for a project
-	 * @param modelId Model identifier
-	 * @param projectId Project identifier
-	 * @param parameters Optional custom parameters
-	 */
-	selectModel(modelId: string, projectId: string, parameters?: Record<string, any>): Promise<void>;
-
-	/**
-	 * Get selected model for a project
-	 * @param projectId Project identifier
-	 * @returns Selected model or null
-	 */
-	getSelectedModel(projectId: string): Promise<AIModel | null>;
-
-	/**
-	 * Invoke a model
-	 * @param request Invocation request
-	 * @returns Model response
-	 */
-	invokeModel(request: ModelInvocationRequest): Promise<ModelResponse>;
-
-	/**
-	 * Invoke a model with streaming
-	 * @param request Invocation request
-	 * @param onChunk Callback for each chunk
-	 */
-	streamModel(request: ModelInvocationRequest, onChunk: (chunk: ModelStreamChunk) => void): Promise<void>;
-
-	/**
-	 * Get usage statistics
-	 * @returns Usage stats for current user
-	 */
-	getUsageStats(): Promise<UsageStats>;
-
-	/**
-	 * Get quota information
-	 * @returns Quota info for current user
-	 */
-	getQuota(): Promise<QuotaInfo>;
-
-	/**
-	 * Refresh model list from registry
-	 */
-	refreshModels(): Promise<void>;
-}
+// Re-export for backward compatibility
+export { IAIModelRegistryService } from './aiModelRegistryTypes.js';
 
 /**
  * AI Model Registry Service Implementation
@@ -130,15 +55,15 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 	private _cacheTimestamp: number = 0;
 	private _configManager: IModelConfigManager;
 	private _usageTrackingService: IUsageTrackingService | null = null;
+	private _usageTrackingResolved = false;
 
 	constructor(
 		@IAINativeCloudAuthService private readonly cloudAuthService: IAINativeCloudAuthService,
 		@IStorageService storageService: IStorageService,
-		@IUsageTrackingService usageTrackingService: IUsageTrackingService
+		@IInstantiationService private readonly _instantiationService: IInstantiationService
 	) {
 		super();
 
-		this._usageTrackingService = usageTrackingService;
 		this._configManager = new ModelConfigManager(storageService);
 		this._register(this._configManager.onDidChangeModelSelection(config => {
 			this._onDidChangeModelSelection.fire(config);
@@ -151,6 +76,25 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 				this._cacheTimestamp = 0;
 			}
 		}));
+	}
+
+	/**
+	 * Lazily resolve IUsageTrackingService to avoid circular DI dependency.
+	 * usageTrackingService depends on aiModelRegistryService, so we cannot
+	 * inject it directly in the constructor.
+	 */
+	private _getUsageTrackingService(): IUsageTrackingService | null {
+		if (!this._usageTrackingResolved) {
+			this._usageTrackingResolved = true;
+			try {
+				this._usageTrackingService = this._instantiationService.invokeFunction(
+					accessor => accessor.get(IUsageTrackingService)
+				);
+			} catch {
+				// Service not yet available
+			}
+		}
+		return this._usageTrackingService;
 	}
 
 	/**
@@ -450,8 +394,9 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 
 			// Track invocation for usage stats (both cloud and local)
 			await this._trackInvocation(request.modelId, data.usage);
-			if (this._usageTrackingService && data.usage) {
-				await this._usageTrackingService.trackUsage(
+			const usageService = this._getUsageTrackingService();
+			if (usageService && data.usage) {
+				await usageService.trackUsage(
 					request.modelId,
 					data.usage.input_tokens ?? 0,
 					data.usage.output_tokens ?? 0
@@ -584,8 +529,9 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 			// Track invocation after streaming completes (both cloud and local)
 			if (finalUsage) {
 				await this._trackInvocation(request.modelId, finalUsage);
-				if (this._usageTrackingService) {
-					await this._usageTrackingService.trackUsage(
+				const usageService = this._getUsageTrackingService();
+				if (usageService) {
+					await usageService.trackUsage(
 						request.modelId,
 						finalUsage.input_tokens ?? finalUsage.inputTokens ?? 0,
 						finalUsage.output_tokens ?? finalUsage.outputTokens ?? 0

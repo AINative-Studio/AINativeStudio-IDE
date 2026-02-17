@@ -348,7 +348,14 @@ suite('Authentication Integration Tests', () => {
 		usageTrackingService = new MockUsageTrackingService();
 		authService = new AINativeAuthService(encryptionService, storageService);
 		tokenService = new TokenService(encryptionService, storageService);
-		modelRegistry = new AIModelRegistryService(authService as any, storageService, usageTrackingService);
+		const mockInstantiationService = {
+			_serviceBrand: undefined,
+			invokeFunction: (fn: any) => fn({ get: () => usageTrackingService }),
+			createInstance: () => { throw new Error('Not implemented'); },
+			createChild: () => { throw new Error('Not implemented'); },
+			dispose: () => { }
+		};
+		modelRegistry = new AIModelRegistryService(authService as any, storageService, mockInstantiationService as any);
 
 		disposables.add(authService);
 		disposables.add(tokenService);

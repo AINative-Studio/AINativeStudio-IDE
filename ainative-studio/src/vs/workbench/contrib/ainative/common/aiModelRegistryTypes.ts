@@ -8,6 +8,9 @@
  * Defines interfaces for AI model management, selection, and invocation
  */
 
+import { Event } from '../../../../base/common/event.js';
+import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
+
 /**
  * Pricing tiers for AI models
  */
@@ -526,4 +529,83 @@ export class ModelRegistryError extends Error {
 		super(message);
 		this.name = 'ModelRegistryError';
 	}
+}
+
+/**
+ * Service interface for AI Model Registry
+ */
+export const IAIModelRegistryService = createDecorator<IAIModelRegistryService>('aiModelRegistryService');
+
+export interface IAIModelRegistryService {
+	readonly _serviceBrand: undefined;
+
+	/**
+	 * Event fired when model list is updated
+	 */
+	readonly onDidUpdateModels: Event<AIModel[]>;
+
+	/**
+	 * Event fired when model selection changes
+	 */
+	readonly onDidChangeModelSelection: Event<ModelSelectionConfig>;
+
+	/**
+	 * List available AI models
+	 * @param filters Optional filters to apply
+	 * @returns List of matching models
+	 */
+	listModels(filters?: ModelFilters): Promise<AIModel[]>;
+
+	/**
+	 * Get a specific model by ID
+	 * @param modelId Model identifier
+	 * @returns Model details
+	 */
+	getModel(modelId: string): Promise<AIModel>;
+
+	/**
+	 * Select a model for a project
+	 * @param modelId Model identifier
+	 * @param projectId Project identifier
+	 * @param parameters Optional custom parameters
+	 */
+	selectModel(modelId: string, projectId: string, parameters?: Record<string, any>): Promise<void>;
+
+	/**
+	 * Get selected model for a project
+	 * @param projectId Project identifier
+	 * @returns Selected model or null
+	 */
+	getSelectedModel(projectId: string): Promise<AIModel | null>;
+
+	/**
+	 * Invoke a model
+	 * @param request Invocation request
+	 * @returns Model response
+	 */
+	invokeModel(request: ModelInvocationRequest): Promise<ModelResponse>;
+
+	/**
+	 * Invoke a model with streaming
+	 * @param request Invocation request
+	 * @param onChunk Callback for each chunk
+	 */
+	streamModel(request: ModelInvocationRequest, onChunk: (chunk: ModelStreamChunk) => void): Promise<void>;
+
+	/**
+	 * Get usage statistics
+	 * @returns Usage stats for current user
+	 */
+	getUsageStats(): Promise<UsageStats>;
+
+	/**
+	 * Get quota information
+	 * @returns Quota info for current user
+	 */
+	getQuota(): Promise<QuotaInfo>;
+
+	/**
+	 * Refresh model list from registry
+	 */
+	refreshModels(): Promise<void>;
 }
