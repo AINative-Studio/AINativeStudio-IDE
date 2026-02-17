@@ -3,8 +3,15 @@
  *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
  *--------------------------------------------------------------------------------------------*/
 
+/*
+ * NOTE: All class names here must be prefixed with "ainative-" to match the
+ * scope-tailwind build step which adds "ainative-" prefix to className strings
+ * in TSX files. The source TSX uses e.g. "ainative-login-modal-overlay" which
+ * becomes "ainative-ainative-login-modal-overlay" after scope-tailwind processing.
+ */
+
 /* Modal overlay */
-.ainative-login-modal-overlay {
+.ainative-ainative-login-modal-overlay {
 	position: fixed;
 	top: 0;
 	left: 0;
@@ -28,7 +35,7 @@
 }
 
 /* Modal container */
-.ainative-login-modal {
+.ainative-ainative-login-modal {
 	background-color: var(--vscode-editor-background, #1e1e1e);
 	border: 1px solid var(--vscode-widget-border, #454545);
 	border-radius: 8px;
@@ -50,7 +57,7 @@
 }
 
 /* Modal header */
-.modal-header {
+.ainative-modal-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -58,14 +65,14 @@
 	border-bottom: 1px solid var(--vscode-widget-border, #454545);
 }
 
-.modal-header h2 {
+.ainative-modal-header h2 {
 	margin: 0;
 	font-size: 18px;
 	font-weight: 600;
 	color: var(--vscode-foreground, #cccccc);
 }
 
-.close-button {
+.ainative-close-button {
 	background: none;
 	border: none;
 	font-size: 28px;
@@ -82,22 +89,22 @@
 	transition: background-color 0.15s ease;
 }
 
-.close-button:hover {
+.ainative-close-button:hover {
 	background-color: var(--vscode-toolbar-hoverBackground, #2a2d2e);
 }
 
-.close-button:focus {
+.ainative-close-button:focus {
 	outline: 2px solid var(--vscode-focusBorder, #007acc);
 	outline-offset: 2px;
 }
 
 /* Modal body */
-.modal-body {
+.ainative-modal-body {
 	padding: 24px;
 }
 
 /* Error message */
-.error-message {
+.ainative-error-message {
 	background-color: var(--vscode-inputValidation-errorBackground, #5a1d1d);
 	border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
 	color: var(--vscode-errorForeground, #f48771);
@@ -108,11 +115,11 @@
 }
 
 /* Form group */
-.form-group {
+.ainative-form-group {
 	margin-bottom: 16px;
 }
 
-.form-group label {
+.ainative-form-group label {
 	display: block;
 	margin-bottom: 6px;
 	font-size: 13px;
@@ -120,7 +127,7 @@
 	color: var(--vscode-foreground, #cccccc);
 }
 
-.form-group input {
+.ainative-form-group input {
 	width: 100%;
 	padding: 10px 12px;
 	font-size: 14px;
@@ -132,18 +139,18 @@
 	box-sizing: border-box;
 }
 
-.form-group input:focus {
+.ainative-form-group input:focus {
 	outline: none;
 	border-color: var(--vscode-focusBorder, #007acc);
 	box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
 }
 
-.form-group input::placeholder {
+.ainative-form-group input::placeholder {
 	color: var(--vscode-input-placeholderForeground, #717171);
 }
 
 /* Submit button */
-.submit-button {
+.ainative-submit-button {
 	width: 100%;
 	padding: 10px 16px;
 	font-size: 14px;
@@ -157,26 +164,26 @@
 	margin-top: 8px;
 }
 
-.submit-button:hover:not(:disabled) {
+.ainative-submit-button:hover:not(:disabled) {
 	background-color: #1177cb;
 }
 
-.submit-button:active:not(:disabled) {
+.ainative-submit-button:active:not(:disabled) {
 	background-color: #0c5fa0;
 }
 
-.submit-button:focus {
+.ainative-submit-button:focus {
 	outline: 2px solid var(--vscode-focusBorder, #007acc);
 	outline-offset: 2px;
 }
 
-.submit-button:disabled {
+.ainative-submit-button:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
 }
 
 /* Divider */
-.divider {
+.ainative-divider {
 	text-align: center;
 	margin: 20px 0;
 	position: relative;
@@ -184,8 +191,8 @@
 	font-size: 13px;
 }
 
-.divider::before,
-.divider::after {
+.ainative-divider::before,
+.ainative-divider::after {
 	content: '';
 	position: absolute;
 	top: 50%;
@@ -194,16 +201,16 @@
 	background-color: var(--vscode-widget-border, #454545);
 }
 
-.divider::before {
+.ainative-divider::before {
 	left: 0;
 }
 
-.divider::after {
+.ainative-divider::after {
 	right: 0;
 }
 
 /* GitHub sign-in button */
-.github-signin-button {
+.ainative-github-signin-button {
 	width: 100%;
 	padding: 10px 16px;
 	font-size: 14px;
@@ -216,35 +223,35 @@
 	transition: background-color 0.15s ease;
 }
 
-.github-signin-button:hover:not(:disabled) {
+.ainative-github-signin-button:hover:not(:disabled) {
 	background-color: var(--vscode-button-secondaryHoverBackground, #45494d);
 }
 
-.github-signin-button:disabled {
+.ainative-github-signin-button:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 }
 
 /* Sign-up link */
-.signup-link {
+.ainative-signup-link {
 	text-align: center;
 	margin-top: 20px;
 	font-size: 13px;
 	color: var(--vscode-descriptionForeground, #999999);
 }
 
-.signup-link a {
+.ainative-signup-link a {
 	color: var(--vscode-textLink-foreground, #3794ff);
 	text-decoration: none;
 	font-weight: 500;
 	margin-left: 4px;
 }
 
-.signup-link a:hover {
+.ainative-signup-link a:hover {
 	text-decoration: underline;
 }
 
-.signup-link a:focus {
+.ainative-signup-link a:focus {
 	outline: 2px solid var(--vscode-focusBorder, #007acc);
 	outline-offset: 2px;
 	border-radius: 2px;
@@ -252,13 +259,13 @@
 
 /* Responsive design */
 @media (max-width: 500px) {
-	.ainative-login-modal {
+	.ainative-ainative-login-modal {
 		width: 95%;
 		margin: 0 auto;
 	}
 
-	.modal-header,
-	.modal-body {
+	.ainative-modal-header,
+	.ainative-modal-body {
 		padding: 16px;
 	}
 }
