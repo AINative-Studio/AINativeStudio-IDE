@@ -5,6 +5,7 @@
 
 import { Event } from '../../../../base/common/event.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
+import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 
 export const IAINativeAuthService = createDecorator<IAINativeAuthService>('ainativeAuthService');
 
@@ -505,3 +506,6 @@ export class AINativeAuthService extends Disposable implements IAINativeAuthServ
 		return this._authState;
 	}
 }
+
+// Register the service with VS Code dependency injection
+registerSingleton(IAINativeAuthService, AINativeAuthService, InstantiationType.Delayed);

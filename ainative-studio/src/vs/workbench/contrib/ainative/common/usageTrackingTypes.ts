@@ -8,6 +8,9 @@
  * Type definitions for usage tracking, cost calculation, and quota monitoring
  */
 
+import { Event } from '../../../../base/common/event.js';
+import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
+
 /**
  * Usage record for a single model invocation
  */
@@ -423,4 +426,105 @@ export interface CreditsHistory {
 	 * Total tokens in period
 	 */
 	readonly totalTokens: number;
+}
+
+/**
+ * Service interface for usage tracking
+ */
+export const IUsageTrackingService = createDecorator<IUsageTrackingService>('usageTrackingService');
+
+export interface IUsageTrackingService {
+	readonly _serviceBrand: undefined;
+
+	/**
+	 * Event fired when usage is updated
+	 */
+	readonly onDidUpdateUsage: Event<AggregatedUsage>;
+
+	/**
+	 * Event fired when quota status changes
+	 */
+	readonly onDidUpdateQuota: Event<QuotaStatus>;
+
+	/**
+	 * Event fired when credits status is updated
+	 */
+	readonly onDidUpdateCredits: Event<CreditsStatus>;
+
+	/**
+	 * Event fired when credits are running low
+	 */
+	readonly onCreditsLow: Event<CreditsStatus>;
+
+	/**
+	 * Track a model invocation
+	 * @param modelId Model identifier
+	 * @param inputTokens Number of input tokens
+	 * @param outputTokens Number of output tokens
+	 */
+	trackUsage(modelId: string, inputTokens: number, outputTokens: number): Promise<void>;
+
+	/**
+	 * Get current usage statistics
+	 * @param period Optional period filter ('day' | 'week' | 'month' | 'all')
+	 * @returns Aggregated usage statistics
+	 */
+	getUsage(period?: UsagePeriod): Promise<AggregatedUsage>;
+
+	/**
+	 * Get quota status
+	 * @returns Current quota status
+	 */
+	getQuotaStatus(): Promise<QuotaStatus>;
+
+	/**
+	 * Calculate cost for a potential usage
+	 * @param modelId Model identifier
+	 * @param inputTokens Number of input tokens
+	 * @param outputTokens Number of output tokens
+	 * @returns Cost calculation
+	 */
+	calculateCost(modelId: string, inputTokens: number, outputTokens: number): Promise<CostCalculation>;
+
+	/**
+	 * Sync local usage with cloud API
+	 */
+	syncWithCloud(): Promise<void>;
+
+	/**
+	 * Clear all local usage data
+	 */
+	clearLocalUsage(): Promise<void>;
+
+	/**
+	 * Reset usage tracking (called on logout)
+	 */
+	reset(): void;
+
+	/**
+	 * Track managed API usage with credits
+	 * @param modelId Model identifier
+	 * @param tokensUsed Total tokens consumed
+	 * @param creditsConsumed Credits charged for this invocation
+	 */
+	trackManagedUsage(modelId: string, tokensUsed: number, creditsConsumed: number): Promise<void>;
+
+	/**
+	 * Get current credits status from backend
+	 * @returns Current credits status
+	 */
+	getCreditsStatus(): Promise<CreditsStatus>;
+
+	/**
+	 * Check if credits are running low (< 20% remaining)
+	 * @returns True if credits are low
+	 */
+	isCreditsLow(): boolean;
+
+	/**
+	 * Get credits usage history
+	 * @param days Number of days to retrieve (default: 30)
+	 * @returns Credits usage history
+	 */
+	getCreditsHistory(days?: number): Promise<CreditsHistory>;
 }

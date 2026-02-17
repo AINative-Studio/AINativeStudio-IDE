@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { isValidEmail } from '../util/validation.js';
 import { useAINativeAuth, useAccessor } from '../util/services.js';
 import './AINativeLoginModal.css';
@@ -107,7 +108,7 @@ export const AINativeLoginModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 		}
 	};
 
-	return (
+	return createPortal(
 		<div className="ainative-login-modal-overlay" onClick={onClose}>
 			<div
 				ref={modalRef}
@@ -196,6 +197,7 @@ export const AINativeLoginModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 					</div>
 				</div>
 			</div>
-		</div>
+		</div>,
+		document.body
 	);
 };
