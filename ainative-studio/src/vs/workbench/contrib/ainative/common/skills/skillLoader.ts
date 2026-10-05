@@ -269,6 +269,9 @@ export class SkillLoader extends Disposable implements ISkillLoader {
 				try {
 					return await this.loadMetadataOnly(entry.name);
 				} catch (error) {
+					this.logService.warn(
+						`[SkillLoader] Skipping skill '${entry.name}' in getAllMetadata: ${error instanceof Error ? error.message : String(error)}`
+					);
 					return undefined;
 				}
 			})

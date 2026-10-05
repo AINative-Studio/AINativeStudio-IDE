@@ -59,6 +59,12 @@ export function mountAuthDialog(
 
 	const makeRequestId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
 
+	// Save whatever was previously installed (if anything) so dispose() can put
+	// it back rather than leaving a dangling global pointed at a disposed
+	// uiHandler/pending map if this dialog is ever mounted more than once.
+	const previousSendToVSCode = window.sendToVSCode;
+	const previousSendToVSCodeAsync = window.sendToVSCodeAsync;
+
 	window.sendToVSCode = (type: string, data: any) => {
 		const requestId = makeRequestId();
 		const message: UIMessage = { type, requestId, data };
@@ -105,7 +111,18 @@ export function mountAuthDialog(
 		messageSub.dispose();
 		pendingSub.dispose();
 		uiHandler.dispose();
+		// Reject any still-outstanding sendToVSCodeAsync() calls instead of
+		// silently dropping them — otherwise their promises would hang forever,
+		// since nothing can resolve them once uiHandler is disposed.
+		for (const waiter of pending.values()) {
+			waiter.reject(new Error('Auth dialog was closed before this request completed'));
+		}
 		pending.clear();
+		// Restore whatever was installed before this dialog mounted (or remove
+		// the globals entirely if nothing was), so a stale reference to this
+		// disposed uiHandler/pending map can never be invoked again.
+		window.sendToVSCode = previousSendToVSCode;
+		window.sendToVSCodeAsync = previousSendToVSCodeAsync;
 	};
 
 	return { dispose };

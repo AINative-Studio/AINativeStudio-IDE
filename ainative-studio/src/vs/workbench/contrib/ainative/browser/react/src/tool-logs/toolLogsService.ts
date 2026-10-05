@@ -114,6 +114,15 @@ function sizeOfJson(value: unknown): number | undefined {
 export function buildToolLogsFromThreads(allThreads: ToolLogsThreadsSource): ToolExecutionLog[] {
 	const logs: ToolExecutionLog[] = [];
 
+	// Real tool messages don't currently timestamp when they started, so there is
+	// no wall-clock time to report. `sortLogs`'s default sort field is
+	// 'timestamp', so giving every entry the same `new Date(0)` would make that
+	// default sort a silent no-op (and would make any future `dateRange` filter
+	// exclude every real log). Use a monotonically increasing synthetic instant
+	// instead, so "sort by timestamp" still reflects real thread/message order —
+	// this is ordering-only and must not be read as a real wall-clock time.
+	let syntheticSequence = 0;
+
 	for (const threadId of Object.keys(allThreads)) {
 		const thread = allThreads[threadId];
 		if (!thread) continue;
@@ -130,11 +139,9 @@ export function buildToolLogsFromThreads(allThreads: ToolLogsThreadsSource): Too
 				toolType,
 				operation: message.name,
 				status,
-				// Real tool messages don't currently timestamp when they started;
-				// thread/message ordering is the only ordering signal we have, so
-				// logs are presented in thread/message order rather than sorted by
-				// a fabricated timestamp.
-				timestamp: new Date(0),
+				// Synthetic ordering timestamp (see comment above) — not a real
+				// wall-clock time. Duration is still genuinely unknown.
+				timestamp: new Date(syntheticSequence++),
 				duration: undefined,
 				threadId,
 				messageIndex,
@@ -180,14 +187,11 @@ function filterLogs(logs: ToolExecutionLog[], filter?: ToolLogsFilter): ToolExec
 		if (filter.statuses && !filter.statuses.includes(log.status)) {
 			return false;
 		}
-		if (filter.dateRange) {
-			const logTime = log.timestamp.getTime();
-			const startTime = filter.dateRange.start.getTime();
-			const endTime = filter.dateRange.end.getTime();
-			if (logTime < startTime || logTime > endTime) {
-				return false;
-			}
-		}
+		// NOTE: `log.timestamp` is a synthetic ordering value, not a real
+		// wall-clock time (see buildToolLogsFromThreads), so a `dateRange` filter
+		// expressed in real calendar time cannot be evaluated against it — applying
+		// it here would silently exclude every real log. Intentionally not
+		// filtering on dateRange until real tool timing is tracked.
 		if (filter.threadId && log.threadId !== filter.threadId) {
 			return false;
 		}
@@ -198,12 +202,10 @@ function filterLogs(logs: ToolExecutionLog[], filter?: ToolLogsFilter): ToolExec
 				return false;
 			}
 		}
-		if (filter.minDuration !== undefined && log.duration !== undefined && log.duration < filter.minDuration) {
-			return false;
-		}
-		if (filter.maxDuration !== undefined && log.duration !== undefined && log.duration > filter.maxDuration) {
-			return false;
-		}
+		// NOTE: `log.duration` is always undefined for real tool logs today (tool
+		// messages carry no timing data), so min/maxDuration never exclude
+		// anything. Left as pass-through rather than silently misleading users
+		// with a filter control that appears to work but never removes anything.
 		return true;
 	});
 }
