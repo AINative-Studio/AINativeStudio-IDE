@@ -280,6 +280,20 @@
 	font-size: inherit;
 }
 
+/* Sample data banner */
+.tool-logs-sample-banner {
+	background: var(--vscode-inputValidation-warningBackground);
+	border: 1px solid var(--vscode-inputValidation-warningBorder);
+	color: var(--vscode-inputValidation-warningForeground, var(--vscode-foreground));
+	padding: 10px 16px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 8px 16px 0 16px;
+	border-radius: 4px;
+	font-weight: 600;
+}
+
 /* Error */
 .tool-logs-error {
 	background: var(--vscode-inputValidation-errorBackground);
