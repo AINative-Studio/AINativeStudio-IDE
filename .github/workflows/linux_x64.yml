@@ -203,9 +203,19 @@ jobs:
             
             echo "Wrapper scripts created, verifying:"
             ls -la ainative*
-            
+
+            # Chromium's sandbox requires chrome-sandbox to be setuid root;
+            # tar --owner/--group below only normalizes ownership inside the
+            # archive, it doesn't set this bit, so it has to happen first.
+            if [ -f "chrome-sandbox" ]; then
+              chmod 4755 chrome-sandbox
+            fi
+
             echo "Creating tar.gz archive..."
-            tar --warning=no-file-changed -czf ../ainative-studio-linux-x64.tar.gz . || true
+            # --owner/--group/--numeric-owner force every entry to root:root
+            # in the archive regardless of the build runner's UID, so a
+            # clean extract doesn't carry the build machine's ownership.
+            tar --warning=no-file-changed --owner=0 --group=0 --numeric-owner -czf ../ainative-studio-linux-x64.tar.gz . || true
             cd ..
           elif [ -d "../VSCode-linux-x64" ]; then
             echo "Found VSCode-linux-x64 in parent directory"
@@ -228,9 +238,19 @@ jobs:
             
             echo "Wrapper scripts created, verifying:"
             ls -la ainative*
-            
+
+            # Chromium's sandbox requires chrome-sandbox to be setuid root;
+            # tar --owner/--group below only normalizes ownership inside the
+            # archive, it doesn't set this bit, so it has to happen first.
+            if [ -f "chrome-sandbox" ]; then
+              chmod 4755 chrome-sandbox
+            fi
+
             echo "Creating tar.gz archive..."
-            tar --warning=no-file-changed -czf ainative-studio-linux-x64.tar.gz . || true
+            # --owner/--group/--numeric-owner force every entry to root:root
+            # in the archive regardless of the build runner's UID, so a
+            # clean extract doesn't carry the build machine's ownership.
+            tar --warning=no-file-changed --owner=0 --group=0 --numeric-owner -czf ainative-studio-linux-x64.tar.gz . || true
             mv ainative-studio-linux-x64.tar.gz ../ainative-studio/
           else
             echo "::error::VSCode-linux-x64 directory not found in current or parent directory!"
@@ -339,17 +359,37 @@ jobs:
 
       - name: Create DEB package
         run: |
+          # Derive the package version from the git tag so the control file
+          # doesn't drift from the actual release (falls back to 0.0.0+<sha>
+          # for non-tag builds, e.g. workflow_dispatch off a branch).
+          DEB_VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+          if [ -z "$DEB_VERSION" ]; then
+            DEB_VERSION="0.0.0+$(git rev-parse --short HEAD)"
+          fi
+          echo "Resolved DEB package version: $DEB_VERSION"
+
           mkdir -p deb-package/DEBIAN
           mkdir -p deb-package/opt/ainative-studio
           mkdir -p deb-package/usr/bin
           mkdir -p deb-package/usr/share/applications
           mkdir -p deb-package/usr/share/icons/hicolor/256x256/apps
-          
+
           # Copy application files
           if [ -d "VSCode-linux-x64" ]; then
             cp -r VSCode-linux-x64/* deb-package/opt/ainative-studio/
           elif [ -d "../VSCode-linux-x64" ]; then
             cp -r ../VSCode-linux-x64/* deb-package/opt/ainative-studio/
+          fi
+
+          # Chromium's sandbox refuses to start unless chrome-sandbox is
+          # owned by root and setuid (mode 4755). Set that on the staged
+          # file now; dpkg-deb --root-owner-group below then normalizes
+          # the ownership of every other file in the archive to root:root.
+          if [ -f "deb-package/opt/ainative-studio/chrome-sandbox" ]; then
+            chmod 4755 deb-package/opt/ainative-studio/chrome-sandbox
+          else
+            echo "::error::chrome-sandbox not found in staged deb-package; sandbox will not start after install"
+            exit 1
           fi
           
           # Create wrapper scripts for command line access
@@ -383,7 +423,7 @@ jobs:
           # Create control file with enhanced description
           cat > deb-package/DEBIAN/control << 'EOF'
           Package: ainative-studio
-          Version: 1.0.0
+          Version: __DEB_VERSION__
           Section: editors
           Priority: optional
           Architecture: amd64
@@ -406,9 +446,46 @@ jobs:
            environment.
           Depends: libnss3, libatk-bridge2.0-0, libxkbfile1, libsecret-1-0
           EOF
-          
-          # Build DEB package
-          dpkg-deb --build deb-package ainative-studio-linux-x64.deb
+          sed -i "s/__DEB_VERSION__/${DEB_VERSION}/" deb-package/DEBIAN/control
+
+          # Maintainer script: repairs chrome-sandbox ownership/mode at
+          # install time as defense-in-depth, even though the archive
+          # itself is now built with correct ownership (see below).
+          cat > deb-package/DEBIAN/postinst << 'EOF'
+          #!/bin/sh
+          set -e
+
+          SANDBOX=/opt/ainative-studio/chrome-sandbox
+
+          case "$1" in
+            configure)
+              # Chromium refuses to start rather than run unsandboxed, so this
+              # is required, not cosmetic.
+              if [ -e "$SANDBOX" ]; then
+                chown root:root "$SANDBOX"
+                chmod 4755 "$SANDBOX"
+              fi
+
+              if command -v update-desktop-database >/dev/null 2>&1; then
+                update-desktop-database -q /usr/share/applications || true
+              fi
+              if command -v update-mime-database >/dev/null 2>&1; then
+                update-mime-database /usr/share/mime || true
+              fi
+              ;;
+            abort-upgrade|abort-remove|abort-deconfigure)
+              ;;
+          esac
+
+          exit 0
+          EOF
+          chmod 0755 deb-package/DEBIAN/postinst
+
+          # Build DEB package. --root-owner-group normalizes every file in
+          # the archive to root:root regardless of the build machine's UID
+          # (otherwise the build runner's UID gets baked into all installed
+          # files, which is what broke the sandbox check in the first place).
+          dpkg-deb --root-owner-group --build deb-package ainative-studio-linux-x64.deb
         working-directory: ainative-studio
 
       - name: Create RPM package
@@ -472,20 +549,27 @@ jobs:
           mkdir -p %{buildroot}/usr/share/icons/hicolor/256x256/apps
           
           cp -r * %{buildroot}/opt/ainative-studio/
-          
+
+          # Chromium refuses to start without a setuid-root sandbox helper.
+          # %attr() below is what actually lands in the RPM payload; chmod
+          # here just keeps the buildroot consistent with it.
+          if [ -f "%{buildroot}/opt/ainative-studio/chrome-sandbox" ]; then
+            chmod 4755 %{buildroot}/opt/ainative-studio/chrome-sandbox
+          fi
+
           # Create wrapper scripts
           cat > %{buildroot}/usr/bin/ainative-studio << 'SCRIPT'
           #!/bin/bash
           exec /opt/ainative-studio/void "$@"
           SCRIPT
           chmod +x %{buildroot}/usr/bin/ainative-studio
-          
+
           cat > %{buildroot}/usr/bin/ainativestudio << 'SCRIPT'
           #!/bin/bash
           exec /opt/ainative-studio/void "$@"
           SCRIPT
           chmod +x %{buildroot}/usr/bin/ainativestudio
-          
+
           # Install icon and desktop file
           cp %{SOURCE1} %{buildroot}/usr/share/icons/hicolor/256x256/apps/ainative-studio.png
           
@@ -505,17 +589,19 @@ jobs:
           DESKTOP
           
           %files
-          /opt/ainative-studio/*
+          %defattr(-,root,root,-)
+          %attr(4755, root, root) /opt/ainative-studio/chrome-sandbox
+          /opt/ainative-studio/
           /usr/bin/ainative-studio
           /usr/bin/ainativestudio
           /usr/share/applications/ainative-studio.desktop
           /usr/share/icons/hicolor/256x256/apps/ainative-studio.png
-          
+
           %changelog
           * Wed Jan 01 2025 AINative Studio Team <team@ainativestudio.com> - 1.0.0-1
           - Initial release
           EOF
-          
+
           # Build RPM
           rpmbuild --define "_topdir $(pwd)/rpm-build" -ba rpm-build/SPECS/ainative-studio.spec
           cp rpm-build/RPMS/x86_64/ainative-studio-*.rpm ./ainative-studio-linux-x64.rpm
