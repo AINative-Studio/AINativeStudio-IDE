@@ -14,7 +14,7 @@ export default defineConfig({
 		'./src2/ainative-onboarding/index.tsx',
 		'./src2/quick-edit-tsx/index.tsx',
 		'./src2/diff/index.tsx',
-		'./src2/auth/index.tsx',
+		'./src2/auth-components/index.tsx',
 		'./src2/ai-registry/index.tsx',
 	],
 	outDir: './out',
