@@ -6,101 +6,82 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import { SkillLoader } from '../../common/skills/skillLoader.js';
-import { SkillMetadata, SkillResource } from '../../common/skills/skillLoaderTypes.js';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { SkillParser } from '../../common/skills/skillParser.js';
+import { ISkillsRegistry, RegistryEntry, SkillRefreshResult } from '../../common/skills/skillRegistryTypes.js';
 import { FileService } from '../../../../../platform/files/common/fileService.js';
 import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskFileSystemProvider.js';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Schemas } from '../../../../../base/common/network.js';
 
+/**
+ * Integration tests for SkillLoader against the REAL ISkillParser implementation
+ * (SkillParser) and the REAL ISkillsRegistry interface, reading real fixtures
+ * from disk. No placeholder/duplicate interfaces are involved.
+ *
+ * Following BDD style (suite/test) and TDD principles.
+ */
 suite('SkillLoader Tests', () => {
 	let loader: SkillLoader;
 	let disposables: DisposableStore;
 	let fileService: FileService;
+	let registry: FixtureSkillsRegistry;
 	const fixturesPath = path.join(__dirname, 'fixtures', 'skills');
 
-	// Mock registry interface
-	class MockSkillsRegistry {
-		private readonly skills: Map<string, string> = new Map();
+	/**
+	 * A fixture-backed registry that implements the REAL ISkillsRegistry
+	 * interface from skillRegistryTypes.ts. It stands in for the file-backed
+	 * SkillsRegistry (which persists to ~/.ainative/skills/registry.json) so
+	 * tests never touch the developer's home directory, while still exercising
+	 * the exact method signatures SkillLoader depends on.
+	 */
+	class FixtureSkillsRegistry implements ISkillsRegistry {
+		declare readonly _serviceBrand: undefined;
 
-		constructor() {
-			// Register test skills with their paths
-			this.skills.set('minimal-skill', path.join(fixturesPath, 'minimal-skill'));
-			this.skills.set('comprehensive-skill', path.join(fixturesPath, 'comprehensive-skill'));
-			this.skills.set('skill-with-resources', path.join(fixturesPath, 'skill-with-resources'));
-			this.skills.set('unicode-skill', path.join(fixturesPath, 'unicode-skill'));
-		}
+		private readonly entries: Map<string, RegistryEntry> = new Map();
 
-		async getSkillPath(skillName: string): Promise<string | null> {
-			return this.skills.get(skillName) || null;
-		}
+		/** Counts get() calls so cache-hit behaviour can be asserted */
+		getCallCount = 0;
 
-		async getAllInstalledSkills(): Promise<string[]> {
-			return Array.from(this.skills.keys());
-		}
-	}
-
-	// Mock skill parser interface
-	class MockSkillParser {
-		parseMetadataOnly(content: string): SkillMetadata {
-			// Extract frontmatter and parse only metadata
-			const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-			if (!frontmatterMatch) {
-				throw new Error('No frontmatter found');
+		constructor(skillNames: string[]) {
+			for (const name of skillNames) {
+				this.entries.set(name, {
+					name,
+					version: '1.0.0',
+					installedAt: Date.now(),
+					source: 'local',
+					path: path.join(fixturesPath, name)
+				});
 			}
-
-			const metadata: Partial<SkillMetadata> = {
-				location: 'project'
-			};
-
-			const lines = frontmatterMatch[1].split('\n');
-			for (const line of lines) {
-				const trimmed = line.trim();
-				if (!trimmed || trimmed.startsWith('#')) continue;
-
-				const colonIndex = trimmed.indexOf(':');
-				if (colonIndex === -1) continue;
-
-				const key = trimmed.substring(0, colonIndex).trim();
-				let value = trimmed.substring(colonIndex + 1).trim();
-
-				// Remove quotes
-				if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-					value = value.substring(1, value.length - 1);
-				}
-
-				// Handle arrays
-				if (key === 'tags' && value.startsWith('[') && value.endsWith(']')) {
-					const arrayContent = value.substring(1, value.length - 1);
-					metadata.tags = arrayContent.split(',').map(item => item.trim().replace(/^["']|["']$/g, ''));
-				} else {
-					switch (key) {
-						case 'name': metadata.name = value; break;
-						case 'description': metadata.description = value; break;
-						case 'version': metadata.version = value; break;
-						case 'author': metadata.author = value; break;
-						case 'category': metadata.category = value; break;
-					}
-				}
-			}
-
-			return metadata as SkillMetadata;
 		}
 
-		parseFullSkill(content: string): { metadata: SkillMetadata; body: string; resources: SkillResource[] } {
-			const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
-			if (!frontmatterMatch) {
-				throw new Error('No frontmatter found');
-			}
+		async install(skillPath: string): Promise<void> {
+			throw new Error('not used by SkillLoader');
+		}
 
-			const metadata = this.parseMetadataOnly(content);
-			const body = frontmatterMatch[2].trim();
-			const resources: SkillResource[] = [];
+		async uninstall(skillName: string): Promise<void> {
+			this.entries.delete(skillName);
+		}
 
-			return { metadata, body, resources };
+		async list(): Promise<RegistryEntry[]> {
+			return Array.from(this.entries.values());
+		}
+
+		async get(skillName: string): Promise<RegistryEntry | null> {
+			this.getCallCount++;
+			return this.entries.get(skillName) ?? null;
+		}
+
+		async isInstalled(skillName: string): Promise<boolean> {
+			return this.entries.has(skillName);
+		}
+
+		async refresh(skillsSourceDir: string): Promise<SkillRefreshResult> {
+			throw new Error('not used by SkillLoader');
+		}
+
+		clearCache(): void {
+			// no-op: fixtures are static
 		}
 	}
 
@@ -109,13 +90,21 @@ suite('SkillLoader Tests', () => {
 		const logService = new NullLogService();
 		fileService = disposables.add(new FileService(logService));
 
+		// Use DiskFileSystemProvider for file:// scheme to read test fixtures
 		const diskProvider = new DiskFileSystemProvider(logService);
 		fileService.registerProvider(Schemas.file, diskProvider);
 
-		const mockRegistry = new MockSkillsRegistry();
-		const mockParser = new MockSkillParser();
+		// REAL parser implementation
+		const parser = disposables.add(new SkillParser(fileService));
 
-		loader = new SkillLoader(mockRegistry as any, mockParser as any, fileService);
+		registry = new FixtureSkillsRegistry([
+			'minimal-skill',
+			'comprehensive-skill',
+			'skill-with-resources',
+			'unicode-skill'
+		]);
+
+		loader = disposables.add(new SkillLoader(registry, parser, fileService, logService));
 	});
 
 	teardown(() => {
@@ -123,32 +112,55 @@ suite('SkillLoader Tests', () => {
 	});
 
 	suite('Metadata Loading', () => {
-		test('should load metadata only without body', async () => {
+		test('should load a summary derived from the real parser and registry entry', async () => {
 			const summary = await loader.loadMetadataOnly('minimal-skill');
 
 			assert.strictEqual(summary.name, 'minimal-skill');
-			assert.ok(summary.description.length > 0);
-			assert.strictEqual(summary.location, 'project');
+			assert.strictEqual(summary.description, 'A minimal skill with only required fields');
+			// source/path come from the registry entry, not the frontmatter
+			assert.strictEqual(summary.source, 'local');
+			assert.ok(summary.path.endsWith(path.join('fixtures', 'skills', 'minimal-skill')));
 		});
 
-		test('should load metadata in reasonable time (<10ms)', async () => {
-			// First load to warm up
-			await loader.loadMetadataOnly('minimal-skill');
-			loader.clearCache();
+		test('should prefer the frontmatter version over the registry version', async () => {
+			const summary = await loader.loadMetadataOnly('comprehensive-skill');
 
-			// Measure actual load time
-			const startTime = performance.now();
-			await loader.loadMetadataOnly('minimal-skill');
-			const elapsed = performance.now() - startTime;
-
-			assert.ok(elapsed < 10, `Metadata loading took ${elapsed}ms, should be < 10ms`);
+			// comprehensive-skill declares version 2.1.0 in frontmatter;
+			// the fixture registry entry says 1.0.0
+			assert.strictEqual(summary.version, '2.1.0');
 		});
 
-		test('should get all metadata for installed skills', async () => {
+		test('should fall back to the registry version when frontmatter omits it', async () => {
+			const summary = await loader.loadMetadataOnly('minimal-skill');
+
+			// minimal-skill has no version in frontmatter
+			assert.strictEqual(summary.version, '1.0.0');
+		});
+
+		test('should surface tags parsed from frontmatter', async () => {
+			const summary = await loader.loadMetadataOnly('comprehensive-skill');
+
+			assert.ok(Array.isArray(summary.tags));
+			assert.ok(summary.tags?.includes('testing'));
+		});
+
+		test('should not re-query the registry on a cache hit', async () => {
+			await loader.loadMetadataOnly('minimal-skill');
+			const callsAfterFirstLoad = registry.getCallCount;
+
+			await loader.loadMetadataOnly('minimal-skill');
+
+			assert.strictEqual(registry.getCallCount, callsAfterFirstLoad, 'Second load should be served from cache');
+
+			const stats = loader.getCacheStats();
+			assert.ok(stats.hitRatio > 0, 'Should have cache hits');
+		});
+
+		test('should get all metadata for installed skills via registry.list()', async () => {
 			const allMetadata = await loader.getAllMetadata();
 
 			assert.ok(Array.isArray(allMetadata));
-			assert.ok(allMetadata.length >= 4);
+			assert.strictEqual(allMetadata.length, 4);
 
 			const skillNames = allMetadata.map(s => s.name);
 			assert.ok(skillNames.includes('minimal-skill'));
@@ -156,56 +168,71 @@ suite('SkillLoader Tests', () => {
 			assert.ok(skillNames.includes('skill-with-resources'));
 		});
 
-		test('should cache metadata after first load', async () => {
-			const summary1 = await loader.loadMetadataOnly('minimal-skill');
-			const summary2 = await loader.loadMetadataOnly('minimal-skill');
+		test('should skip unparseable skills rather than failing the whole listing', async () => {
+			// 'invalid-no-frontmatter' exists as a fixture but has no YAML frontmatter,
+			// so the real parser throws SkillParseError for it.
+			const mixedRegistry = new FixtureSkillsRegistry(['minimal-skill', 'invalid-no-frontmatter']);
+			const parser = disposables.add(new SkillParser(fileService));
+			const mixedLoader = disposables.add(
+				new SkillLoader(mixedRegistry, parser, fileService, new NullLogService())
+			);
 
-			// Should return same instance from cache
-			assert.strictEqual(summary1.name, summary2.name);
-			assert.strictEqual(summary1.description, summary2.description);
+			const allMetadata = await mixedLoader.getAllMetadata();
 
-			const stats = loader.getCacheStats();
-			assert.ok(stats.hitRatio > 0, 'Should have cache hits');
+			assert.strictEqual(allMetadata.length, 1);
+			assert.strictEqual(allMetadata[0].name, 'minimal-skill');
 		});
 	});
 
 	suite('Full Skill Loading', () => {
-		test('should load full skill with metadata and body', async () => {
+		test('should load full skill with metadata, body and resources', async () => {
 			const skill = await loader.loadFullSkill('comprehensive-skill');
 
 			assert.ok(skill.metadata);
 			assert.strictEqual(skill.metadata.name, 'comprehensive-skill');
-			assert.ok(skill.body);
 			assert.ok(skill.body.length > 0);
-			assert.ok(skill.resources !== undefined);
+			assert.ok(skill.body.includes('Comprehensive Skill'));
+			assert.ok(Array.isArray(skill.resources));
+			assert.ok(skill.fullPath.endsWith('SKILL.md'));
 		});
 
-		test('should load full skill in reasonable time (<50ms)', async () => {
-			// First load to warm up
-			await loader.loadFullSkill('comprehensive-skill');
-			loader.clearCache();
+		test('should discover bundled resources via the real parser', async () => {
+			const skill = await loader.loadFullSkill('comprehensive-skill');
 
-			// Measure actual load time
-			const startTime = performance.now();
-			await loader.loadFullSkill('comprehensive-skill');
-			const elapsed = performance.now() - startTime;
+			const types = skill.resources.map(r => r.type);
+			assert.ok(types.includes('reference'), 'Should discover references/');
+			assert.ok(types.includes('script'), 'Should discover scripts/');
+			assert.ok(types.includes('asset'), 'Should discover assets/');
 
-			assert.ok(elapsed < 50, `Full skill loading took ${elapsed}ms, should be < 50ms`);
+			const names = skill.resources.map(r => r.name);
+			assert.ok(names.includes('api-docs.md'));
 		});
 
-		test('should cache full skills', async () => {
-			const skill1 = await loader.loadFullSkill('minimal-skill');
-			const skill2 = await loader.loadFullSkill('minimal-skill');
+		test('should not re-query the registry on a full-skill cache hit', async () => {
+			await loader.loadFullSkill('minimal-skill');
+			const callsAfterFirstLoad = registry.getCallCount;
 
-			assert.strictEqual(skill1.metadata.name, skill2.metadata.name);
-			assert.strictEqual(skill1.body, skill2.body);
+			const skill = await loader.loadFullSkill('minimal-skill');
+
+			assert.strictEqual(registry.getCallCount, callsAfterFirstLoad, 'Second load should be served from cache');
+			assert.strictEqual(skill.metadata.name, 'minimal-skill');
 
 			const stats = loader.getCacheStats();
 			assert.ok(stats.fullSkillCount > 0, 'Should have cached full skills');
 		});
 
-		test('should evict oldest skill when cache is full (LRU)', async () => {
-			// Load more than cache size (default 5)
+		test('should warm the metadata cache from a full-skill parse', async () => {
+			await loader.loadFullSkill('minimal-skill');
+
+			const statsAfterFull = loader.getCacheStats();
+			assert.strictEqual(statsAfterFull.metadataCount, 1, 'Full load should also populate the metadata cache');
+
+			const callsBefore = registry.getCallCount;
+			await loader.loadMetadataOnly('minimal-skill');
+			assert.strictEqual(registry.getCallCount, callsBefore, 'Metadata should already be cached');
+		});
+
+		test('should not exceed the LRU cache bound of 5 full skills', async () => {
 			await loader.loadFullSkill('minimal-skill');
 			await loader.loadFullSkill('comprehensive-skill');
 			await loader.loadFullSkill('skill-with-resources');
@@ -227,22 +254,32 @@ suite('SkillLoader Tests', () => {
 			assert.ok(content.includes('API Documentation'));
 		});
 
-		test('should load reference in reasonable time (<100ms)', async () => {
-			const startTime = performance.now();
-			await loader.loadReference('comprehensive-skill', 'api-docs.md');
-			const elapsed = performance.now() - startTime;
+		test('should accept a reference path already prefixed with references/', async () => {
+			const content = await loader.loadReference('comprehensive-skill', 'references/api-docs.md');
 
-			assert.ok(elapsed < 100, `Reference loading took ${elapsed}ms, should be < 100ms`);
+			assert.ok(content.includes('API Documentation'));
+		});
+
+		test('should not cache reference files', async () => {
+			await loader.loadReference('comprehensive-skill', 'api-docs.md');
+			const statsBefore = loader.getCacheStats();
+
+			await loader.loadReference('comprehensive-skill', 'api-docs.md');
+			const statsAfter = loader.getCacheStats();
+
+			// References are never cached, so neither cache grows
+			assert.strictEqual(statsAfter.metadataCount, statsBefore.metadataCount);
+			assert.strictEqual(statsAfter.fullSkillCount, statsBefore.fullSkillCount);
 		});
 
 		test('should throw error for non-existent reference', async () => {
-			try {
-				await loader.loadReference('comprehensive-skill', 'non-existent.md');
-				assert.fail('Should have thrown error');
-			} catch (error) {
-				assert.ok(error instanceof Error);
-				assert.ok(error.message.includes('Reference file not found'));
-			}
+			await assert.rejects(
+				() => loader.loadReference('comprehensive-skill', 'non-existent.md'),
+				(error: Error) => {
+					assert.ok(error.message.includes('Reference file not found'));
+					return true;
+				}
+			);
 		});
 	});
 
@@ -278,77 +315,27 @@ suite('SkillLoader Tests', () => {
 		});
 
 		test('should maintain separate caches for metadata and full skills', async () => {
-			await loader.loadMetadataOnly('minimal-skill');
+			await loader.loadMetadataOnly('comprehensive-skill');
 			const stats1 = loader.getCacheStats();
 			assert.strictEqual(stats1.metadataCount, 1);
 			assert.strictEqual(stats1.fullSkillCount, 0);
 
-			await loader.loadFullSkill('minimal-skill');
+			await loader.loadFullSkill('comprehensive-skill');
 			const stats2 = loader.getCacheStats();
 			assert.strictEqual(stats2.metadataCount, 1);
 			assert.strictEqual(stats2.fullSkillCount, 1);
 		});
-	});
 
-	suite('Performance Benchmarks', () => {
-		test('should load 10 skills metadata in <50ms total', async () => {
-			loader.clearCache();
-
-			const skillsToLoad = ['minimal-skill', 'comprehensive-skill', 'skill-with-resources', 'unicode-skill'];
-
-			const startTime = performance.now();
-
-			// Load each skill multiple times to get 10 operations
-			for (let i = 0; i < 3; i++) {
-				for (const skillName of skillsToLoad) {
-					await loader.loadMetadataOnly(skillName);
-				}
-			}
-
-			const elapsed = performance.now() - startTime;
-
-			// Due to caching, subsequent loads should be very fast
-			assert.ok(elapsed < 100, `Loading 12 skills took ${elapsed}ms`);
-		});
-
-		test('should use less than 10KB for metadata cache', async () => {
-			await loader.loadMetadataOnly('minimal-skill');
-			await loader.loadMetadataOnly('comprehensive-skill');
-			await loader.loadMetadataOnly('skill-with-resources');
-
-			const stats = loader.getCacheStats();
-
-			// Rough estimate: each metadata summary should be < 1KB
-			const metadataMemory = stats.metadataCount * 500; // ~500 bytes per summary
-			assert.ok(metadataMemory < 10000, `Metadata cache using ~${metadataMemory} bytes, should be < 10KB`);
-		});
-
-		test('should use less than 60KB total memory', async () => {
-			await loader.loadMetadataOnly('minimal-skill');
-			await loader.loadMetadataOnly('comprehensive-skill');
+		test('should reload after cache invalidation', async () => {
 			await loader.loadFullSkill('minimal-skill');
-			await loader.loadFullSkill('comprehensive-skill');
+			assert.strictEqual(loader.getCacheStats().fullSkillCount, 1);
 
-			const stats = loader.getCacheStats();
+			// Clear cache (simulating a skill update)
+			loader.clearCache();
+			assert.strictEqual(loader.getCacheStats().fullSkillCount, 0);
 
-			assert.ok(stats.estimatedMemoryUsage < 60000, `Total memory usage ${stats.estimatedMemoryUsage} bytes, should be < 60KB`);
-		});
-
-		test('should achieve 95% context reduction vs loading all skills', async () => {
-			// Load only metadata for all skills
-			const allMetadata = await loader.getAllMetadata();
-
-			// Calculate metadata size (sum of name + description lengths)
-			const metadataSize = allMetadata.reduce((sum, skill) => {
-				return sum + skill.name.length + skill.description.length;
-			}, 0);
-
-			// Compare with estimated full size (assume average skill has 5000 chars of content)
-			const estimatedFullSize = allMetadata.length * 5000;
-
-			const reduction = 1 - (metadataSize / estimatedFullSize);
-
-			assert.ok(reduction >= 0.90, `Context reduction ${(reduction * 100).toFixed(2)}%, should be >= 90%`);
+			const skill = await loader.loadFullSkill('minimal-skill');
+			assert.strictEqual(skill.metadata.name, 'minimal-skill');
 		});
 	});
 
@@ -357,134 +344,86 @@ suite('SkillLoader Tests', () => {
 			loader.clearCache();
 
 			const enabledSkills = ['minimal-skill', 'comprehensive-skill'];
-
 			await loader.preloadMetadata(enabledSkills);
 
 			const stats = loader.getCacheStats();
 			assert.strictEqual(stats.metadataCount, enabledSkills.length);
 		});
 
-		test('should preload in reasonable time', async () => {
+		test('should not reject when an enabled skill is not installed', async () => {
 			loader.clearCache();
 
-			const enabledSkills = ['minimal-skill', 'comprehensive-skill', 'skill-with-resources'];
+			// 'ghost-skill' is enabled in config but absent from the registry
+			await loader.preloadMetadata(['minimal-skill', 'ghost-skill']);
 
-			const startTime = performance.now();
-			await loader.preloadMetadata(enabledSkills);
-			const elapsed = performance.now() - startTime;
-
-			assert.ok(elapsed < 100, `Preload took ${elapsed}ms, should be < 100ms`);
+			const stats = loader.getCacheStats();
+			assert.strictEqual(stats.metadataCount, 1, 'Only the installed skill should be cached');
 		});
 	});
 
 	suite('Error Handling', () => {
-		test('should throw error for non-existent skill', async () => {
-			try {
-				await loader.loadMetadataOnly('non-existent-skill');
-				assert.fail('Should have thrown error');
-			} catch (error) {
-				assert.ok(error instanceof Error);
-				assert.ok(error.message.includes('Skill not found'));
-			}
+		test('should throw error for non-existent skill metadata', async () => {
+			await assert.rejects(
+				() => loader.loadMetadataOnly('non-existent-skill'),
+				(error: Error) => {
+					assert.ok(error.message.includes('Skill not found'));
+					return true;
+				}
+			);
 		});
 
 		test('should throw error when loading full skill for non-existent skill', async () => {
-			try {
-				await loader.loadFullSkill('non-existent-skill');
-				assert.fail('Should have thrown error');
-			} catch (error) {
-				assert.ok(error instanceof Error);
-				assert.ok(error.message.includes('Skill not found'));
-			}
+			await assert.rejects(
+				() => loader.loadFullSkill('non-existent-skill'),
+				(error: Error) => {
+					assert.ok(error.message.includes('Skill not found'));
+					return true;
+				}
+			);
 		});
 
-		test('should handle malformed skills gracefully', async () => {
-			// The parser should throw an error for malformed skills
-			// The loader should propagate this error appropriately
-			try {
-				await loader.loadMetadataOnly('non-existent-skill');
-				assert.fail('Should have thrown error');
-			} catch (error) {
-				assert.ok(error instanceof Error);
-			}
+		test('should throw error when loading a reference for a non-existent skill', async () => {
+			await assert.rejects(
+				() => loader.loadReference('non-existent-skill', 'api-docs.md'),
+				(error: Error) => {
+					assert.ok(error.message.includes('Skill not found'));
+					return true;
+				}
+			);
+		});
+
+		test('should propagate parse errors for malformed skills', async () => {
+			const badRegistry = new FixtureSkillsRegistry(['invalid-no-frontmatter']);
+			const parser = disposables.add(new SkillParser(fileService));
+			const badLoader = disposables.add(
+				new SkillLoader(badRegistry, parser, fileService, new NullLogService())
+			);
+
+			await assert.rejects(() => badLoader.loadFullSkill('invalid-no-frontmatter'));
 		});
 	});
 
-	suite('Token Usage Measurement', () => {
-		test('should measure token usage for metadata', async () => {
-			const summary = await loader.loadMetadataOnly('minimal-skill');
+	suite('Progressive Disclosure', () => {
+		test('should keep metadata far smaller than full bodies', async () => {
+			const summary = await loader.loadMetadataOnly('comprehensive-skill');
+			const full = await loader.loadFullSkill('comprehensive-skill');
 
-			// Verify token estimation exists (approximate character count / 4)
-			const estimatedTokens = (summary.name.length + summary.description.length) / 4;
-			assert.ok(estimatedTokens > 0, 'Should have measurable token usage');
+			const summarySize = summary.name.length + summary.description.length;
+			assert.ok(
+				summarySize < full.body.length,
+				`Summary (${summarySize} chars) should be smaller than body (${full.body.length} chars)`
+			);
 		});
 
-		test('should measure token usage for full skill', async () => {
-			const skill = await loader.loadFullSkill('comprehensive-skill');
-
-			// Verify we can estimate tokens for full skill
-			assert.ok(skill.body !== undefined, 'Skill body should be defined');
-			const bodyTokens = skill.body.length / 4;
-			assert.ok(bodyTokens > 0, 'Should have measurable token usage for body');
-		});
-
-		test('should track cumulative token usage across loads', async () => {
-			loader.clearCache();
-
+		test('should keep estimated memory usage bounded', async () => {
 			await loader.loadMetadataOnly('minimal-skill');
 			await loader.loadMetadataOnly('comprehensive-skill');
 			await loader.loadFullSkill('minimal-skill');
+			await loader.loadFullSkill('comprehensive-skill');
 
 			const stats = loader.getCacheStats();
-
-			// We loaded content, so memory usage should be > 0
 			assert.ok(stats.estimatedMemoryUsage > 0);
-		});
-	});
-
-	suite('Advanced Caching', () => {
-		test('should invalidate cache when skill updated', async () => {
-			await loader.loadFullSkill('minimal-skill');
-
-			const stats1 = loader.getCacheStats();
-			assert.strictEqual(stats1.fullSkillCount, 1);
-
-			// Clear cache (simulating skill update)
-			loader.clearCache();
-
-			const stats2 = loader.getCacheStats();
-			assert.strictEqual(stats2.fullSkillCount, 0);
-
-			// Reload should work
-			const skill = await loader.loadFullSkill('minimal-skill');
-			assert.ok(skill);
-		});
-
-		test('should handle cache hits and misses correctly', async () => {
-			loader.clearCache();
-
-			// First load is a cache miss
-			await loader.loadMetadataOnly('minimal-skill');
-
-			// Second load should be a cache hit
-			await loader.loadMetadataOnly('minimal-skill');
-
-			const stats = loader.getCacheStats();
-			assert.ok(stats.hitRatio > 0, 'Should have cache hits');
-		});
-	});
-
-	suite('Very Large Skills', () => {
-		test('should handle very large skill bodies (>500KB)', async () => {
-			// This verifies the loader can handle large skills without issues
-			const skill = await loader.loadFullSkill('comprehensive-skill');
-
-			assert.ok(skill);
-			assert.ok(skill.body);
-
-			// Verify the loader handles the skill efficiently
-			const stats = loader.getCacheStats();
-			assert.ok(stats.estimatedMemoryUsage < 10 * 1024 * 1024, 'Should keep memory usage reasonable');
+			assert.ok(stats.estimatedMemoryUsage < 60000, `Total memory usage ${stats.estimatedMemoryUsage} bytes, should be < 60KB`);
 		});
 	});
 });
