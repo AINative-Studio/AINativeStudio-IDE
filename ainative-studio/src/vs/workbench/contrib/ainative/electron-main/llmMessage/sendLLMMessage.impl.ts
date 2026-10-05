@@ -20,6 +20,8 @@ import { getSendableReasoningInfo, getModelCapabilities, getProviderCapabilities
 import { extractReasoningWrapper, extractXMLToolsWrapper } from './extractGrammar.js';
 import { availableTools, InternalToolInfo } from '../../common/prompt/prompts.js';
 import { generateUuid } from '../../../../../base/common/uuid.js';
+import { AINativeCloudProvider } from './providers/ainativeCloudProvider.js';
+import { IAINativeAuthService } from '../../common/ainativeAuthServiceTypes.js';
 
 const getGoogleApiKey = async () => {
 	// module‑level singleton
@@ -847,13 +849,116 @@ const sendGeminiChat = async ({
 
 
 // ---------------- AINATIVE CLOUD ----------------
-const sendAINativeCloudChat = async (params: SendChatParams_Internal) => {
-	// This will be implemented when TASK-006 (AINativeAuthService) is complete
-	// For now, return error
-	params.onError({
-		message: 'AINative Cloud provider not yet available. Waiting for authentication service implementation (TASK-006).',
-		fullError: null
-	});
+
+/**
+ * Flatten one prepared LLM chat message into the `{ role, content: string }`
+ * shape that `POST /api/v1/chat/completions` accepts.
+ *
+ * `ainativeCloud` is configured with `supportsSystemMessage: 'system-role'` and
+ * `specialToolFormat: 'openai-style'`, so `prepareMessages()` hands us
+ * `OpenAILLMChatMessage`s. Those can still carry array content (text +
+ * reasoning blocks) and `tool`/`developer` roles, neither of which the backend's
+ * narrow schema accepts, so both are normalized here rather than cast away.
+ *
+ * Returns null for a message that carries no usable text, so it can be dropped.
+ */
+const ainativeCloudMessageOfLLMMessage = (message: LLMChatMessage): { role: 'user' | 'assistant' | 'system'; content: string } | null => {
+	// Gemini-shaped messages have `parts` instead of `content`; ainativeCloud is
+	// never configured for gemini-style, so this is defensive only.
+	if (!('content' in message)) return null
+
+	const { role, content } = message
+
+	// `tool` results and `developer` instructions have no slot in the backend's
+	// three-role schema. Fold them into the nearest accepted role so the turn is
+	// not silently dropped mid-conversation.
+	const mappedRole: 'user' | 'assistant' | 'system' =
+		role === 'assistant' ? 'assistant'
+			: role === 'system' || role === 'developer' ? 'system'
+				: 'user' // 'user' and 'tool'
+
+	let contentStr: string
+	if (typeof content === 'string') {
+		contentStr = content
+	}
+	else {
+		// Array content: keep text blocks, drop reasoning/tool-use blocks the
+		// backend cannot represent.
+		contentStr = content
+			.map(block => 'text' in block && typeof block.text === 'string' ? block.text : '')
+			.filter(t => !!t)
+			.join('\n')
+	}
+
+	if (!contentStr) return null
+	return { role: mappedRole, content: contentStr }
+}
+
+/**
+ * Minimal `IAINativeAuthService` used when no JWT session is reachable.
+ *
+ * Chat completions authenticate with the `X-API-Key` header taken from
+ * `settingsOfProvider.ainativeCloud.apiKey` (see
+ * docs/api/BACKEND_CONTRACT_NOTES.md section 5), which is the only credential
+ * available inside this electron-main dispatcher — it is a plain function with
+ * no instantiation-service access, so the browser-side session service cannot be
+ * injected here. The provider's JWT path is therefore inert: it asks for a token,
+ * gets null, and falls through to the API-key error copy.
+ */
+const ainativeCloudNoSessionAuthService: IAINativeAuthService = {
+	getToken: async () => null,
+	refreshToken: async () => null,
+	isAuthenticated: async () => false,
+}
+
+const sendAINativeCloudChat = async ({ messages, onText, onFinalMessage, onError, settingsOfProvider, modelName: modelName_, _setAborter, providerName, chatMode, separateSystemMessage, overridesOfModel, mcpTools }: SendChatParams_Internal) => {
+	const { modelName, reservedOutputTokenSpace } = getModelCapabilities(providerName, modelName_, overridesOfModel)
+
+	const thisConfig = settingsOfProvider.ainativeCloud
+	const apiKey = thisConfig.apiKey
+
+	// Tools are ALWAYS parsed out of the text stream as XML here, regardless of
+	// the model's declared `specialToolFormat`. `AINativeCloudProvider` sends no
+	// `tools` array and its SSE parser has no `tool_calls` branch, so native
+	// (`openai-style`) tool calling is not actually reachable on this path —
+	// honouring the declared format would make agent mode silently tool-less.
+	// Revisit once the backend's tool-call contract on
+	// `/api/v1/chat/completions` is verified.
+	{
+		const { newOnText, newOnFinalMessage } = extractXMLToolsWrapper(onText, onFinalMessage, chatMode, mcpTools)
+		onText = newOnText
+		onFinalMessage = newOnFinalMessage
+	}
+
+	const cloudMessages = messages
+		.map(ainativeCloudMessageOfLLMMessage)
+		.filter((m): m is { role: 'user' | 'assistant' | 'system'; content: string } => !!m)
+
+	// Abort wiring: the provider accepts an AbortSignal and treats AbortError as
+	// a clean stop (no onError), matching the other providers' behaviour.
+	const abortController = new AbortController()
+	_setAborter(() => abortController.abort())
+
+	const provider = new AINativeCloudProvider(ainativeCloudNoSessionAuthService, apiKey)
+
+	try {
+		await provider.sendChatCompletion({
+			model: modelName,
+			messages: cloudMessages,
+			stream: true,
+			...reservedOutputTokenSpace ? { max_tokens: reservedOutputTokenSpace } : {},
+			...separateSystemMessage ? { system: separateSystemMessage } : {},
+			onText,
+			onFinalMessage,
+			onError,
+			abortSignal: abortController.signal,
+		})
+	}
+	catch (error) {
+		// sendChatCompletion reports via onError, so reaching here means an
+		// unexpected throw (e.g. a malformed settings value).
+		onError({ message: error + '', fullError: error instanceof Error ? error : null })
+	}
 }
 
 type CallFnOfProvider = {
