@@ -50,3 +50,6 @@ export {
 	useSendToVSCode,
 	useKeyboardShortcut
 } from './hooks.js';
+
+// Export the mount function used to attach the auth UI to the workbench DOM
+export { mountAuthDialog } from './mount.js';

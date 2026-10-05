@@ -50,9 +50,11 @@ export class AINativeSDKClient {
 
 	/**
 	 * Register a new user
+	 *
+	 * Endpoint confirmed live (422 on empty body) in docs/api/BACKEND_CONTRACT_NOTES.md (#143).
 	 */
 	async register(username: string, email: string, password: string, name?: string): Promise<{ data: TokenResponse & { user: UserInfoResponse } }> {
-		return this._makeRequest<TokenResponse & { user: UserInfoResponse }>('/v1/auth/register', {
+		return this._makeRequest<TokenResponse & { user: UserInfoResponse }>('/api/v1/auth/register', {
 			method: 'POST',
 			body: JSON.stringify({ username, email, password, name })
 		});
@@ -60,9 +62,13 @@ export class AINativeSDKClient {
 
 	/**
 	 * Login with email and password
+	 *
+	 * Endpoint confirmed live (422 on empty body) in docs/api/BACKEND_CONTRACT_NOTES.md (#143).
+	 * The previous '/v1/auth/login-json' path does not match the confirmed contract and has
+	 * been corrected to the documented '/api/v1/auth/login'.
 	 */
 	async login(email: string, password: string): Promise<{ data: TokenResponse & { user: UserInfoResponse } }> {
-		return this._makeRequest<TokenResponse & { user: UserInfoResponse }>('/v1/auth/login-json', {
+		return this._makeRequest<TokenResponse & { user: UserInfoResponse }>('/api/v1/auth/login', {
 			method: 'POST',
 			body: JSON.stringify({ email, password })
 		});
@@ -72,7 +78,7 @@ export class AINativeSDKClient {
 	 * Logout and blacklist token
 	 */
 	async logout(accessToken: string): Promise<{ data: MessageResponse }> {
-		return this._makeRequest<MessageResponse>('/v1/auth/logout', {
+		return this._makeRequest<MessageResponse>('/api/v1/auth/logout', {
 			method: 'POST',
 			headers: { 'Authorization': `Bearer ${accessToken}` }
 		});
@@ -82,7 +88,7 @@ export class AINativeSDKClient {
 	 * Refresh access token
 	 */
 	async refreshToken(refreshToken: string): Promise<{ data: TokenResponse }> {
-		return this._makeRequest<TokenResponse>('/v1/auth/refresh', {
+		return this._makeRequest<TokenResponse>('/api/v1/auth/refresh', {
 			method: 'POST',
 			headers: { 'Authorization': `Bearer ${refreshToken}` }
 		});
@@ -90,9 +96,12 @@ export class AINativeSDKClient {
 
 	/**
 	 * Get current user info
+	 *
+	 * Endpoint confirmed live (401) in docs/api/BACKEND_CONTRACT_NOTES.md (#143) as
+	 * '/api/v1/users/me' -- note this is '/users/me', not '/auth/me'.
 	 */
 	async getCurrentUser(accessToken: string): Promise<{ data: UserInfoResponse }> {
-		return this._makeRequest<UserInfoResponse>('/v1/auth/me', {
+		return this._makeRequest<UserInfoResponse>('/api/v1/users/me', {
 			method: 'GET',
 			headers: { 'Authorization': `Bearer ${accessToken}` }
 		});
@@ -102,7 +111,7 @@ export class AINativeSDKClient {
 	 * Request password reset
 	 */
 	async forgotPassword(email: string): Promise<{ data: MessageResponse }> {
-		return this._makeRequest<MessageResponse>('/v1/auth/forgot-password', {
+		return this._makeRequest<MessageResponse>('/api/v1/auth/forgot-password', {
 			method: 'POST',
 			body: JSON.stringify({ email })
 		});
@@ -112,7 +121,7 @@ export class AINativeSDKClient {
 	 * Reset password with token
 	 */
 	async resetPassword(token: string, newPassword: string): Promise<{ data: MessageResponse }> {
-		return this._makeRequest<MessageResponse>('/v1/auth/reset-password', {
+		return this._makeRequest<MessageResponse>('/api/v1/auth/reset-password', {
 			method: 'POST',
 			body: JSON.stringify({ token, new_password: newPassword })
 		});
@@ -120,9 +129,15 @@ export class AINativeSDKClient {
 
 	/**
 	 * Change password for authenticated user
+	 *
+	 * NOTE: this sub-path is not in the set of endpoints independently verified by #143's
+	 * live probing (docs/api/BACKEND_CONTRACT_NOTES.md section 3 only confirms login,
+	 * register, refresh, logout, users/me, forgot-password, and reset-password). Updated to
+	 * the '/api/v1/...' prefix for consistency with the confirmed auth routes, but treat the
+	 * exact path as unverified until confirmed against the backend.
 	 */
 	async changePassword(accessToken: string, currentPassword: string, newPassword: string): Promise<{ data: MessageResponse }> {
-		return this._makeRequest<MessageResponse>('/v1/auth/change-password', {
+		return this._makeRequest<MessageResponse>('/api/v1/auth/change-password', {
 			method: 'POST',
 			headers: { 'Authorization': `Bearer ${accessToken}` },
 			body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
@@ -131,9 +146,11 @@ export class AINativeSDKClient {
 
 	/**
 	 * Verify JWT token
+	 *
+	 * NOTE: unverified sub-path, see changePassword() comment above.
 	 */
 	async verifyToken(token: string): Promise<{ data: { valid: boolean; user?: UserInfoResponse; exp?: number } }> {
-		return this._makeRequest<{ valid: boolean; user?: UserInfoResponse; exp?: number }>('/v1/auth/verify-token', {
+		return this._makeRequest<{ valid: boolean; user?: UserInfoResponse; exp?: number }>('/api/v1/auth/verify-token', {
 			method: 'POST',
 			body: JSON.stringify({ token })
 		});
@@ -141,9 +158,11 @@ export class AINativeSDKClient {
 
 	/**
 	 * Resend email verification
+	 *
+	 * NOTE: unverified sub-path, see changePassword() comment above.
 	 */
 	async resendEmailVerification(email: string): Promise<{ data: MessageResponse }> {
-		return this._makeRequest<MessageResponse>('/v1/auth/resend-verification', {
+		return this._makeRequest<MessageResponse>('/api/v1/auth/resend-verification', {
 			method: 'POST',
 			body: JSON.stringify({ email })
 		});
@@ -151,9 +170,11 @@ export class AINativeSDKClient {
 
 	/**
 	 * Verify email with token
+	 *
+	 * NOTE: unverified sub-path, see changePassword() comment above.
 	 */
 	async verifyEmail(token: string): Promise<{ data: MessageResponse }> {
-		return this._makeRequest<MessageResponse>('/v1/auth/verify-email', {
+		return this._makeRequest<MessageResponse>('/api/v1/auth/verify-email', {
 			method: 'POST',
 			body: JSON.stringify({ token })
 		});
