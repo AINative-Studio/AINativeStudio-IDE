@@ -296,6 +296,14 @@ export interface PaginatedToolLogs {
 	 * Whether there's a previous page
 	 */
 	hasPreviousPage: boolean;
+
+	/**
+	 * True when these logs are illustrative sample data rather than real local
+	 * tool execution history (e.g. no tools have run in this workspace yet).
+	 * Consumers MUST surface this to the user via a visible indicator — never
+	 * present sample data as if it were real.
+	 */
+	isSampleData: boolean;
 }
 
 /**
@@ -355,61 +363,18 @@ export interface ToolLogsStatistics {
 		successCount: number;
 		failureCount: number;
 	}[];
+
+	/**
+	 * True when these statistics are illustrative sample data rather than
+	 * derived from real local tool execution history.
+	 */
+	isSampleData?: boolean;
 }
 
 /**
- * Backend API endpoint response format
- *
- * Expected schema for /api/v1/tool-logs endpoint
+ * NOTE: tool execution logs are a local IDE feature sourced from
+ * `IChatThreadService` chat thread history (see toolLogsService.ts) — there is
+ * no AINative Cloud backend endpoint for this, so no backend API response or
+ * real-time WebSocket/SSE update shape is defined here. If a backend-backed
+ * remote log sync is ever added, define those types at that point.
  */
-export interface ToolLogsAPIResponse {
-	/**
-	 * Success flag
-	 */
-	success: boolean;
-
-	/**
-	 * Paginated logs data
-	 */
-	data: PaginatedToolLogs;
-
-	/**
-	 * Statistics (optional)
-	 */
-	statistics?: ToolLogsStatistics;
-
-	/**
-	 * Error message (if success = false)
-	 */
-	error?: string;
-}
-
-/**
- * Real-time tool execution update (WebSocket/SSE)
- */
-export interface ToolExecutionUpdate {
-	/**
-	 * Update type
-	 */
-	type: 'started' | 'progress' | 'completed' | 'error';
-
-	/**
-	 * Log entry ID
-	 */
-	logId: string;
-
-	/**
-	 * Updated log entry
-	 */
-	log: ToolExecutionLog;
-
-	/**
-	 * Progress percentage (0-100) for progress updates
-	 */
-	progress?: number;
-
-	/**
-	 * Status message
-	 */
-	message?: string;
-}
