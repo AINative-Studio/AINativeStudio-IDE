@@ -15,8 +15,27 @@ import {
 } from '../../common/usageTrackingService.js';
 import { IAINativeCloudAuthService, CloudAuthState } from '../../common/ainativeCloudAuthTypes.js';
 import { IAIModelRegistryService } from '../../common/aiModelRegistryService.js';
+import { IAINativeSettingsService } from '../../common/ainativeSettingsService.js';
 import { AIModel, PricingTier, ModelCapability, QuotaInfo, UsageStats } from '../../common/aiModelRegistryTypes.js';
 import { Emitter } from '../../../../../base/common/event.js';
+
+/**
+ * Mock settings service exposing just the `ainativeCloud.apiKey` that
+ * UsageTrackingService reads to authenticate the credits balance fetch.
+ *
+ * The key is empty by default, which keeps the credits sync a no-op in tests:
+ * with no API key configured the service makes no HTTP request.
+ */
+function createMockSettingsService(apiKey: string = ''): IAINativeSettingsService {
+	return {
+		state: {
+			settingsOfProvider: {
+				ainativeCloud: { apiKey }
+			}
+		},
+		onDidChangeState: new Emitter<void>().event
+	} as unknown as IAINativeSettingsService;
+}
 
 /**
  * Mock Storage Service for testing
@@ -279,7 +298,8 @@ suite('UsageTrackingService', () => {
 		usageTrackingService = disposables.add(new UsageTrackingService(
 			cloudAuthService,
 			modelRegistryService,
-			storageService
+			storageService,
+			createMockSettingsService()
 		));
 	});
 
@@ -374,7 +394,7 @@ suite('UsageTrackingService', () => {
 		storageService.store('ainative.usage.records', JSON.stringify(records), StorageScope.APPLICATION, StorageTarget.MACHINE);
 
 		// Create new service instance
-		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService);
+		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService, createMockSettingsService());
 		const usage = await newService.getUsage();
 
 		strictEqual(usage.totalCalls, 1);
@@ -409,7 +429,7 @@ suite('UsageTrackingService', () => {
 		];
 		storageService.store('ainative.usage.records', JSON.stringify(records), StorageScope.APPLICATION, StorageTarget.MACHINE);
 
-		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService);
+		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService, createMockSettingsService());
 		const usage = await newService.getUsage('day');
 
 		// Should only include recent record
@@ -555,7 +575,7 @@ suite('UsageTrackingService', () => {
 		cloudAuthService.setAuthenticated(false);
 
 		// Create new service to attach event listener
-		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService);
+		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService, createMockSettingsService());
 
 		// Authenticate - should trigger sync
 		cloudAuthService.setAuthenticated(true);
@@ -648,7 +668,7 @@ suite('UsageTrackingService', () => {
 		];
 		storageService.store('ainative.usage.records', JSON.stringify(records), StorageScope.APPLICATION, StorageTarget.MACHINE);
 
-		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService);
+		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService, createMockSettingsService());
 		const usage = await newService.getUsage('week');
 
 		strictEqual(usage.totalCalls, 1);
@@ -683,7 +703,7 @@ suite('UsageTrackingService', () => {
 		];
 		storageService.store('ainative.usage.records', JSON.stringify(records), StorageScope.APPLICATION, StorageTarget.MACHINE);
 
-		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService);
+		const newService = new UsageTrackingService(cloudAuthService, modelRegistryService, storageService, createMockSettingsService());
 		const usage = await newService.getUsage('month');
 
 		strictEqual(usage.totalCalls, 1);
@@ -704,7 +724,7 @@ suite('UsageTrackingService', () => {
 		const brokenStorage = new MockStorageService();
 		brokenStorage.store = () => { throw new Error('Storage error'); };
 
-		const brokenService = new UsageTrackingService(cloudAuthService, modelRegistryService, brokenStorage);
+		const brokenService = new UsageTrackingService(cloudAuthService, modelRegistryService, brokenStorage, createMockSettingsService());
 
 		// Should not throw
 		await brokenService.trackUsage('claude-3-opus', 1000, 500);

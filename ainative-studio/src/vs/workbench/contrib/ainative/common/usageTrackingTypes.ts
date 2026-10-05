@@ -423,4 +423,18 @@ export interface CreditsHistory {
 	 * Total tokens in period
 	 */
 	readonly totalTokens: number;
+
+	/**
+	 * Where this history came from (added in issue #147).
+	 *
+	 * - 'backend': authoritative, from `GET /api/v1/managed/usage/history`.
+	 *   Reflects the whole account.
+	 * - 'local': computed from this install's managed usage records, used when
+	 *   there is no JWT session or the backend request failed. Covers only
+	 *   requests made from this install, so it can under-report.
+	 *
+	 * UI showing history should distinguish the two rather than presenting
+	 * local-only figures as a complete account view.
+	 */
+	readonly source: 'backend' | 'local';
 }
