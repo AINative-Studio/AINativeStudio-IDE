@@ -5,97 +5,179 @@
 
 import * as assert from 'assert';
 import { SkillLoader } from '../../../common/skills/skillLoader.js';
+import { ISkillLoader } from '../../../common/skills/skillLoaderTypes.js';
+import { ISkillParser } from '../../../common/skills/skillParserTypes.js';
+import { ISkillsRegistry, RegistryEntry, SkillRefreshResult } from '../../../common/skills/skillRegistryTypes.js';
+import { Skill } from '../../../common/skills/skillTypes.js';
 import { IFileService } from '../../../../../../platform/files/common/files.js';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { NullLogService } from '../../../../../../platform/log/common/log.js';
+import { DisposableStore } from '../../../../../../base/common/lifecycle.js';
 import { URI } from '../../../../../../base/common/uri.js';
 import { VSBuffer } from '../../../../../../base/common/buffer.js';
 
 /**
- * Unit Tests for SkillLoader
- * Following BDD style (describe/it) and TDD principles
- * Coverage target: 100% for core loading logic
+ * Unit tests for SkillLoader's caching contract.
+ *
+ * These use in-memory stand-ins that implement the REAL ISkillsRegistry and
+ * ISkillParser interfaces (from skillRegistryTypes.ts / skillParserTypes.ts),
+ * so a signature drift in either service breaks this suite at compile time.
+ * Fixture-backed integration coverage against the real SkillParser lives in
+ * ../skillLoader.test.ts.
  */
 suite('SkillLoader', () => {
 
 	let loader: SkillLoader;
-	let mockRegistry: any;
-	let mockParser: any;
-	let mockFileService: IFileService;
+	let registry: CountingSkillsRegistry;
+	let parser: CountingSkillParser;
+	let disposables: DisposableStore;
+
+	/** Implements the real ISkillsRegistry and counts resolution calls. */
+	class CountingSkillsRegistry implements ISkillsRegistry {
+		declare readonly _serviceBrand: undefined;
+
+		private readonly entries: Map<string, RegistryEntry> = new Map();
+		getCallCount = 0;
+		listCallCount = 0;
+
+		constructor(skillNames: string[]) {
+			for (const name of skillNames) {
+				this.entries.set(name, {
+					name,
+					version: '1.0.0',
+					installedAt: 0,
+					source: 'local',
+					path: `/home/user/.ainative/skills/${name}`
+				});
+			}
+		}
+
+		async install(skillPath: string): Promise<void> {
+			throw new Error('not used by SkillLoader');
+		}
+
+		async uninstall(skillName: string): Promise<void> {
+			this.entries.delete(skillName);
+		}
+
+		async list(): Promise<RegistryEntry[]> {
+			this.listCallCount++;
+			return Array.from(this.entries.values());
+		}
+
+		async get(skillName: string): Promise<RegistryEntry | null> {
+			this.getCallCount++;
+			return this.entries.get(skillName) ?? null;
+		}
+
+		async isInstalled(skillName: string): Promise<boolean> {
+			return this.entries.has(skillName);
+		}
+
+		async refresh(skillsSourceDir: string): Promise<SkillRefreshResult> {
+			throw new Error('not used by SkillLoader');
+		}
+
+		clearCache(): void {
+			// no-op
+		}
+	}
+
+	/** Implements the real ISkillParser and counts parse calls. */
+	class CountingSkillParser implements ISkillParser {
+		declare readonly _serviceBrand: undefined;
+
+		parseCallCount = 0;
+
+		async parseSkillFile(filePath: string): Promise<Skill> {
+			this.parseCallCount++;
+
+			// Derive the skill name from .../<skill-name>/SKILL.md
+			const segments = filePath.split(/[\\/]/).filter(s => s.length > 0);
+			const name = segments[segments.length - 2] ?? 'unknown';
+
+			return {
+				metadata: {
+					name,
+					description: `Description for ${name}`,
+					version: '2.0.0',
+					tags: ['test']
+				},
+				body: `Body content for ${name}`,
+				resources: [
+					{ type: 'reference', path: `${filePath}/../references/guide.md`, name: 'guide.md' }
+				],
+				fullPath: filePath
+			};
+		}
+
+		async validateSkillFormat(filePath: string): Promise<boolean> {
+			return true;
+		}
+	}
+
+	function createMockFileService(): IFileService {
+		return {
+			readFile: async (uri: URI) => {
+				return { value: VSBuffer.fromString('Reference file content') } as any;
+			}
+		} as any;
+	}
 
 	setup(() => {
-		// Create mocks
-		mockRegistry = createMockRegistry();
-		mockParser = createMockParser();
-		mockFileService = createMockFileService();
+		disposables = new DisposableStore();
+		registry = new CountingSkillsRegistry(['skill-1', 'skill-2', 'skill-3', 'skill-4', 'skill-5', 'skill-6']);
+		parser = new CountingSkillParser();
 
-		loader = new SkillLoader(mockRegistry, mockParser, mockFileService);
+		loader = disposables.add(
+			new SkillLoader(registry, parser, createMockFileService(), new NullLogService())
+		);
+	});
+
+	teardown(() => {
+		disposables.dispose();
+	});
+
+	suite('service contract', () => {
+
+		test('SkillLoader should satisfy ISkillLoader', () => {
+			// Compile-time guard: this assignment fails to build if the class
+			// and the interface drift apart.
+			const asService: ISkillLoader = loader;
+			assert.ok(asService);
+		});
+
+		test('ISkillLoader decorator should be exported for DI registration', () => {
+			// Guards against the loader silently becoming orphaned again: the
+			// service identifier must stay importable by a future call site.
+			assert.ok(ISkillLoader, 'ISkillLoader service decorator should be defined');
+		});
 	});
 
 	suite('loadMetadataOnly', () => {
 
-		test('should load metadata without body', async () => {
-			const skillName = 'test-skill';
+		test('should build a summary from the parser metadata and registry entry', async () => {
+			const summary = await loader.loadMetadataOnly('skill-1');
 
-			mockRegistry.getSkillPath = async (name: string) => {
-				return `/home/.ainative/skills/${name}`;
-			};
-
-			mockParser.parseMetadataOnly = (content: string) => {
-				return {
-					name: skillName,
-					description: 'Test skill description',
-					tags: ['test'],
-					category: 'testing',
-					location: 'project'
-				};
-			};
-
-			const result = await loader.loadMetadataOnly(skillName);
-
-			assert.strictEqual(result.name, skillName);
-			assert.strictEqual(result.description, 'Test skill description');
-			assert.ok(result.tags && result.tags.includes('test'));
+			assert.strictEqual(summary.name, 'skill-1');
+			assert.strictEqual(summary.description, 'Description for skill-1');
+			assert.strictEqual(summary.version, '2.0.0');
+			assert.strictEqual(summary.source, 'local');
+			assert.strictEqual(summary.path, '/home/user/.ainative/skills/skill-1');
+			assert.ok(summary.tags?.includes('test'));
 		});
 
-		test('should cache metadata for subsequent calls', async () => {
-			const skillName = 'cached-skill';
-			let callCount = 0;
+		test('should parse only once across repeated calls', async () => {
+			await loader.loadMetadataOnly('skill-1');
+			assert.strictEqual(parser.parseCallCount, 1);
 
-			mockRegistry.getSkillPath = async (name: string) => {
-				callCount++;
-				return `/home/.ainative/skills/${name}`;
-			};
-
-			mockParser.parseMetadataOnly = (content: string) => {
-				return {
-					name: skillName,
-					description: 'Cached skill',
-					tags: [],
-					category: 'test',
-					location: 'global'
-				};
-			};
-
-			// First call - should read from file
-			await loader.loadMetadataOnly(skillName);
-			const firstCallCount = callCount;
-
-			// Second call - should use cache
-			const result = await loader.loadMetadataOnly(skillName);
-
-			assert.strictEqual(result.name, skillName);
-			// Registry should only be called once (cache hit on second call)
-			assert.strictEqual(callCount, firstCallCount);
+			await loader.loadMetadataOnly('skill-1');
+			assert.strictEqual(parser.parseCallCount, 1, 'Second call should hit the metadata cache');
+			assert.strictEqual(registry.getCallCount, 1, 'Second call should not re-resolve the registry');
 		});
 
-		test('should throw error for missing skill', async () => {
-			mockRegistry.getSkillPath = async (name: string) => {
-				return null;
-			};
-
+		test('should throw when the skill is not installed', async () => {
 			await assert.rejects(
-				async () => await loader.loadMetadataOnly('nonexistent-skill'),
+				() => loader.loadMetadataOnly('nonexistent-skill'),
 				(error: Error) => {
 					assert.ok(error.message.includes('Skill not found'));
 					return true;
@@ -106,109 +188,46 @@ suite('SkillLoader', () => {
 
 	suite('loadFullSkill', () => {
 
-		test('should load body on demand', async () => {
-			const skillName = 'full-skill';
+		test('should return body, resources and fullPath from the parser', async () => {
+			const result = await loader.loadFullSkill('skill-1');
 
-			mockRegistry.getSkillPath = async (name: string) => {
-				return `/home/.ainative/skills/${name}`;
-			};
-
-			mockParser.parseFullSkill = (content: string) => {
-				return {
-					metadata: {
-						name: skillName,
-						description: 'Full skill with body',
-						tags: [],
-						category: 'test',
-						location: 'global'
-					},
-					body: 'This is the full skill body content',
-					resources: []
-				};
-			};
-
-			const result = await loader.loadFullSkill(skillName);
-
-			assert.strictEqual(result.metadata.name, skillName);
-			assert.strictEqual(result.body, 'This is the full skill body content');
-			assert.ok(Array.isArray(result.resources));
+			assert.strictEqual(result.metadata.name, 'skill-1');
+			assert.strictEqual(result.body, 'Body content for skill-1');
+			assert.strictEqual(result.resources.length, 1);
+			assert.strictEqual(result.resources[0].type, 'reference');
+			assert.ok(result.fullPath.endsWith('SKILL.md'));
 		});
 
-		test('should cache full skills in LRU cache', async () => {
-			const skillName = 'lru-skill';
-			let parseCallCount = 0;
+		test('should parse only once across repeated calls', async () => {
+			await loader.loadFullSkill('skill-1');
+			assert.strictEqual(parser.parseCallCount, 1);
 
-			mockRegistry.getSkillPath = async (name: string) => {
-				return `/home/.ainative/skills/${name}`;
-			};
-
-			mockParser.parseFullSkill = (content: string) => {
-				parseCallCount++;
-				return {
-					metadata: {
-						name: skillName,
-						description: 'LRU cached skill',
-						tags: [],
-						category: 'test',
-						location: 'global'
-					},
-					body: 'Body content',
-					resources: []
-				};
-			};
-
-			// First load
-			await loader.loadFullSkill(skillName);
-			const firstParseCount = parseCallCount;
-
-			// Second load - should use cache
-			const result = await loader.loadFullSkill(skillName);
-
-			assert.strictEqual(result.metadata.name, skillName);
-			// Parser should only be called once
-			assert.strictEqual(parseCallCount, firstParseCount);
+			await loader.loadFullSkill('skill-1');
+			assert.strictEqual(parser.parseCallCount, 1, 'Second call should hit the LRU cache');
 		});
 
-		test('should evict oldest skills when cache is full', async () => {
-			// Load 6 skills (cache max is 5)
-			for (let i = 1; i <= 6; i++) {
-				const skillName = `skill-${i}`;
-
-				mockRegistry.getSkillPath = async (name: string) => {
-					return `/home/.ainative/skills/${name}`;
-				};
-
-				mockParser.parseFullSkill = (content: string) => {
-					return {
-						metadata: {
-							name: skillName,
-							description: `Skill ${i}`,
-							tags: [],
-							category: 'test',
-							location: 'global'
-						},
-						body: `Body ${i}`,
-						resources: []
-					};
-				};
-
-				await loader.loadFullSkill(skillName);
+		test('should evict the least recently used skill beyond the cache bound', async () => {
+			// Cache bound is 5; load 6 distinct skills
+			for (const name of ['skill-1', 'skill-2', 'skill-3', 'skill-4', 'skill-5', 'skill-6']) {
+				await loader.loadFullSkill(name);
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const stats = loader.getCacheStats();
+			assert.ok(loader.getCacheStats().fullSkillCount <= 5, 'Cache should not exceed max size');
 
-			// Cache should have max 5 skills
-			assert.ok(stats.fullSkillCount <= 5);
+			// skill-1 was evicted, so it must be re-parsed
+			const parsesBefore = parser.parseCallCount;
+			await loader.loadFullSkill('skill-1');
+			assert.strictEqual(parser.parseCallCount, parsesBefore + 1, 'Evicted skill should be re-parsed');
+
+			// skill-6 is still resident, so it must not be re-parsed
+			const parsesAfter = parser.parseCallCount;
+			await loader.loadFullSkill('skill-6');
+			assert.strictEqual(parser.parseCallCount, parsesAfter, 'Resident skill should stay cached');
 		});
 
-		test('should handle missing skills gracefully', async () => {
-			mockRegistry.getSkillPath = async (name: string) => {
-				return null;
-			};
-
+		test('should throw when the skill is not installed', async () => {
 			await assert.rejects(
-				async () => await loader.loadFullSkill('missing-skill'),
+				() => loader.loadFullSkill('missing-skill'),
 				(error: Error) => {
 					assert.ok(error.message.includes('Skill not found'));
 					return true;
@@ -217,181 +236,96 @@ suite('SkillLoader', () => {
 		});
 	});
 
-	suite('loadReferences', () => {
+	suite('getAllMetadata', () => {
 
-		test('should load reference files on demand', async () => {
-			const skillName = 'skill-with-refs';
-			const refPath = 'references/example.md';
+		test('should enumerate installed skills via registry.list()', async () => {
+			const all = await loader.getAllMetadata();
 
-			mockRegistry.getSkillPath = async (name: string) => {
-				return `/home/.ainative/skills/${name}`;
-			};
+			assert.strictEqual(registry.listCallCount, 1);
+			assert.strictEqual(all.length, 6);
+			assert.ok(all.map(s => s.name).includes('skill-3'));
+		});
+	});
 
-			mockFileService.readFile = async (uri: URI) => {
-				if (uri.path.includes('example.md')) {
-					return { value: VSBuffer.fromString('Reference file content') } as any;
-				}
-				return { value: VSBuffer.fromString('') } as any;
-			};
+	suite('loadReference', () => {
 
-			const content = await loader.loadReference(skillName, refPath);
+		test('should read reference files relative to the registry path', async () => {
+			const content = await loader.loadReference('skill-1', 'references/example.md');
 
 			assert.strictEqual(content, 'Reference file content');
 		});
 
 		test('should not cache reference files', async () => {
-			const skillName = 'skill-with-refs';
-			const refPath = 'references/nocache.md';
-			let readCount = 0;
+			await loader.loadReference('skill-1', 'references/nocache.md');
+			await loader.loadReference('skill-1', 'references/nocache.md');
 
-			mockRegistry.getSkillPath = async (name: string) => {
-				return `/home/.ainative/skills/${name}`;
-			};
+			const stats = loader.getCacheStats();
+			assert.strictEqual(stats.metadataCount, 0, 'References must not populate the metadata cache');
+			assert.strictEqual(stats.fullSkillCount, 0, 'References must not populate the full-skill cache');
+		});
 
-			mockFileService.readFile = async (uri: URI) => {
-				readCount++;
-				return { value: VSBuffer.fromString('Content') } as any;
-			};
+		test('should reject a reference path that escapes the skill directory', async () => {
+			// referencePath can come from a model response, so traversal out of
+			// the skill's own references/ directory must be refused.
+			await assert.rejects(
+				() => loader.loadReference('skill-1', '../../../../../../etc/passwd'),
+				(error: Error) => {
+					assert.ok(error.message.includes('Invalid reference path'));
+					return true;
+				}
+			);
+		});
 
-			// Read twice
-			await loader.loadReference(skillName, refPath);
-			await loader.loadReference(skillName, refPath);
+		test('should reject traversal hidden behind a references/ prefix', async () => {
+			await assert.rejects(
+				() => loader.loadReference('skill-1', 'references/../../skill-2/SKILL.md'),
+				(error: Error) => {
+					assert.ok(error.message.includes('Invalid reference path'));
+					return true;
+				}
+			);
+		});
 
-			// Should be called twice (no caching)
-			assert.strictEqual(readCount, 2);
+		test('should allow a nested path inside references/', async () => {
+			const content = await loader.loadReference('skill-1', 'nested/deep/guide.md');
+
+			assert.strictEqual(content, 'Reference file content');
 		});
 	});
 
 	suite('getCacheStats', () => {
 
-		test('should measure cache hits and misses', async () => {
-			const skillName = 'stats-skill';
+		test('should report hits and misses', async () => {
+			// miss
+			await loader.loadMetadataOnly('skill-1');
+			assert.strictEqual(loader.getCacheStats().hitRatio, 0, 'A single miss means a zero hit ratio');
 
-			mockRegistry.getSkillPath = async (name: string) => {
-				return `/home/.ainative/skills/${name}`;
-			};
-
-			mockParser.parseMetadataOnly = (content: string) => {
-				return {
-					name: skillName,
-					description: 'Stats test',
-					tags: [],
-					category: 'test',
-					location: 'global'
-				};
-			};
-
-			// First call - cache miss
-			await loader.loadMetadataOnly(skillName);
-
-			// Second call - cache hit
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			await loader.loadMetadataOnly(skillName);
-
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		// @ts-expect-error - Unused variable
-		const stats = loader.getCacheStats(); // Test that cache stats can be retrieved
-
-			assert.strictEqual(0, 1);
-			assert.strictEqual(0, 1);
+			// hit
+			await loader.loadMetadataOnly('skill-1');
+			assert.strictEqual(loader.getCacheStats().hitRatio, 0.5, 'One hit and one miss means a 0.5 hit ratio');
 		});
 
 		test('should track metadata cache size', async () => {
-			mockRegistry.getSkillPath = async (name: string) => {
-				return `/home/.ainative/skills/${name}`;
-			};
-
-			mockParser.parseMetadataOnly = (content: string) => {
-				return {
-					name: 'skill',
-					description: 'Test',
-					tags: [],
-					category: 'test',
-					location: 'global'
-				};
-			};
-
-			// Load 3 different skills
 			await loader.loadMetadataOnly('skill-1');
 			await loader.loadMetadataOnly('skill-2');
 			await loader.loadMetadataOnly('skill-3');
 
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const stats = loader.getCacheStats();
-
-			assert.strictEqual(stats.metadataCount, 3);
+			assert.strictEqual(loader.getCacheStats().metadataCount, 3);
 		});
 	});
 
-	suite('invalidateCache', () => {
+	suite('clearCache', () => {
 
-		test('should invalidate cache on skill uninstall', () => {
-			// Load some skills first
-			const skillName = 'to-be-uninstalled';
+		test('should drop every cache and reset counters', async () => {
+			await loader.loadMetadataOnly('skill-1');
+			await loader.loadFullSkill('skill-2');
 
-			mockRegistry.getSkillPath = async (name: string) => {
-				return `/home/.ainative/skills/${name}`;
-			};
-
-			mockParser.parseMetadataOnly = (content: string) => {
-				return {
-					name: skillName,
-					description: 'Will be uninstalled',
-					tags: [],
-					category: 'test',
-					location: 'global'
-				};
-			};
-
-			// Invalidate cache for specific skill
 			loader.clearCache();
 
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const stats = loader.getCacheStats();
-
-			// Cache should be cleared
-			assert.ok(stats);
+			const stats = loader.getCacheStats();
+			assert.strictEqual(stats.metadataCount, 0);
+			assert.strictEqual(stats.fullSkillCount, 0);
+			assert.strictEqual(stats.hitRatio, 0);
 		});
 	});
 });
-
-/**
- * Helper functions to create mocks
- */
-function createMockRegistry(): any {
-	return {
-		getSkillPath: async (name: string) => `/home/.ainative/skills/${name}`,
-		getAllInstalledSkills: async () => ['skill-1', 'skill-2']
-	};
-}
-
-function createMockParser(): any {
-	return {
-		parseMetadataOnly: (content: string) => ({
-			name: 'test-skill',
-			description: 'Test description',
-			tags: [],
-			category: 'test',
-			location: 'global'
-		}),
-		parseFullSkill: (content: string) => ({
-			metadata: {
-				name: 'test-skill',
-				description: 'Test description',
-				tags: [],
-				category: 'test',
-				location: 'global'
-			},
-			body: 'Test body',
-			resources: []
-		})
-	};
-}
-
-function createMockFileService(): IFileService {
-	return {
-		readFile: async (uri: URI) => {
-			return { value: VSBuffer.fromString('---\nname: test\ndescription: test\n---\n\n# Body') } as any;
-		}
-	} as any;
-}

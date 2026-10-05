@@ -31,8 +31,9 @@ async function loadAllMetadataExample(loader: ISkillLoader): Promise<void> {
 		console.log(`\n${skill.name}:`);
 		console.log(`  Description: ${skill.description}`);
 		console.log(`  Tags: ${skill.tags?.join(', ') || 'none'}`);
-		console.log(`  Category: ${skill.category || 'unknown'}`);
-		console.log(`  Location: ${skill.location}`);
+		console.log(`  Version: ${skill.version || 'unknown'}`);
+		console.log(`  Source: ${skill.source}`);
+		console.log(`  Path: ${skill.path}`);
 	});
 
 	console.log(`\nEstimated context size: ~${allMetadata.length * 100} words`);
@@ -59,12 +60,12 @@ async function loadFullSkillExample(loader: ISkillLoader): Promise<void> {
 	console.log(`  Version: ${fullSkill.metadata.version || 'unknown'}`);
 
 	console.log('\nBody:');
-	const bodyPreview = fullSkill.body?.substring(0, 200) || 'No body';
+	const bodyPreview = fullSkill.body.substring(0, 200) || 'No body';
 	console.log(`  ${bodyPreview}...`);
-	console.log(`  Total length: ${fullSkill.body?.length || 0} characters`);
+	console.log(`  Total length: ${fullSkill.body.length} characters`);
 
 	console.log('\nResources:');
-	fullSkill.resources?.forEach(resource => {
+	fullSkill.resources.forEach(resource => {
 		console.log(`  - ${resource.type}: ${resource.path}`);
 	});
 }
@@ -140,7 +141,7 @@ async function cachePerformanceExample(loader: ISkillLoader): Promise<void> {
 	console.log(`Speedup: ${(firstLoad / secondLoad).toFixed(1)}x`);
 
 	// Get cache statistics
-	const stats = (loader as any).getCacheStats();
+	const stats = loader.getCacheStats();
 	console.log('\nCache statistics:');
 	console.log(`  Metadata entries: ${stats.metadataCount}`);
 	console.log(`  Full skills: ${stats.fullSkillCount}`);
@@ -172,7 +173,7 @@ async function progressiveDisclosureWorkflow(loader: ISkillLoader): Promise<void
 	// Phase 3: User invokes a skill - load full body
 	console.log('\nPhase 3: User invokes skill "git-workflow"');
 	const fullSkill = await loader.loadFullSkill('git-workflow');
-	console.log(`✓ Loaded full skill body (${fullSkill.body?.length || 0} characters)`);
+	console.log(`✓ Loaded full skill body (${fullSkill.body.length} characters)`);
 
 	// Phase 4: Claude requests reference file - load on demand
 	console.log('\nPhase 4: Claude requests reference file');

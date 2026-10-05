@@ -4,12 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createDecorator } from '../../../../../platform/instantiation/common/instantiation.js';
+import { SkillMetadata, SkillResource } from './skillTypes.js';
+import { SkillSource } from './skillRegistryTypes.js';
 
 export const ISkillLoader = createDecorator<ISkillLoader>('skillLoader');
 
 /**
  * Lightweight skill summary - always loaded for all skills
  * Target: ~100 words per skill, total ~1000 tokens for 10 skills
+ *
+ * Derived from the canonical SkillMetadata (see skillTypes.ts) parsed by
+ * ISkillParser, enriched with the install location recorded by ISkillsRegistry.
  */
 export interface SkillSummary {
 	/** Unique skill identifier (e.g., 'git-workflow') */
@@ -18,57 +23,30 @@ export interface SkillSummary {
 	description: string;
 	/** Optional tags for filtering and search */
 	tags?: string[];
-	/** Skill category (e.g., 'workflow', 'testing', 'deployment') */
-	category?: string;
-	/** Location type of the skill */
-	location: 'managed' | 'project';
-}
-
-/**
- * Skill metadata parsed from frontmatter
- */
-export interface SkillMetadata {
-	/** Unique skill identifier */
-	name: string;
-	/** Full skill description */
-	description: string;
-	/** Tags for categorization */
-	tags?: string[];
-	/** Skill category */
-	category?: string;
-	/** Location type */
-	location: 'managed' | 'project';
-	/** Version of the skill */
+	/** Semantic version recorded for the installed skill */
 	version?: string;
-	/** Author information */
-	author?: string;
-	/** When to use this skill */
-	useCases?: string[];
-}
-
-/**
- * Reference file information
- */
-export interface SkillResource {
-	/** Type of resource */
-	type: 'reference' | 'example' | 'template';
-	/** Path to the resource file (relative to skill directory) */
+	/** Where the skill was installed from, per the registry entry */
+	source: SkillSource;
+	/** Absolute path to the installed skill directory */
 	path: string;
-	/** Description of the resource */
-	description?: string;
 }
 
 /**
  * Fully loaded skill with body and resources
  * Only loaded on-demand when skill is invoked
+ *
+ * `metadata`, `body` and `resources` come verbatim from ISkillParser so that
+ * the loader never maintains a second, divergent notion of a parsed skill.
  */
 export interface LoadedSkill {
 	/** Skill metadata from frontmatter */
 	metadata: SkillMetadata;
 	/** Full markdown body content (excluding frontmatter) */
-	body?: string;
-	/** List of reference files available */
-	resources?: SkillResource[];
+	body: string;
+	/** Bundled resources discovered in the skill directory */
+	resources: SkillResource[];
+	/** Absolute path to the parsed SKILL.md file */
+	fullPath: string;
 }
 
 /**
@@ -130,6 +108,11 @@ export interface ISkillLoader {
 	 * @param enabledSkills List of enabled skill names
 	 */
 	preloadMetadata(enabledSkills: string[]): Promise<void>;
+
+	/**
+	 * Get cache statistics for monitoring loader performance
+	 */
+	getCacheStats(): CacheStats;
 }
 
 /**
