@@ -520,7 +520,7 @@
 				}
 			},
 			"isOnlyProductionDependency": true,
-			"version": "20.18.3"
+			"version": "24.21.0"
 		},
 		{
 			"component": {
@@ -533,7 +533,7 @@
 			},
 			"isOnlyProductionDependency": true,
 			"license": "MIT",
-			"version": "34.3.2"
+			"version": "43.7.7"
 		},
 		{
 			"component": {

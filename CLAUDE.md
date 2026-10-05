@@ -139,7 +139,7 @@ npx playwright install  # Install test browsers (if needed)
 - `ainative-studio/src/vs/workbench/contrib/void/browser/react/package.json`: React dependencies
 
 ### Key Dependencies
-- Electron 34.3.2, TypeScript, React 19.1.0
+- Electron 43.7.7, TypeScript, React 19.1.0
 - AI SDKs: @anthropic-ai/sdk, openai, @google/genai, @mistralai/mistralai, groq-sdk, ollama
 - Build: Gulp, Webpack, ESLint, Playwright
 
