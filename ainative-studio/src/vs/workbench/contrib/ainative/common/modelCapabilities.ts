@@ -66,8 +66,18 @@ export const defaultProviderSettings = {
 		endpoint: '', // optionally allow overriding default
 	},
 	ainativeCloud: {
-		// JWT-based authentication via AINativeAuthService
-		// No API key needed - uses user session
+		// Chat completions (`POST /api/v1/chat/completions`) authenticate with an
+		// AINative API key sent as the `X-API-Key` header — NOT with the JWT issued
+		// by `/api/v1/auth/login`. JWT bearer auth covers the user-session endpoints
+		// (`/api/v1/auth/*`, `/api/v1/users/me`) and remains only a legacy fallback
+		// for inference. See docs/api/BACKEND_CONTRACT_NOTES.md.
+		//
+		// This key MUST be declared here: `customSettingNamesOfProvider()` derives
+		// the Settings UI fields from `Object.keys(defaultProviderSettings[provider])`,
+		// so an empty object renders no API key input and the stored key stays
+		// undefined forever. Read it as `settingsOfProvider.ainativeCloud.apiKey`,
+		// exactly like every other BYOK provider.
+		apiKey: '',
 	},
 
 } as const

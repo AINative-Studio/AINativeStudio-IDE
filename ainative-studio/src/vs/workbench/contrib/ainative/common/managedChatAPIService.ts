@@ -286,8 +286,36 @@ export interface IManagedChatAPIService {
 export class ManagedChatAPIService extends Disposable implements IManagedChatAPIService {
 	readonly _serviceBrand: undefined;
 
-	// API base URL - production by default
+	// API base URL - production by default.
+	//
+	// VERIFIED (issue #143): the `/api/v1/managed/*` surface exists and is the
+	// correct base for the billed/metered endpoints below — probing it returns
+	// 401 (auth required) rather than 404. Confirmed live:
+	//   POST /api/v1/managed/chat/completions  -> 401
+	//   GET  /api/v1/managed/usage             -> 401
+	//   GET  /api/v1/managed/usage/history     -> 401
+	//   GET  /api/v1/managed/models            -> 401
+	// These endpoints are JWT-authenticated (`Authorization: Bearer <access>`),
+	// which is why this service takes IAINativeCloudAuthService rather than an
+	// API key. Note the distinction from raw inference: the OpenAI-compatible
+	// `POST /api/v1/chat/completions` used by AINativeCloudProvider authenticates
+	// with `X-API-Key` instead. See docs/api/BACKEND_CONTRACT_NOTES.md.
 	private readonly baseURL = 'https://api.ainative.studio/api/v1/managed';
+
+	/**
+	 * Credits balance is NOT under `/api/v1/managed`. The confirmed path is
+	 * `GET /api/v1/public/credits/balance`, authenticated with the `X-API-Key`
+	 * header (the unprefixed `/api/v1/credits/balance` returns 404).
+	 *
+	 * It is a separate call from the chat response — credits are not returned
+	 * inline by chat completions, so `credits_consumed` / `credits_remaining`
+	 * on ChatResponse/UsageStats cannot be assumed to be populated by the chat
+	 * call alone.
+	 *
+	 * Wiring this up (and the `creditsRemaining` sync it feeds) is issue #147's
+	 * scope; it is declared here so the correct path is recorded in one place.
+	 */
+	public static readonly CREDITS_BALANCE_URL = 'https://api.ainative.studio/api/v1/public/credits/balance';
 
 	// Retry configuration for rate limiting
 	private readonly MAX_RETRIES = 3;
@@ -646,6 +674,14 @@ export class ManagedChatAPIService extends Disposable implements IManagedChatAPI
 
 	/**
 	 * Estimate cost for a request
+	 *
+	 * CONTRACT WARNING (issue #143): unlike the other `/api/v1/managed/*` paths,
+	 * `/api/v1/managed/estimate` returns 404 when probed — every sibling endpoint
+	 * returns 401. This path appears not to exist on the current backend, so this
+	 * method should be treated as unverified and will throw at runtime until the
+	 * real path is confirmed with the backend team. Left as-is deliberately:
+	 * replacing it is out of scope for #143 (contract correctness only) and
+	 * belongs with the usage/credits work in #147.
 	 */
 	async estimateCost(model: string, tokens: number): Promise<CostEstimate> {
 		const token = await this._getAccessToken();

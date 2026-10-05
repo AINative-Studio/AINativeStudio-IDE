@@ -118,6 +118,35 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 	readonly _serviceBrand: undefined;
 
 	private static readonly API_BASE = 'https://api.ainative.studio';
+
+	/**
+	 * Live model catalog path (issue #143).
+	 *
+	 * The previous value, `/api/v1/models/list`, is confirmed WRONG — it returns
+	 * 404 on the current backend. The real catalog endpoints are:
+	 *   GET /v1/public/models            (full catalog)
+	 *   GET /v1/public/models/available  (models currently servable)
+	 * both authenticated with the `X-API-Key` header. Both `/v1` and `/api/v1`
+	 * prefixes are served, so `/api/v1/public/models/available` is equivalent.
+	 *
+	 * See docs/api/BACKEND_CONTRACT_NOTES.md.
+	 */
+	private static readonly MODELS_AVAILABLE_ENDPOINT = '/v1/public/models/available';
+
+	/**
+	 * UNVERIFIED endpoints still referenced further down this file (issue #143):
+	 * `/api/v1/models/invoke`, `/api/v1/usage/stats`, `/api/v1/usage/quota` and
+	 * `/api/v1/models/track`. Probing these returns 404 on GET but 405 on POST,
+	 * which is ambiguous — it may be a gateway artifact rather than proof the
+	 * route exists. They were NOT corrected, because guessing a replacement path
+	 * would be worse than leaving a documented unknown. Confirm each with the
+	 * backend team before relying on them.
+	 *
+	 * Note also that billed inference already has a confirmed home:
+	 * `POST /api/v1/managed/chat/completions` (see managedChatAPIService.ts), so
+	 * `/models/invoke` may simply be obsolete.
+	 */
+
 	private static readonly CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 	private readonly _onDidUpdateModels = this._register(new Emitter<AIModel[]>());
@@ -155,6 +184,23 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 
 	/**
 	 * Fetch models from API
+	 *
+	 * SCOPE NOTE (issue #143): the endpoint path below is corrected to the
+	 * confirmed live catalog route, but replacing this service's mock/registry
+	 * data with the live catalog end-to-end is explicitly OUT OF SCOPE for #143
+	 * and is broader roadmap work — it is not owned by #144-#148 either.
+	 *
+	 * TODO(roadmap): two things still need verifying before this can be trusted:
+	 *  1. Auth. The catalog is documented as taking the `X-API-Key` header, not a
+	 *     JWT bearer token. The JWT is sent below only because this service holds
+	 *     IAINativeCloudAuthService and has no access to the provider settings
+	 *     where the API key now lives (`settingsOfProvider.ainativeCloud.apiKey`).
+	 *     Wiring the key in here means injecting the settings service.
+	 *  2. Response shape. `_mapAPIModelsToAIModels(data.models)` assumes a
+	 *     `{ models: [...] }` envelope carried over from the old 404ing
+	 *     `/api/v1/models/list`. The real envelope for `/v1/public/models/available`
+	 *     has NOT been verified (it needs a valid key to inspect), so this mapping
+	 *     is unconfirmed — do not assume `data.models` is correct.
 	 */
 	private async _fetchModelsFromAPI(): Promise<AIModel[]> {
 		const accessToken = await this.cloudAuthService.getAccessToken();
@@ -164,7 +210,7 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 		}
 
 		try {
-			const response = await this._makeApiRequest('/api/v1/models/list', {
+			const response = await this._makeApiRequest(AIModelRegistryService.MODELS_AVAILABLE_ENDPOINT, {
 				method: 'GET',
 				headers: {
 					'Authorization': `Bearer ${accessToken}`,
