@@ -179,11 +179,17 @@ jobs:
         run: |
           if [ -d "VSCode-linux-armhf" ]; then
             cd VSCode-linux-armhf
-            tar --warning=no-file-changed -czf ../ainative-studio-linux-armhf.tar.gz . || true
+            if [ -f "chrome-sandbox" ]; then
+              chmod 4755 chrome-sandbox
+            fi
+            tar --warning=no-file-changed --owner=0 --group=0 --numeric-owner -czf ../ainative-studio-linux-armhf.tar.gz . || true
             cd ..
           elif [ -d "../VSCode-linux-armhf" ]; then
             cd ../VSCode-linux-armhf
-            tar --warning=no-file-changed -czf ainative-studio-linux-armhf.tar.gz . || true
+            if [ -f "chrome-sandbox" ]; then
+              chmod 4755 chrome-sandbox
+            fi
+            tar --warning=no-file-changed --owner=0 --group=0 --numeric-owner -czf ainative-studio-linux-armhf.tar.gz . || true
             mv ainative-studio-linux-armhf.tar.gz ../ainative-studio/
           else
             echo "::error::VSCode-linux-armhf directory not found in current or parent directory!"
@@ -268,17 +274,35 @@ jobs:
       - name: Create DEB package
         working-directory: ainative-studio
         run: |
+          # Derive the package version from the git tag so the control file
+          # doesn't drift from the actual release (falls back to 0.0.0+<sha>
+          # for non-tag builds, e.g. workflow_dispatch off a branch).
+          DEB_VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+          if [ -z "$DEB_VERSION" ]; then
+            DEB_VERSION="0.0.0+$(git rev-parse --short HEAD)"
+          fi
+          echo "Resolved DEB package version: $DEB_VERSION"
+
           mkdir -p deb-package/DEBIAN
           mkdir -p deb-package/opt/ainative-studio
           mkdir -p deb-package/usr/bin
           mkdir -p deb-package/usr/share/applications
           mkdir -p deb-package/usr/share/icons/hicolor/256x256/apps
-          
+
           # Copy application files
           if [ -d "../VSCode-linux-armhf" ]; then
             cp -r ../VSCode-linux-armhf/* deb-package/opt/ainative-studio/
           fi
-          
+
+          # Chromium's sandbox refuses to start unless chrome-sandbox is
+          # owned by root and setuid (mode 4755).
+          if [ -f "deb-package/opt/ainative-studio/chrome-sandbox" ]; then
+            chmod 4755 deb-package/opt/ainative-studio/chrome-sandbox
+          else
+            echo "::error::chrome-sandbox not found in staged deb-package; sandbox will not start after install"
+            exit 1
+          fi
+
           # Create wrapper scripts for command line access
           echo '#!/bin/bash' > deb-package/usr/bin/ainative-studio
           echo 'exec /opt/ainative-studio/void "$@"' >> deb-package/usr/bin/ainative-studio
@@ -305,7 +329,7 @@ jobs:
           # Create control file
           cat > deb-package/DEBIAN/control << 'EOF'
           Package: ainative-studio
-          Version: 1.0.0
+          Version: __DEB_VERSION__
           Section: editors
           Priority: optional
           Architecture: armhf
@@ -328,9 +352,46 @@ jobs:
            environment.
           Depends: libnss3, libatk-bridge2.0-0, libxkbfile1, libsecret-1-0
           EOF
-          
-          # Build DEB package
-          dpkg-deb --build deb-package ainative-studio-linux-armhf.deb
+          sed -i "s/__DEB_VERSION__/${DEB_VERSION}/" deb-package/DEBIAN/control
+
+          # Maintainer script: repairs chrome-sandbox ownership/mode at
+          # install time as defense-in-depth, even though the archive
+          # itself is now built with correct ownership (see below).
+          cat > deb-package/DEBIAN/postinst << 'EOF'
+          #!/bin/sh
+          set -e
+
+          SANDBOX=/opt/ainative-studio/chrome-sandbox
+
+          case "$1" in
+            configure)
+              # Chromium refuses to start rather than run unsandboxed, so this
+              # is required, not cosmetic.
+              if [ -e "$SANDBOX" ]; then
+                chown root:root "$SANDBOX"
+                chmod 4755 "$SANDBOX"
+              fi
+
+              if command -v update-desktop-database >/dev/null 2>&1; then
+                update-desktop-database -q /usr/share/applications || true
+              fi
+              if command -v update-mime-database >/dev/null 2>&1; then
+                update-mime-database /usr/share/mime || true
+              fi
+              ;;
+            abort-upgrade|abort-remove|abort-deconfigure)
+              ;;
+          esac
+
+          exit 0
+          EOF
+          chmod 0755 deb-package/DEBIAN/postinst
+
+          # Build DEB package. --root-owner-group normalizes every file in
+          # the archive to root:root regardless of the build machine's UID
+          # (otherwise the build runner's UID gets baked into all installed
+          # files, which is what broke the sandbox check in the first place).
+          dpkg-deb --root-owner-group --build deb-package ainative-studio-linux-armhf.deb
       
       - name: Create RPM package
         working-directory: ainative-studio
@@ -382,7 +443,12 @@ jobs:
           mkdir -p %{buildroot}/usr/share/icons/hicolor/256x256/apps
           
           cp -r * %{buildroot}/opt/ainative-studio/
-          
+
+          # Chromium refuses to start without a setuid-root sandbox helper.
+          if [ -f "%{buildroot}/opt/ainative-studio/chrome-sandbox" ]; then
+            chmod 4755 %{buildroot}/opt/ainative-studio/chrome-sandbox
+          fi
+
           # Create wrapper scripts
           cat > %{buildroot}/usr/bin/ainative-studio << 'SCRIPT'
           #!/bin/bash
@@ -410,12 +476,14 @@ jobs:
           DESKTOP
           
           %files
-          /opt/ainative-studio/*
+          %defattr(-,root,root,-)
+          %attr(4755, root, root) /opt/ainative-studio/chrome-sandbox
+          /opt/ainative-studio/
           /usr/bin/ainative-studio
           /usr/bin/ainativestudio
           /usr/share/applications/ainative-studio.desktop
           /usr/share/icons/hicolor/256x256/apps/ainative-studio.png
-          
+
           %changelog
           * Wed Jan 01 2025 AINative Studio Team <team@ainativestudio.com> - 1.0.0-1
           - Initial release
