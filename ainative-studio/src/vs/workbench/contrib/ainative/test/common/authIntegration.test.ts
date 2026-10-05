@@ -202,7 +202,8 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 		usageTracking = disposables.add(new UsageTrackingService(
 			authService,
 			null as any,
-			storageService
+			storageService,
+			{ state: { settingsOfProvider: { ainativeCloud: { apiKey: '' } } }, onDidChangeState: () => ({ dispose: () => { } }) } as any
 		));
 
 		modelRegistry = disposables.add(new AIModelRegistryService(

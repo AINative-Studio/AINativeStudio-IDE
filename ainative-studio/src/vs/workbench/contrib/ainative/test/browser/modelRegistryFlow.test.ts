@@ -144,7 +144,8 @@ suite('Model Registry Flow Integration Tests - Issue #47', () => {
 		usageTracking = disposables.add(new UsageTrackingService(
 			authService as any,
 			null as any, // Will be set after modelRegistry creation
-			storageService
+			storageService,
+			{ state: { settingsOfProvider: { ainativeCloud: { apiKey: '' } } }, onDidChangeState: () => ({ dispose: () => { } }) } as any
 		));
 
 		modelRegistry = disposables.add(new AIModelRegistryService(
@@ -526,7 +527,8 @@ suite('Model Registry Flow Integration Tests - Issue #47', () => {
 			const newUsageTracking = disposables.add(new UsageTrackingService(
 				authService as any,
 				modelRegistry,
-				storageService
+				storageService,
+				{ state: { settingsOfProvider: { ainativeCloud: { apiKey: '' } } }, onDidChangeState: () => ({ dispose: () => { } }) } as any
 			));
 
 			const usage = await newUsageTracking.getUsage();

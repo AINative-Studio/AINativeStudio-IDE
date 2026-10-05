@@ -4,8 +4,11 @@ Reference for the IDE's integration with the AINative managed cloud backend.
 Produced by issue #143 ("[BLOCKER] AINative backend contract has drifted since
 IDE integration was built") as the shared foundation for issues #144-#148.
 
-**Last verified:** 2026-10-05 against `https://api.ainative.studio` (live probes)
-and `https://docs.ainative.studio`.
+**Last verified:** 2026-10-05 against `https://api.ainative.studio` (live probes,
+plus the published OpenAPI document at `/openapi.json`) and
+`https://docs.ainative.studio`.
+
+Updated by #147 with the confirmed credits/usage response shapes and section 8.
 
 > Read the "Verification status" column before trusting any row. Some paths are
 > confirmed live, some are documented-only, and a few are explicitly unknown.
@@ -113,13 +116,41 @@ you into thinking the route is missing.
 
 | Method | Path | Auth | Verification |
 | --- | --- | --- | --- |
-| GET | `/api/v1/public/credits/balance` | `X-API-Key` | Live 401 |
+| GET | `/api/v1/public/credits/balance` | `X-API-Key` | Live 401 + OpenAPI |
 
 Two things to internalize here:
 - The `/public/` segment is **required**. `/api/v1/credits/balance` returns 404.
 - This is a **separate call** from chat completions. Credits are *not* returned
   inline on a chat response, so `credits_consumed` / `credits_remaining` cannot
   be read off a chat result. (#147)
+
+**Response shape — now CONFIRMED (#147).** The backend serves its OpenAPI
+document at `https://api.ainative.studio/openapi.json` (no auth required), which
+is the authoritative source for every envelope this file previously listed as
+unverified. Schema `CreditsBalanceResponse`:
+
+```ts
+{
+  total_credits: number;      // integer
+  used_credits: number;
+  remaining_credits: number;
+  unlimited: boolean;         // true on unmetered plans
+  plan: string;               // plan tier, e.g. 'free'
+  period_start: string;
+  period_end?: string | null; // nullable
+  usage_percentage: number;   // 0-100
+}
+```
+
+Note for anyone carrying over the field names from #147's original issue text:
+they were a guess and they were **wrong**. There is no `credits_consumed` /
+`credits_remaining` on this endpoint — those names belong to the chat-completion
+response. Use the names above.
+
+The schema's own description states it is returned "as a bare object, NOT wrapped
+in a success/data envelope (unlike its sibling credits endpoints)" — so do not
+unwrap a `{ success, data }` layer here. Its siblings
+(`/credits/usage/current`, `/credits/transactions`) *are* enveloped.
 
 ### Model catalog
 
@@ -134,10 +165,33 @@ is the full catalog. `/api/v1/public/models/available` is equivalent.
 The previously hard-coded `/api/v1/models/list` is **confirmed 404** and was one
 of the real drifts.
 
-The JSON envelope of these responses is **NOT verified** — inspecting it requires
-a valid API key. `aiModelRegistryService.ts` currently assumes a `{ models: [...] }`
-wrapper carried over from the dead `/models/list` route; treat that as an
-unconfirmed assumption.
+The JSON envelope of these responses was recorded here as **NOT verified** on the
+assumption that inspecting it required a valid API key. That turned out to be
+unnecessary: the backend publishes an unauthenticated OpenAPI document (see
+below), so these envelopes *can* be confirmed without credentials. Doing so for
+the model catalog was out of scope for #147 (which only needed credits/usage),
+but it is now a lookup rather than an unknown — `aiModelRegistryService.ts`'s
+assumed `{ models: [...] }` wrapper should be checked against the document
+rather than left flagged.
+
+### The OpenAPI document (the reliable way to resolve any envelope)
+
+```bash
+curl -s https://api.ainative.studio/openapi.json
+```
+
+Served without auth, ~6.6MB, 3200+ paths. `components.schemas` carries the exact
+request/response shape for every endpoint, including the required/nullable flags
+and worked examples. This is strictly better evidence than a status-code probe
+and should be the first stop for any future response-shape question — several
+rows in this file were marked "unverified" only because this was not known to be
+available.
+
+Caveat on auth: the document declares only `HTTPBearer` / `OAuth2PasswordBearer`
+security schemes and most paths list `security: None`. The `X-API-Key` model is
+**not** represented there (it is enforced via a framework dependency that does
+not surface in the schema), so do not read the document as saying these endpoints
+are unauthenticated or JWT-only. For auth, trust the live probes and section 2.
 
 ### Managed / metered surface
 
@@ -155,7 +209,45 @@ stale; live probing disproved that, so `managedChatAPIService.ts` keeps its
 
 `/api/v1/managed/estimate` is the exception: it 404s where every sibling returns
 401, so `ManagedChatAPIService.estimateCost()` will throw at runtime. Confirm the
-real path with the backend team before relying on it. (#147)
+real path with the backend team before relying on it. The OpenAPI document also
+has no `/managed/estimate` entry, which corroborates the 404 — treat it as
+genuinely absent rather than merely unprobed. (#147)
+
+**Usage/history response shapes — CONFIRMED (#147)** from the OpenAPI document:
+
+`GET /api/v1/managed/usage?period=daily|weekly|monthly` → `CurrentUsageResponse`:
+
+```ts
+{
+  period: string;
+  credits_used: number;
+  credits_remaining: number;   // -1 means unlimited
+  requests_count: number;      // integer
+  total_tokens: number;        // integer
+  models_used: Record<string, number>;
+}
+```
+
+`GET /api/v1/managed/usage/history?days=N` → `UsageHistoryResponse`:
+
+```ts
+{ history: Array<{ date: string; requests: number; credits_used: number; tokens: number }> }
+```
+
+Entries are documented as sorted **date-descending**. `days` defaults to 30 and
+the backend validates the 1-365 range, so clamp before sending.
+
+Two consequences worth recording:
+- A real server-side usage-history endpoint **does exist**. #147 asked whether
+  local-record-derived history was the right permanent design; it is not — the
+  server is authoritative and should be queried first, with local records as a
+  fallback only.
+- The existing `UsageStats` / `UsageHistory` / `DailyUsage` interfaces in
+  `managedChatAPIService.ts` do **not** match these schemas (e.g. `UsageStats`
+  declares `period`/`credits_used` alongside a `models_used` map but is typed
+  against the older guess). Reconciling those interfaces was out of scope for
+  #147, which only consumes `usage/history` and does so via its own locally
+  declared response types. Worth a follow-up.
 
 ### Unverified — do not trust without confirming
 
@@ -304,7 +396,7 @@ that #144-#148 start from a clean, conflict-free base.
   into the provider's new constructor param, so #144 should do exactly that.
 - The `throw` statements in `ainativeSettingsTypes.ts` — #145.
 - Mounting the real auth webview — #146.
-- Usage-tracking sync logic — #147.
+- Usage-tracking sync logic — #147 (**done**, see section 8).
 - Tool logs — #148.
 - Refreshing the stale hard-coded model lists (section 4).
 
@@ -323,5 +415,66 @@ curl -s -o /dev/null -w '%{http_code}\n' https://api.ainative.studio/api/v1/publ
 Remember to check the right HTTP method; `GET` on a POST-only route returns 404
 or 405 and can look like a missing endpoint.
 
+For response shapes, prefer the OpenAPI document over probing — see "The OpenAPI
+document" under the model catalog above:
+
+```bash
+curl -s https://api.ainative.studio/openapi.json | \
+  python3 -c "import json,sys; s=json.load(sys.stdin); print(json.dumps(s['components']['schemas']['CreditsBalanceResponse'],indent=2))"
+```
+
 To stop this drifting silently again, #143's issue thread suggests committing the
-backend's OpenAPI spec (or a generated TS client) into this repo.
+backend's OpenAPI spec (or a generated TS client) into this repo. #147 strongly
+seconds this: the document is fetchable unauthenticated, so a CI job that diffs
+the committed copy against live would have caught every drift in this file
+automatically.
+
+---
+
+## 8. Usage tracking / credits sync (#147)
+
+`common/usageTrackingService.ts` previously never called the backend — both
+`_syncCreditsStatus()` and `getCreditsHistory()` were local-only placeholders.
+Now:
+
+**Credits balance** — `_syncCreditsStatus()` calls
+`GET /api/v1/public/credits/balance` with `X-API-Key`, reading the key from
+`settingsOfProvider.ainativeCloud.apiKey` (section 5).
+
+The auth gate #143 flagged is fixed: the fetch is gated on **having a configured
+API key**, not on `cloudAuthService.isAuthenticated()`. That method reports
+whether a JWT session exists, which is an unrelated precondition for an
+`X-API-Key` endpoint — it previously denied a correctly-keyed install its own
+balance. The same wrong gate was also removed from `getCreditsStatus()` and
+`trackManagedUsage()`. **Do not reintroduce it in a credits path.** The
+`isAuthenticated()` checks that remain in this service are all on *quota* paths,
+which genuinely are JWT-authed via the model registry.
+
+Other behaviour worth knowing:
+- Rate limited to one balance fetch per 30s, with concurrent callers sharing one
+  in-flight request, because `trackManagedUsage()` syncs after every chat turn.
+  Between fetches a local optimistic delta keeps the UI responsive; the next
+  real fetch overwrites it with authoritative state.
+- A 401/403 is treated as non-retryable configuration error (section 2a) rather
+  than being retried on the timer.
+- On any failure the cached status is **retained**, never clobbered with zeroes,
+  so a transient network error cannot make the UI claim zero credits.
+- `unlimited: true` suppresses the low-credits warning entirely, and
+  `onCreditsLow` fires only on the transition into the low state, not on every
+  periodic sync.
+
+**Triggers:** IDE startup; whenever the `ainativeCloud` API key changes in
+settings (via `onDidChangeState`, since a pasted key raises no auth event); on
+transition to authenticated; every 5 minutes on the existing sync timer; and
+after each managed chat request (subject to the rate limit).
+
+**History** — `getCreditsHistory()` queries
+`GET /api/v1/managed/usage/history?days=N` (JWT, since it is on the `/managed`
+surface) and falls back to local managed-usage records when there is no session
+or the request fails. So the two credits features deliberately have *different*
+preconditions — balance needs an API key, history needs a JWT — which follows
+from the backend's two auth models rather than being an oversight.
+
+`CreditsHistory` gained a `source: 'backend' | 'local'` field so UI can tell the
+authoritative account-wide figures from the local fallback, which only sees
+requests made from this install and therefore under-reports.

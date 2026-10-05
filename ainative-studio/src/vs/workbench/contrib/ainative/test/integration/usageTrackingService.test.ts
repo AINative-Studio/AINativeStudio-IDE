@@ -12,10 +12,29 @@ import * as assert from 'assert';
 import { UsageTrackingService, IUsageTrackingService, UsageRecord } from '../../common/usageTrackingService.js';
 import { IAINativeCloudAuthService } from '../../common/ainativeCloudAuthTypes.js';
 import { IAIModelRegistryService } from '../../common/aiModelRegistryService.js';
+import { IAINativeSettingsService } from '../../common/ainativeSettingsService.js';
 import { AIModel, PricingTier, QuotaInfo } from '../../common/aiModelRegistryTypes.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { Emitter } from '../../../../../base/common/event.js';
+
+/**
+ * Mock settings service exposing just the `ainativeCloud.apiKey` that
+ * UsageTrackingService reads to authenticate the credits balance fetch.
+ *
+ * The key is empty by default, which keeps the credits sync a no-op in tests:
+ * with no API key configured the service makes no HTTP request.
+ */
+function createMockSettingsService(apiKey: string = ''): IAINativeSettingsService {
+	return {
+		state: {
+			settingsOfProvider: {
+				ainativeCloud: { apiKey }
+			}
+		},
+		onDidChangeState: new Emitter<void>().event
+	} as unknown as IAINativeSettingsService;
+}
 
 /**
  * Mock storage service
@@ -271,7 +290,8 @@ suite('UsageTrackingService - Integration Tests', () => {
 		usageTrackingService = new UsageTrackingService(
 			authService,
 			modelRegistryService,
-			storageService
+			storageService,
+			createMockSettingsService()
 		);
 	});
 
@@ -554,7 +574,8 @@ suite('UsageTrackingService - Integration Tests', () => {
 			const newService = new UsageTrackingService(
 				authService,
 				modelRegistryService,
-				storageService
+				storageService,
+				createMockSettingsService()
 			);
 
 			// Should load the stored data
@@ -700,7 +721,8 @@ suite('UsageTrackingService - Integration Tests', () => {
 			const newService = new UsageTrackingService(
 				authService,
 				modelRegistryService,
-				storageService
+				storageService,
+				createMockSettingsService()
 			);
 
 			assert.ok(newService);
