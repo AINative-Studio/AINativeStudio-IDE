@@ -708,6 +708,21 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 	/**
 	 * Sync credits status with backend
 	 * NOTE: This is a placeholder implementation. Will be replaced with actual ManagedChatAPIService call.
+	 *
+	 * CONFIRMED CONTRACT (issue #143) for whoever implements this in #147:
+	 *  - Balance comes from `GET /api/v1/public/credits/balance`, authenticated
+	 *    with the `X-API-Key` header (NOT a JWT bearer token, and NOT under the
+	 *    `/api/v1/managed` prefix — `/api/v1/credits/balance` returns 404).
+	 *    Available as `ManagedChatAPIService.CREDITS_BALANCE_URL`.
+	 *  - This is a SEPARATE call from chat completions. Credits are not returned
+	 *    inline on the chat response, so `creditsConsumed` cannot be read off a
+	 *    chat result — it must be derived locally or re-fetched from the balance
+	 *    endpoint after the call.
+	 *  - The `isAuthenticated()` JWT gate below is therefore the wrong
+	 *    precondition for a balance fetch: an install with a valid API key but no
+	 *    JWT session can still read its balance. Revisit this guard in #147.
+	 *
+	 * See docs/api/BACKEND_CONTRACT_NOTES.md.
 	 */
 	private async _syncCreditsStatus(): Promise<void> {
 		if (!this.cloudAuthService.isAuthenticated()) {
@@ -716,8 +731,11 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 		}
 
 		try {
-			// TODO: Replace with actual backend API call
-			// const status = await this.managedChatAPI.getUserUsage('monthly');
+			// TODO(#147): Replace with a real call to
+			// `GET /api/v1/public/credits/balance` (X-API-Key auth) — see the
+			// confirmed contract in this method's doc comment. The previously
+			// suggested `getUserUsage('monthly')` is a usage-stats call, not the
+			// credits balance, so it is not a drop-in substitute.
 
 			// For now, calculate from local records or use cached status
 			if (!this._creditsStatus) {

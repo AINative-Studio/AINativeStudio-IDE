@@ -8,6 +8,9 @@ import { OnText, OnFinalMessage, OnError, AnthropicReasoning } from '../../../co
 
 /**
  * Chat completion parameters for AINative Cloud API
+ *
+ * Mirrors the confirmed request schema of `POST /api/v1/chat/completions`
+ * (OpenAI-compatible). See docs/api/BACKEND_CONTRACT_NOTES.md.
  */
 export interface ChatCompletionParams {
 	model: string;
@@ -16,8 +19,19 @@ export interface ChatCompletionParams {
 		content: string;
 	}>;
 	stream: boolean;
+	/** Backend default is 4096 when omitted. */
 	max_tokens?: number;
+	/** Backend default is 0.7 when omitted. Valid range 0.0 - 2.0. */
 	temperature?: number;
+	/** Backend default is 1.0 when omitted. */
+	top_p?: number;
+	/** System prompt, sent as a top-level field rather than a system-role message. */
+	system?: string;
+	/**
+	 * Per-request API key override. When omitted, the key supplied to the
+	 * constructor (sourced from the `ainativeCloud` provider settings) is used.
+	 */
+	apiKey?: string;
 	onText: OnText;
 	onFinalMessage: OnFinalMessage;
 	onError: OnError;
@@ -28,7 +42,19 @@ export interface ChatCompletionParams {
 }
 
 /**
- * Server-Sent Event chunk from AINative Cloud API
+ * Server-Sent Event chunk from AINative Cloud API.
+ *
+ * The OpenAI-compatible `/api/v1/chat/completions` endpoint emits
+ * `choices[].delta`-shaped chunks terminated by `data: [DONE]`, which is what
+ * the parser below consumes.
+ *
+ * NOTE for whoever wires streaming end-to-end: the docs also describe
+ * Anthropic-style SSE event types (`message_start`, `content_block_delta`,
+ * `message_delta`, `message_stop`) which belong to the Anthropic-format
+ * `POST /v1/messages` endpoint, and the docs state non-streaming is more
+ * reliable for AINative-hosted models. If a `message_start` style frame ever
+ * shows up on this endpoint, the parser needs a second branch — it is
+ * deliberately not speculated on here.
  */
 interface SSEChunk {
 	id?: string;
@@ -46,21 +72,67 @@ interface SSEChunk {
 }
 
 /**
- * LLM provider for AINative Cloud backend
- * Handles JWT authentication, SSE streaming, and automatic token refresh
+ * LLM provider for AINative Cloud backend.
+ *
+ * Auth model (confirmed against https://docs.ainative.studio, see
+ * BACKEND_CONTRACT_NOTES.md):
+ *  - The chat-completions call authenticates with an **API key** via the
+ *    `X-API-Key` header. Permanent account keys are `sk_`-prefixed; temporary
+ *    instant-db keys (`tmp_`, 72h) and claimed-project keys (`zdb_live_`) are
+ *    also accepted. Keys from other vendors (e.g. `sk-ant-`) are rejected 401.
+ *  - JWT bearer auth belongs to the `/api/v1/auth/*` user-session endpoints
+ *    (login/register/refresh/logout) and is NOT accepted interchangeably here,
+ *    so `IAINativeAuthService` is retained only as an optional fallback for
+ *    installs that still carry a session token.
  */
 export class AINativeCloudProvider {
 	private static readonly API_BASE = 'https://api.ainative.studio';
-	private static readonly CHAT_COMPLETIONS_ENDPOINT = '/v1/chat/completions';
+	/**
+	 * Confirmed OpenAI-compatible chat endpoint. Note the `/api` prefix — the
+	 * previous value (`/v1/chat/completions`) was wrong and 404'd.
+	 * (An Anthropic-format `POST /v1/messages` also exists but does not match
+	 * the OpenAI-shaped types used throughout this codebase.)
+	 */
+	private static readonly CHAT_COMPLETIONS_ENDPOINT = '/api/v1/chat/completions';
+	private static readonly API_KEY_HEADER = 'X-API-Key';
 	private static readonly MAX_RETRIES = 1;
 
+	/**
+	 * @param authService JWT session service, kept for `/api/v1/auth/*` session
+	 *   concerns and used only as a fallback credential when no API key is set.
+	 * @param apiKey The `ainativeCloud` provider API key from settings
+	 *   (`settingsOfProvider.ainativeCloud.apiKey`). Preferred credential.
+	 */
 	constructor(
-		private readonly authService: IAINativeAuthService
+		private readonly authService: IAINativeAuthService,
+		private readonly apiKey?: string | undefined
 	) { }
 
 	/**
-	 * Send chat completion request with streaming support
-	 * Auto-refreshes JWT on 401 errors and retries
+	 * Resolve the credential and the header it must be sent under.
+	 *
+	 * An API key is preferred and is sent as `X-API-Key`. If no key is
+	 * configured we fall back to the JWT session token as a bearer token so
+	 * existing logged-in installs degrade gracefully rather than hard-failing.
+	 */
+	private async resolveAuthHeaders(perRequestApiKey?: string): Promise<Record<string, string> | null> {
+		const apiKey = perRequestApiKey || this.apiKey;
+		if (apiKey) {
+			return { [AINativeCloudProvider.API_KEY_HEADER]: apiKey };
+		}
+
+		const token = await this.authService.getToken();
+		if (token) {
+			return { 'Authorization': `Bearer ${token}` };
+		}
+
+		return null;
+	}
+
+	/**
+	 * Send chat completion request with streaming support.
+	 * On 401 with a JWT fallback credential, refreshes the token and retries
+	 * once. A rejected API key is not retryable, so it surfaces immediately.
 	 */
 	async sendChatCompletion(params: ChatCompletionParams): Promise<void> {
 		const {
@@ -69,6 +141,9 @@ export class AINativeCloudProvider {
 			stream,
 			max_tokens = 4096,
 			temperature,
+			top_p,
+			system,
+			apiKey: perRequestApiKey,
 			onText,
 			onFinalMessage,
 			onError,
@@ -81,12 +156,16 @@ export class AINativeCloudProvider {
 
 		while (retryCount <= AINativeCloudProvider.MAX_RETRIES) {
 			try {
-				// Get current JWT token
-				const token = await this.authService.getToken();
-				if (!token) {
-					onError({ message: 'Not authenticated. Please log in to AINative Cloud.', fullError: null });
+				// Resolve credential: API key (X-API-Key) preferred, JWT bearer as fallback
+				const authHeaders = await this.resolveAuthHeaders(perRequestApiKey);
+				if (!authHeaders) {
+					onError({
+						message: 'Not authenticated. Add your AINative Cloud API key in Settings, or log in to AINative Cloud.',
+						fullError: null
+					});
 					return;
 				}
+				const usingApiKey = AINativeCloudProvider.API_KEY_HEADER in authHeaders;
 
 				// Test hooks for simulating errors
 				if (_simulateNetworkError && retryCount === 0) {
@@ -105,11 +184,17 @@ export class AINativeCloudProvider {
 				if (temperature !== undefined) {
 					requestBody.temperature = temperature;
 				}
+				if (top_p !== undefined) {
+					requestBody.top_p = top_p;
+				}
+				if (system !== undefined) {
+					requestBody.system = system;
+				}
 
 				const response = await fetch(url, {
 					method: 'POST',
 					headers: {
-						'Authorization': `Bearer ${token}`,
+						...authHeaders,
 						'Content-Type': 'application/json'
 					},
 					body: JSON.stringify(requestBody),
@@ -119,7 +204,18 @@ export class AINativeCloudProvider {
 				// Test hook for simulating 401
 				const is401 = !response.ok && (response.status === 401 || _simulateAuthError);
 
-				// Handle 401 - refresh token and retry
+				if (is401 && usingApiKey) {
+					// An API key rejection is not recoverable by refreshing — fail fast
+					// with actionable guidance instead of burning a retry.
+					const errorBody = await response.text().catch(() => '');
+					onError({
+						message: 'AINative Cloud rejected the API key (401). Check the key in Settings — it must be an AINative key (`sk_`, `tmp_`, or `zdb_live_` prefixed), not a key from another provider such as `sk-ant-...`.',
+						fullError: errorBody ? new Error(errorBody) : null
+					});
+					return;
+				}
+
+				// Handle 401 on the JWT fallback path - refresh token and retry
 				if (is401 && retryCount < AINativeCloudProvider.MAX_RETRIES) {
 					const newToken = await this.authService.refreshToken();
 					if (!newToken) {

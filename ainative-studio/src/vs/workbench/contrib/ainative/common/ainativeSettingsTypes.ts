@@ -159,7 +159,11 @@ export const displayInfoOfSettingName = (providerName: ProviderName, settingName
 												providerName === 'googleVertex' ? 'AIzaSy...' :
 													providerName === 'microsoftAzure' ? 'key-...' :
 														providerName === 'awsBedrock' ? 'key-...' :
-															'',
+															// AINative permanent account keys are `sk_`-prefixed. Temporary
+															// instant-db keys (`tmp_`, 72h) and claimed-project keys
+															// (`zdb_live_`) are also accepted by the backend.
+															providerName === 'ainativeCloud' ? 'sk_key...' :
+																'',
 
 			isPasswordField: true,
 		}
@@ -265,15 +269,15 @@ export const defaultSettingsOfProvider: SettingsOfProvider = {
 		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.anthropic),
 		_didFillInProviderSettings: undefined,
 	},
+	// Follows the same spread pattern as every other provider so that the
+	// `apiKey` declared in `defaultProviderSettings.ainativeCloud` (sent as the
+	// `X-API-Key` header on /api/v1/chat/completions) is typed as a string and
+	// surfaces in the Settings UI. See docs/api/BACKEND_CONTRACT_NOTES.md.
 	ainativeCloud: {
+		...defaultCustomSettings,
+		...defaultProviderSettings.ainativeCloud,
+		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.ainativeCloud),
 		_didFillInProviderSettings: undefined,
-		models: [],
-		apiKey: undefined,
-		project: undefined,
-		region: undefined,
-		endpoint: undefined,
-		headersJSON: undefined,
-		azureApiVersion: undefined,
 	},
 	openAI: {
 		...defaultCustomSettings,
