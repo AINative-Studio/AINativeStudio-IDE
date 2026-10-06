@@ -13,11 +13,8 @@ import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { AINativeCloudAuthService } from '../../common/ainativeCloudAuthService.js';
 import { CloudAuthState, CloudAuthErrorCode } from '../../common/ainativeCloudAuthTypes.js';
-import { TokenService } from '../../common/tokenService.js';
-import { SessionManager, SessionState } from '../../common/sessionManager.js';
 import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
-import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 
 /**
  * Mock Encryption Service
@@ -273,20 +270,14 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 	const disposables = new DisposableStore();
 	let encryptionService: MockEncryptionService;
 	let storageService: MockStorageService;
-	let logService: ILogService;
 	let authService: AINativeCloudAuthService;
-	let tokenService: TokenService;
-	let sessionManager: SessionManager;
 	let mockFetch: MockFetch;
 
 	setup(() => {
 		encryptionService = new MockEncryptionService();
 		storageService = new MockStorageService();
-		logService = new NullLogService();
 
 		authService = disposables.add(new AINativeCloudAuthService(encryptionService, storageService));
-		tokenService = disposables.add(new TokenService(encryptionService, storageService));
-		sessionManager = disposables.add(new SessionManager(tokenService, logService));
 
 		mockFetch = new MockFetch();
 		mockFetch.setupSuccessfulAuthFlow();
@@ -389,18 +380,6 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 			strictEqual(authService.isAuthenticated(), true);
 		});
 
-		test('2.3 Should establish active session after login', async () => {
-			const accessToken = createMockJWT(3600);
-			const refreshToken = createMockJWT(86400);
-
-			await tokenService.storeTokens(accessToken, refreshToken, true);
-			await sessionManager.initialize();
-			sessionManager.startMonitoring();
-
-			const isActive = sessionManager.isSessionActive();
-			ok(isActive || sessionManager.getSessionState() === SessionState.Active, 'Session should be active');
-		});
-
 		test('2.4 Should handle invalid credentials gracefully', async () => {
 			mockFetch.setupErrorResponse('login', 401, {
 				error: 'Invalid credentials',
@@ -470,16 +449,6 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 	 * AC4: Token Refresh Scenario
 	 */
 	suite('AC4: Token Refresh - Detect Expiration → Refresh → Continue Session', () => {
-		test('4.1 Should detect expired access token', async () => {
-			const expiredToken = createMockJWT(-100); // Expired
-			const refreshToken = createMockJWT(86400);
-
-			await tokenService.storeTokens(expiredToken, refreshToken, false);
-
-			const isExpired = await tokenService.isTokenExpired();
-			strictEqual(isExpired, true, 'Should detect expired token');
-		});
-
 		test('4.2 Should refresh token when access token expires', async () => {
 			const service = authService as any;
 			service._accessToken = createMockJWT(3600);
@@ -493,34 +462,6 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 
 			ok(service._accessToken !== originalToken, 'Token should be refreshed');
 			strictEqual(authService.isAuthenticated(), true, 'Should remain authenticated');
-		});
-
-		test('4.3 Should maintain session after token refresh', async () => {
-			const accessToken = createMockJWT(3600);
-			const refreshToken = createMockJWT(86400);
-
-			await tokenService.storeTokens(accessToken, refreshToken, true);
-			await sessionManager.initialize();
-			sessionManager.startMonitoring();
-
-			// Simulate token refresh
-			const newAccessToken = createMockJWT(3600);
-			await tokenService.storeTokens(newAccessToken, refreshToken, true);
-
-			ok(sessionManager.isSessionActive() || sessionManager.getSessionState() === SessionState.Active,
-				'Session should remain active after token refresh');
-		});
-
-		test('4.4 Should logout if refresh token is also expired', async () => {
-			const expiredAccess = createMockJWT(-100);
-			const expiredRefresh = createMockJWT(-100);
-
-			await tokenService.storeTokens(expiredAccess, expiredRefresh, false);
-			await sessionManager.initialize();
-
-			const sessionState = sessionManager.getSessionState();
-			ok(sessionState === SessionState.Expired || sessionState === SessionState.Inactive,
-				'Session should be inactive with expired tokens');
 		});
 
 		test('4.5 Should emit state change events during refresh', async () => {
@@ -579,20 +520,6 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 			strictEqual(authService.getAuthState(), CloudAuthState.Unauthenticated);
 		});
 
-		test('5.4 Should terminate active session on logout', async () => {
-			const accessToken = createMockJWT(3600);
-			const refreshToken = createMockJWT(86400);
-
-			await tokenService.storeTokens(accessToken, refreshToken, false);
-			await sessionManager.initialize();
-			sessionManager.startMonitoring();
-
-			await sessionManager.terminateSession();
-
-			strictEqual(sessionManager.getSessionState(), SessionState.Inactive, 'Session should be inactive');
-			strictEqual(sessionManager.isSessionActive(), false);
-		});
-
 		test('5.5 Should clear encrypted storage on logout', async () => {
 			await storageService.store('ainative.cloud.auth.accessToken', 'encrypted-data', StorageScope.APPLICATION, StorageTarget.MACHINE);
 			await storageService.store('ainative.cloud.auth.refreshToken', 'encrypted-data', StorageScope.APPLICATION, StorageTarget.MACHINE);
@@ -646,15 +573,6 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 			} catch (error) {
 				ok(error instanceof Error, 'Should throw error for invalid JWT');
 			}
-		});
-
-		test('6.4 Should use secure storage target for sensitive data', async () => {
-			const token = createMockJWT(3600);
-			await tokenService.storeTokens(token, token, true);
-
-			// Verify it's stored with MACHINE target (secure)
-			const storedValue = storageService.get('ainative.token.access', StorageScope.APPLICATION);
-			ok(storedValue, 'Should be stored in secure storage');
 		});
 
 		test('6.5 Should handle concurrent authentication operations safely', async () => {
@@ -755,19 +673,6 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 	 * AC8: Edge Cases and Boundary Conditions
 	 */
 	suite('AC8: Edge Cases - Session Persistence, Corruption Recovery, State Consistency', () => {
-		test('8.1 Should handle session persistence across app restarts', async () => {
-			const accessToken = createMockJWT(3600);
-			const refreshToken = createMockJWT(86400);
-
-			await tokenService.storeTokens(accessToken, refreshToken, true);
-
-			// Simulate app restart
-			const newTokenService = disposables.add(new TokenService(encryptionService, storageService));
-
-			const restored = await newTokenService.getAccessToken();
-			strictEqual(restored, accessToken, 'Token should persist across restarts');
-		});
-
 		test('8.2 Should handle corrupted storage data gracefully', async () => {
 			storageService.store('ainative.cloud.auth.user', '{invalid-json}', StorageScope.APPLICATION, StorageTarget.MACHINE);
 

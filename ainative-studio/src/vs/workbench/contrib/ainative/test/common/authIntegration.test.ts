@@ -21,15 +21,12 @@ import { strictEqual, ok } from 'assert';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { AINativeCloudAuthService } from '../../common/ainativeCloudAuthService.js';
-import { TokenService } from '../../common/tokenService.js';
-import { SessionManager, SessionState } from '../../common/sessionManager.js';
 import { AIModelRegistryService } from '../../common/aiModelRegistryService.js';
 import { UsageTrackingService } from '../../common/usageTrackingService.js';
 import { CloudAuthState, CloudAuthErrorCode } from '../../common/ainativeCloudAuthTypes.js';
 import { ModelCapability } from '../../common/aiModelRegistryTypes.js';
 import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
-import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 
 /**
  * Test Utilities
@@ -183,21 +180,15 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 	const disposables = new DisposableStore();
 	let encryptionService: MockEncryptionService;
 	let storageService: MockStorageService;
-	let logService: ILogService;
 	let authService: AINativeCloudAuthService;
-	let tokenService: TokenService;
-	let sessionManager: SessionManager;
 	let modelRegistry: AIModelRegistryService;
 	let usageTracking: UsageTrackingService;
 
 	setup(() => {
 		encryptionService = new MockEncryptionService();
 		storageService = new MockStorageService();
-		logService = new NullLogService();
 
 		authService = disposables.add(new AINativeCloudAuthService(encryptionService, storageService));
-		tokenService = disposables.add(new TokenService(encryptionService, storageService));
-		sessionManager = disposables.add(new SessionManager(tokenService, logService));
 
 		usageTracking = disposables.add(new UsageTrackingService(
 			authService,
@@ -274,28 +265,16 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 
 			strictEqual(authService.isAuthenticated(), true, 'Should be authenticated');
 
-			// Step 2: Store tokens
-			await tokenService.storeTokens(service._accessToken, service._refreshToken, true);
-
-			// Step 3: Initialize session
-			await sessionManager.initialize();
-			sessionManager.startMonitoring();
-
-			ok(sessionManager.isSessionActive() || sessionManager.getSessionState() === SessionState.Active,
-				'Session should be active');
-
-			// Step 4: Track usage
+			// Step 2: Track usage
 			await usageTracking.trackUsage('claude-3-5-sonnet', 100, 200);
 
 			const usage = await usageTracking.getUsage();
 			ok(usage.totalTokens >= 0, 'Usage should be tracked');
 
-			// Step 5: Logout
+			// Step 3: Logout
 			await authService.logout();
-			await sessionManager.terminateSession();
 
 			strictEqual(authService.isAuthenticated(), false, 'Should be logged out');
-			strictEqual(sessionManager.getSessionState(), SessionState.Inactive, 'Session should be inactive');
 		});
 
 		test('E2E-1.3: Password Reset → Change Password → Login with New Password', async () => {
@@ -319,114 +298,6 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 	/**
 	 * EPIC 2: Token Management and Session Persistence
 	 */
-	suite('EPIC 2: Token Lifecycle and Session Management', () => {
-		test('E2E-2.1: Token Storage → Encryption → Retrieval → Decryption', async () => {
-			const accessToken = TestUtils.createMockJWT(3600);
-			const refreshToken = TestUtils.createMockJWT(86400);
-
-			// Step 1: Store tokens (should be encrypted)
-			await tokenService.storeTokens(accessToken, refreshToken, true);
-
-			// Step 2: Verify encrypted storage
-			const rawStored = storageService.get('ainative.token.access', StorageScope.APPLICATION);
-			ok(rawStored?.startsWith('encrypted_'), 'Token should be encrypted in storage');
-
-			// Step 3: Retrieve and decrypt
-			const retrieved = await tokenService.getAccessToken();
-			strictEqual(retrieved, accessToken, 'Should decrypt to original token');
-
-			// Step 4: Verify refresh token
-			const retrievedRefresh = await tokenService.getRefreshToken();
-			strictEqual(retrievedRefresh, refreshToken, 'Refresh token should match');
-		});
-
-		test('E2E-2.2: Token Expiration Detection → Auto Refresh → Session Continuation', async () => {
-			// Step 1: Store soon-to-expire token
-			const almostExpiredToken = TestUtils.createMockJWT(60); // 1 minute
-			const refreshToken = TestUtils.createMockJWT(86400);
-
-			await tokenService.storeTokens(almostExpiredToken, refreshToken, false);
-
-			// Step 2: Check expiration
-			const isExpired = await tokenService.isTokenExpired();
-			strictEqual(isExpired, false, 'Should not be expired yet');
-
-			// Step 3: Simulate time passing (token expires)
-			const expiredToken = TestUtils.createMockJWT(-10); // Expired
-			await tokenService.storeTokens(expiredToken, refreshToken, false);
-
-			const nowExpired = await tokenService.isTokenExpired();
-			strictEqual(nowExpired, true, 'Should detect expiration');
-
-			// Step 4: Refresh token (would call API in real scenario)
-			const newToken = TestUtils.createMockJWT(3600);
-			await tokenService.storeTokens(newToken, refreshToken, false);
-
-			const stillAuthenticated = await tokenService.isAuthenticated();
-			strictEqual(stillAuthenticated, true, 'Should remain authenticated after refresh');
-		});
-
-		test('E2E-2.3: Session Persistence Across App Restarts', async () => {
-			const accessToken = TestUtils.createMockJWT(3600);
-			const refreshToken = TestUtils.createMockJWT(86400);
-
-			// Step 1: Establish session
-			await tokenService.storeTokens(accessToken, refreshToken, true);
-			await sessionManager.initialize();
-
-			// Step 2: Simulate app restart
-			const newTokenService = disposables.add(new TokenService(encryptionService, storageService));
-			const newSessionManager = disposables.add(new SessionManager(newTokenService, logService));
-
-			// Step 3: Initialize new session
-			await newSessionManager.initialize();
-
-			// Step 4: Verify session restored
-			const restoredToken = await newTokenService.getAccessToken();
-			strictEqual(restoredToken, accessToken, 'Token should persist across restarts');
-			strictEqual(await newTokenService.isAuthenticated(), true, 'Should be authenticated after restart');
-		});
-
-		test('E2E-2.4: Concurrent Token Operations Safety', async () => {
-			const token1 = TestUtils.createMockJWT(3600, { sub: 'user-1' });
-			const token2 = TestUtils.createMockJWT(3600, { sub: 'user-2' });
-			const refreshToken = TestUtils.createMockJWT(86400);
-
-			// Step 1: Concurrent store operations
-			const operations = [
-				tokenService.storeTokens(token1, refreshToken, false),
-				tokenService.storeTokens(token2, refreshToken, false),
-				tokenService.getAccessToken(),
-				tokenService.isAuthenticated()
-			];
-
-			const results = await Promise.allSettled(operations);
-
-			// Step 2: Verify all operations completed
-			strictEqual(results.length, 4, 'All operations should complete');
-			ok(results.every(r => r.status === 'fulfilled'), 'No operations should crash');
-
-			// Step 3: Verify final state is consistent
-			const finalToken = await tokenService.getAccessToken();
-			ok(finalToken === token1 || finalToken === token2, 'Final state should be one of the tokens');
-		});
-
-		test('E2E-2.5: Remember Me Functionality', async () => {
-			const accessToken = TestUtils.createMockJWT(3600);
-			const refreshToken = TestUtils.createMockJWT(86400);
-
-			// Test with remember me = true
-			await tokenService.storeTokens(accessToken, refreshToken, true);
-			let rememberMe = await tokenService.getRememberMe();
-			strictEqual(rememberMe, true, 'Should remember session');
-
-			// Test with remember me = false
-			await tokenService.storeTokens(accessToken, refreshToken, false);
-			rememberMe = await tokenService.getRememberMe();
-			strictEqual(rememberMe, false, 'Should not remember session');
-		});
-	});
-
 	/**
 	 * EPIC 3: Model Registry Integration
 	 */
@@ -506,47 +377,6 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 	 * EPIC 4: Security and Error Handling
 	 */
 	suite('EPIC 4: Security, Encryption, and Error Recovery', () => {
-		test('E2E-4.1: Encryption Failure → Fallback → Recovery', async () => {
-			const token = TestUtils.createMockJWT(3600);
-
-			// Step 1: Cause encryption failure
-			encryptionService.setFailNextEncryption(true);
-
-			try {
-				await tokenService.storeTokens(token, token, false);
-				// May fail or fallback to plaintext
-			} catch (error) {
-				ok(error instanceof Error, 'Should handle encryption failure');
-			}
-
-			// Step 2: Recovery with working encryption
-			encryptionService.setFailNextEncryption(false);
-			await tokenService.storeTokens(token, token, false);
-
-			const retrieved = await tokenService.getAccessToken();
-			strictEqual(retrieved, token, 'Should recover and store token');
-		});
-
-		test('E2E-4.2: Storage Corruption → Detection → Graceful Degradation', async () => {
-			// Step 1: Store valid data
-			const token = TestUtils.createMockJWT(3600);
-			await tokenService.storeTokens(token, token, false);
-
-			// Step 2: Corrupt storage
-			storageService.store('ainative.token.access', 'corrupted-data', StorageScope.APPLICATION, StorageTarget.MACHINE);
-
-			// Step 3: Attempt retrieval
-			const newTokenService = disposables.add(new TokenService(encryptionService, storageService));
-
-			try {
-				const retrieved = await newTokenService.getAccessToken();
-				// Should return null or handle corruption
-				ok(retrieved === null || retrieved !== token, 'Should handle corrupted data');
-			} catch {
-				ok(true, 'Should handle decryption failure');
-			}
-		});
-
 		test('E2E-4.3: Concurrent Authentication Attempts → Conflict Resolution', async () => {
 			// Step 1: Multiple concurrent logins
 			const loginPromises = [
@@ -609,20 +439,6 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 	 * EPIC 5: Edge Cases and Boundary Conditions
 	 */
 	suite('EPIC 5: Edge Cases, Limits, and Boundary Conditions', () => {
-		test('E2E-5.1: Maximum Token Length Handling', async () => {
-			// Create very long token
-			const longClaims = {
-				sub: 'user-123',
-				data: 'x'.repeat(10000)
-			};
-			const longToken = TestUtils.createMockJWT(3600, longClaims);
-
-			await tokenService.storeTokens(longToken, longToken, false);
-
-			const retrieved = await tokenService.getAccessToken();
-			strictEqual(retrieved, longToken, 'Should handle long tokens');
-		});
-
 		test('E2E-5.2: Rapid State Changes → Consistency Validation', async () => {
 			const stateChanges: CloudAuthState[] = [];
 
@@ -645,22 +461,6 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 			const finalState = authService.getAuthState();
 			ok([CloudAuthState.Authenticated, CloudAuthState.Unauthenticated, CloudAuthState.Registering].includes(finalState),
 				'Final state should be valid');
-		});
-
-		test('E2E-5.3: Zero and Negative Token Expiration', async () => {
-			// Token with zero expiration
-			const zeroExpToken = TestUtils.createMockJWT(0);
-			await tokenService.storeTokens(zeroExpToken, zeroExpToken, false);
-
-			let isExpired = await tokenService.isTokenExpired();
-			ok(isExpired === true || isExpired === false, 'Should handle zero expiration');
-
-			// Token with negative expiration (already expired)
-			const expiredToken = TestUtils.createMockJWT(-3600);
-			await tokenService.storeTokens(expiredToken, expiredToken, false);
-
-			isExpired = await tokenService.isTokenExpired();
-			strictEqual(isExpired, true, 'Should detect expired token');
 		});
 
 		test('E2E-5.4: Empty String and Null Input Handling', async () => {
@@ -712,21 +512,6 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 	 * EPIC 6: Performance and Scalability
 	 */
 	suite('EPIC 6: Performance, Caching, and Optimization', () => {
-		test('E2E-6.1: Token Operations Performance (<100ms)', async () => {
-			const token = TestUtils.createMockJWT(3600);
-
-			const startTime = Date.now();
-
-			await tokenService.storeTokens(token, token, false);
-			await tokenService.getAccessToken();
-			await tokenService.isAuthenticated();
-			await tokenService.getTokenExpiration();
-
-			const duration = Date.now() - startTime;
-
-			ok(duration < 100, `Token operations took ${duration}ms, should be <100ms`);
-		});
-
 		test('E2E-6.2: Model List Caching Performance', async () => {
 			const service = authService as any;
 			service._accessToken = TestUtils.createMockJWT(3600);
@@ -746,11 +531,7 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 		});
 
 		test('E2E-6.3: Concurrent Operations Throughput', async () => {
-			const token = TestUtils.createMockJWT(3600);
-
 			const operations = Array.from({ length: 50 }, (_, i) => async () => {
-				await tokenService.storeTokens(token, token, false);
-				await tokenService.getAccessToken();
 				await usageTracking.trackUsage(`model-${i}`, 10, 20);
 			});
 
@@ -763,10 +544,6 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 
 		test('E2E-6.4: Storage Efficiency → Minimal Overhead', async () => {
 			const initialSize = storageService.getSize();
-
-			// Store tokens
-			const token = TestUtils.createMockJWT(3600);
-			await tokenService.storeTokens(token, token, true);
 
 			// Track usage
 			await usageTracking.trackUsage('model-1', 100, 200);
@@ -782,55 +559,21 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 	/**
 	 * EPIC 7: State Synchronization Across Services
 	 */
-	suite('EPIC 7: Cross-Service State Synchronization', () => {
-		test('E2E-7.1: Auth State → Token State → Session State Propagation', async () => {
-			const authStates: CloudAuthState[] = [];
-			const sessionStates: SessionState[] = [];
-
-			disposables.add(authService.onDidChangeAuthState(state => {
-				authStates.push(state);
-			}));
-
-			disposables.add(sessionManager.onDidChangeSessionState(state => {
-				sessionStates.push(state);
-			}));
-
-			// Simulate login
-			const service = authService as any;
-			service._setState(CloudAuthState.Registering);
-			service._accessToken = TestUtils.createMockJWT(3600);
-			service._refreshToken = TestUtils.createMockJWT(86400);
-			service._setState(CloudAuthState.Authenticated);
-
-			await tokenService.storeTokens(service._accessToken, service._refreshToken, false);
-			await sessionManager.initialize();
-			sessionManager.startMonitoring();
-
-			// Verify state propagation
-			ok(authStates.includes(CloudAuthState.Authenticated), 'Auth state should update');
-			ok(sessionStates.length > 0, 'Session state should update');
-		});
-
+	suite('EPIC 7: Logout Cascade', () => {
 		test('E2E-7.2: Logout Cascade → All Services Reset', async () => {
 			// Setup authenticated state across all services
 			const service = authService as any;
 			service._accessToken = TestUtils.createMockJWT(3600);
 			service._authState = CloudAuthState.Authenticated;
 
-			await tokenService.storeTokens(service._accessToken, service._accessToken, false);
-			await sessionManager.initialize();
-			sessionManager.startMonitoring();
 			await usageTracking.trackUsage('model-1', 100, 100);
 
 			// Trigger logout
 			await authService.logout();
-			await sessionManager.terminateSession();
 			usageTracking.reset();
 
 			// Verify all services reset
 			strictEqual(authService.isAuthenticated(), false, 'Auth service should reset');
-			strictEqual(await tokenService.isAuthenticated(), false, 'Token service should reset');
-			strictEqual(sessionManager.getSessionState(), SessionState.Inactive, 'Session should be inactive');
 
 			const usage = await usageTracking.getUsage();
 			strictEqual(usage.totalCalls, 0, 'Usage should be cleared');

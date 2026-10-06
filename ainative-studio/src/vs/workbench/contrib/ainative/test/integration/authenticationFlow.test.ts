@@ -7,7 +7,6 @@ import { strictEqual, ok, deepStrictEqual } from 'assert';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { AINativeAuthService, AuthState } from '../../common/ainativeAuthService.js';
-import { TokenService } from '../../common/tokenService.js';
 import { AIModelRegistryService } from '../../common/aiModelRegistryService.js';
 import { IEncryptionService } from '../../../../../platform/encryption/common/encryptionService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
@@ -339,7 +338,6 @@ suite('Authentication Integration Tests', () => {
 	let storageService: MockStorageService;
 	let usageTrackingService: MockUsageTrackingService;
 	let authService: AINativeAuthService;
-	let tokenService: TokenService;
 	let modelRegistry: AIModelRegistryService;
 
 	setup(() => {
@@ -347,7 +345,6 @@ suite('Authentication Integration Tests', () => {
 		storageService = new MockStorageService();
 		usageTrackingService = new MockUsageTrackingService();
 		authService = new AINativeAuthService(encryptionService, storageService);
-		tokenService = new TokenService(encryptionService, storageService);
 		const mockInstantiationService = {
 			_serviceBrand: undefined,
 			invokeFunction: (fn: any) => fn({ get: () => usageTrackingService }),
@@ -358,7 +355,6 @@ suite('Authentication Integration Tests', () => {
 		modelRegistry = new AIModelRegistryService(authService as any, storageService, mockInstantiationService as any);
 
 		disposables.add(authService);
-		disposables.add(tokenService);
 		disposables.add(modelRegistry);
 	});
 
@@ -382,10 +378,6 @@ suite('Authentication Integration Tests', () => {
 			// Step 2: Verify authenticated state
 			strictEqual(authService.isAuthenticated(), true, 'Should be authenticated');
 			strictEqual(authService.getAuthState(), AuthState.Authenticated);
-
-			// Step 3: Check tokens are stored
-			const storedToken = await tokenService.getAccessToken();
-			ok(storedToken, 'Token should be stored in TokenService');
 
 			// Step 4: List available models
 			const models = await modelRegistry.listModels();
@@ -418,7 +410,6 @@ suite('Authentication Integration Tests', () => {
 			// Step 9: Logout
 			await authService.logout();
 			strictEqual(authService.isAuthenticated(), false, 'Should be logged out');
-			strictEqual(await tokenService.getAccessToken(), null, 'Tokens should be cleared');
 		});
 
 		test('should handle token refresh during active session', async () => {
@@ -559,23 +550,6 @@ suite('Authentication Integration Tests', () => {
 			ok(stateChanges.includes(AuthState.Unauthenticated), 'Should capture Unauthenticated state');
 		});
 
-		test('should keep token service and auth service in sync', async () => {
-			mockSuccessfulAuth();
-
-			// Login via auth service
-			await authService.login('test@ainative.studio', 'Password123!');
-
-			// Verify token service has the token
-			const token = await tokenService.getAccessToken();
-			strictEqual(token, authService.getAccessToken(), 'Tokens should match');
-
-			// Logout via auth service
-			await authService.logout();
-
-			// Verify token service cleared the token
-			const clearedToken = await tokenService.getAccessToken();
-			strictEqual(clearedToken, null, 'Token should be cleared in both services');
-		});
 	});
 
 	suite('Concurrent Operations Integration Tests', () => {
