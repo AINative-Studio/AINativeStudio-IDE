@@ -6,7 +6,7 @@
 import { Event } from '../../../../base/common/event.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 
-export const IAINativeAuthService = createDecorator<IAINativeAuthService>('ainativeAuthService');
+export const IAINativeSessionAuthService = createDecorator<IAINativeSessionAuthService>('ainativeAuthService');
 
 /**
  * Authentication state enum
@@ -79,9 +79,18 @@ export interface JWTClaims {
 }
 
 /**
- * Main authentication service interface
+ * User-session authentication service.
+ *
+ * Owns the JWT session lifecycle against the `/v1/auth/*` endpoints —
+ * login, logout, refresh — plus the persisted user profile and the
+ * auth-state event stream. Registered with the instantiation service and
+ * injected via the `IAINativeSessionAuthService` decorator.
+ *
+ * Distinct from `IAINativeAuthTokenProvider` (`ainativeAuthServiceTypes.ts`),
+ * which is the much narrower read-only token-supplier port consumed by API
+ * callers that only need a bearer token.
  */
-export interface IAINativeAuthService {
+export interface IAINativeSessionAuthService {
 	readonly _serviceBrand: undefined;
 
 	/**
@@ -142,7 +151,7 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../platfo
  * AINativeAuthService implementation
  * Handles JWT authentication with encrypted storage and automatic token refresh
  */
-export class AINativeAuthService extends Disposable implements IAINativeAuthService {
+export class AINativeAuthService extends Disposable implements IAINativeSessionAuthService {
 	readonly _serviceBrand: undefined;
 
 	private static readonly API_BASE = 'https://api.ainative.studio';

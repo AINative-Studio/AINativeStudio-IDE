@@ -4,10 +4,17 @@
  *--------------------------------------------------------------------------------------*/
 
 /**
- * Authentication service interface for AINative Cloud
- * This service handles JWT token management and refresh logic
+ * Narrow token-supplier port for AINative Cloud API callers.
+ *
+ * This is deliberately NOT the DI user-session service
+ * (`IAINativeSessionAuthService` in `ainativeAuthService.ts`). It is a
+ * structural interface — no `_serviceBrand` — so that callers which cannot
+ * reach the workbench instantiation service (notably the electron-main LLM
+ * dispatcher) can satisfy it with a plain object. Consumers only ever need a
+ * bearer token, a way to refresh it, and a liveness check; they must not reach
+ * into login/logout or user-profile concerns.
  */
-export interface IAINativeAuthService {
+export interface IAINativeAuthTokenProvider {
 	/**
 	 * Get current valid JWT token
 	 * Automatically refreshes if expired
