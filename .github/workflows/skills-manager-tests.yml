@@ -67,6 +67,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'ainative-studio/package-lock.json'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libx11-dev libx11-xcb-dev libxkbfile-dev libkrb5-dev
+
       - name: Install dependencies
         working-directory: ainative-studio
         run: npm ci
@@ -118,6 +123,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'ainative-studio/package-lock.json'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libx11-dev libx11-xcb-dev libxkbfile-dev libkrb5-dev
+
       - name: Install dependencies
         working-directory: ainative-studio
         run: npm ci
@@ -158,6 +168,11 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: 'ainative-studio/package-lock.json'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libx11-dev libx11-xcb-dev libxkbfile-dev libkrb5-dev
 
       - name: Install dependencies
         working-directory: ainative-studio
@@ -208,6 +223,11 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: 'ainative-studio/package-lock.json'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libx11-dev libx11-xcb-dev libxkbfile-dev libkrb5-dev
 
       - name: Install dependencies
         working-directory: ainative-studio

@@ -47,12 +47,10 @@ import { mountUsageDashboard } from './react/out/usage-dashboard/index.js';
 function registerReactPanel(options: {
 	readonly idSuffix: string;
 	readonly scheme: string;
-	readonly titleKey: string;
 	readonly title: string;
 	readonly icon: ThemeIcon;
 	readonly commandId: string;
-	readonly commandTitleKey: string;
-	readonly commandTitle: string;
+	readonly commandTitle: nls.ILocalizedString;
 	readonly mountFn: (el: HTMLElement, accessor: ServicesAccessor) => { dispose?: () => void } | undefined;
 }) {
 	class PanelInput extends EditorInput {
@@ -73,7 +71,7 @@ function registerReactPanel(options: {
 		}
 
 		override getName(): string {
-			return nls.localize(options.titleKey, options.title);
+			return options.title;
 		}
 
 		override getIcon() {
@@ -120,7 +118,7 @@ function registerReactPanel(options: {
 	}
 
 	Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane(
-		EditorPaneDescriptor.create(PanelEditor, PanelEditor.ID, nls.localize(options.titleKey, options.title)),
+		EditorPaneDescriptor.create(PanelEditor, PanelEditor.ID, options.title),
 		[new SyncDescriptor(PanelInput)]
 	);
 
@@ -128,7 +126,7 @@ function registerReactPanel(options: {
 		constructor() {
 			super({
 				id: options.commandId,
-				title: nls.localize2(options.commandTitleKey, options.commandTitle),
+				title: options.commandTitle,
 				f1: true,
 				icon: options.icon,
 			});
@@ -158,12 +156,10 @@ function registerReactPanel(options: {
 registerReactPanel({
 	idSuffix: 'toolLogs',
 	scheme: 'tool-logs',
-	titleKey: 'ainativeToolLogsInputName',
-	title: 'AINative Studio: Tool Logs',
+	title: nls.localize('ainativeToolLogsInputName', "AINative Studio: Tool Logs"),
 	icon: Codicon.history,
 	commandId: 'workbench.action.openAINativeToolLogs',
-	commandTitleKey: 'ainativeOpenToolLogs',
-	commandTitle: 'AINative Studio: Show Tool Logs',
+	commandTitle: nls.localize2('ainativeOpenToolLogs', "AINative Studio: Show Tool Logs"),
 	mountFn: mountToolLogsPanel,
 });
 
@@ -175,12 +171,10 @@ registerReactPanel({
 registerReactPanel({
 	idSuffix: 'modelBrowser',
 	scheme: 'model-browser',
-	titleKey: 'ainativeModelBrowserInputName',
-	title: 'AINative Studio: Model Browser',
+	title: nls.localize('ainativeModelBrowserInputName', "AINative Studio: Model Browser"),
 	icon: Codicon.package,
 	commandId: 'workbench.action.openAINativeModelBrowser',
-	commandTitleKey: 'ainativeOpenModelBrowser',
-	commandTitle: 'AINative Studio: Browse AI Models',
+	commandTitle: nls.localize2('ainativeOpenModelBrowser', "AINative Studio: Browse AI Models"),
 	mountFn: mountModelBrowser,
 });
 
@@ -189,11 +183,9 @@ registerReactPanel({
 registerReactPanel({
 	idSuffix: 'usageDashboard',
 	scheme: 'usage-dashboard',
-	titleKey: 'ainativeUsageDashboardInputName',
-	title: 'AINative Studio: Usage Dashboard',
+	title: nls.localize('ainativeUsageDashboardInputName', "AINative Studio: Usage Dashboard"),
 	icon: Codicon.dashboard,
 	commandId: 'workbench.action.openAINativeUsageDashboard',
-	commandTitleKey: 'ainativeOpenUsageDashboard',
-	commandTitle: 'AINative Studio: Show Usage Dashboard',
+	commandTitle: nls.localize2('ainativeOpenUsageDashboard', "AINative Studio: Show Usage Dashboard"),
 	mountFn: mountUsageDashboard,
 });
