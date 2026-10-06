@@ -46,6 +46,64 @@ const isBlacklisted = (fsPath: string | undefined) => {
 	return extensionBlacklist.find(bItem => fsPath?.includes(bItem))
 }
 
+
+// Settings keys that are identity/machine/app-specific and should never be carried over
+// from another editor's settings.json into AINativeStudio's. These are either:
+//  - telemetry/identity values tied to the OTHER app's installation
+//  - window/update/sync state that only makes sense for the app that wrote it
+//  - keys that reference the other app's product name directly
+// Matching is by exact key or by key-prefix (anything before the last '.' segment group below).
+const settingsKeyBlacklist = [
+	// telemetry / machine identity
+	'telemetry.machineId',
+	'telemetry.devDeviceId',
+	'telemetry.enableCrashReporter',
+	'telemetry.telemetryLevel',
+	// update channel - the other app's update settings don't apply to us
+	'update.mode',
+	'update.channel',
+	'update.enableWindowsBackgroundUpdates',
+	// window/UI chrome state that's app-instance specific, not a "preference" to port
+	'window.restoreWindows',
+	'window.restoreFullscreen',
+	'window.titleBarStyle', // platform rendering quirks differ between forks
+	// account-based settings sync - pointing at the other app's sync service would be wrong/break
+	'settingsSync.enabled',
+	'sync.enable',
+	// extensions auto-update / gallery pointed at the other app's marketplace config
+	'extensions.autoUpdate',
+	'extensions.autoCheckUpdates',
+	'extensions.gallery.serviceUrl',
+	'extensions.gallery.itemUrl',
+	'extensions.gallery.cacheUrl',
+	'extensions.gallery.controlUrl',
+	'extensions.gallery.nlsUrl',
+	'extensions.gallery.publisherUrl',
+	'extensions.gallery.resourceUrlTemplate',
+]
+
+const isBlacklistedSettingsKey = (key: string) => {
+	return settingsKeyBlacklist.some(bItem => key === bItem || key.startsWith(bItem + '.'))
+}
+
+/**
+ * Merge `incoming` settings (parsed from another editor's settings.json) into
+ * `existing` settings (AINativeStudio's current settings.json, parsed, may be {}).
+ * - Keys already present in `existing` are preserved (we never clobber the user's
+ *   current AINativeStudio configuration with values from the other editor).
+ * - Keys on `settingsKeyBlacklist` are dropped from the incoming set entirely,
+ *   since they are identity/app-instance specific and should not transfer.
+ */
+const mergeSettingsJSON = (existing: Record<string, unknown>, incoming: Record<string, unknown>): Record<string, unknown> => {
+	const merged: Record<string, unknown> = { ...existing }
+	for (const key of Object.keys(incoming)) {
+		if (isBlacklistedSettingsKey(key)) continue
+		if (Object.prototype.hasOwnProperty.call(merged, key)) continue // don't clobber user's existing AINativeStudio setting
+		merged[key] = incoming[key]
+	}
+	return merged
+}
+
 class ExtensionTransferService extends Disposable implements IExtensionTransferService {
 	_serviceBrand: undefined;
 
@@ -61,10 +119,49 @@ class ExtensionTransferService extends Disposable implements IExtensionTransferS
 
 		let errAcc = ''
 
-		for (const { from, to, isExtensions } of transferTheseFiles) {
+		for (const { from, to, isExtensions, isSettingsJSON } of transferTheseFiles) {
 			// Check if the source file exists before attempting to copy
 			try {
-				if (!isExtensions) {
+				if (isSettingsJSON) {
+					console.log('transferring settings.json (merge)', from, to)
+
+					const exists = await fileService.exists(from)
+					if (exists) {
+						// Ensure the destination directory exists
+						const toParent = URI.joinPath(to, '..')
+						const toParentExists = await fileService.exists(toParent)
+						if (!toParentExists) {
+							await fileService.createFolder(toParent)
+						}
+
+						try {
+							const incomingStr = await fileService.readFile(from)
+							const incomingJSON: Record<string, unknown> = JSON.parse(incomingStr.value.toString())
+
+							let existingJSON: Record<string, unknown> = {}
+							const destExists = await fileService.exists(to)
+							if (destExists) {
+								try {
+									const existingStr = await fileService.readFile(to)
+									existingJSON = JSON.parse(existingStr.value.toString())
+								} catch {
+									console.log(`Could not parse existing settings.json at ${to.toString()}, treating as empty`)
+									existingJSON = {}
+								}
+							}
+
+							const merged = mergeSettingsJSON(existingJSON, incomingJSON)
+							await fileService.writeFile(to, VSBuffer.fromString(JSON.stringify(merged, null, '\t')))
+						} catch (parseErr) {
+							// If the source settings.json isn't valid JSON (e.g. has comments some
+							// editors tolerate), skip the merge rather than corrupting the user's settings.
+							console.log(`Could not parse settings.json at ${from.toString()}, skipping settings import`, parseErr)
+						}
+					} else {
+						console.log(`Skipping file that doesn't exist: ${from.toString()}`)
+					}
+				}
+				else if (!isExtensions) {
 					console.log('transferring item', from, to)
 
 					const exists = await fileService.exists(from)
@@ -196,6 +293,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 			return [{
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Code', 'User', 'settings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Void', 'User', 'settings.json'),
+				isSettingsJSON: true,
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Code', 'User', 'keybindings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Void', 'User', 'keybindings.json'),
@@ -208,6 +306,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 			return [{
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Cursor', 'User', 'settings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Void', 'User', 'settings.json'),
+				isSettingsJSON: true,
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Cursor', 'User', 'keybindings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Void', 'User', 'keybindings.json'),
@@ -220,6 +319,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 			return [{
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Windsurf', 'User', 'settings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Void', 'User', 'settings.json'),
+				isSettingsJSON: true,
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Windsurf', 'User', 'keybindings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, 'Library', 'Application Support', 'Void', 'User', 'keybindings.json'),
@@ -239,6 +339,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 			return [{
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Code', 'User', 'settings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Void', 'User', 'settings.json'),
+				isSettingsJSON: true,
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Code', 'User', 'keybindings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Void', 'User', 'keybindings.json'),
@@ -251,6 +352,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 			return [{
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Cursor', 'User', 'settings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Void', 'User', 'settings.json'),
+				isSettingsJSON: true,
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Cursor', 'User', 'keybindings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Void', 'User', 'keybindings.json'),
@@ -263,6 +365,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 			return [{
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Windsurf', 'User', 'settings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Void', 'User', 'settings.json'),
+				isSettingsJSON: true,
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Windsurf', 'User', 'keybindings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), homeDir, '.config', 'Void', 'User', 'keybindings.json'),
@@ -284,6 +387,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 			return [{
 				from: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Code', 'User', 'settings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Void', 'User', 'settings.json'),
+				isSettingsJSON: true,
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Code', 'User', 'keybindings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Void', 'User', 'keybindings.json'),
@@ -296,6 +400,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 			return [{
 				from: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Cursor', 'User', 'settings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Void', 'User', 'settings.json'),
+				isSettingsJSON: true,
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Cursor', 'User', 'keybindings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Void', 'User', 'keybindings.json'),
@@ -308,6 +413,7 @@ const transferTheseFilesOfOS = (os: 'mac' | 'windows' | 'linux' | null, fromEdit
 			return [{
 				from: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Windsurf', 'User', 'settings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Void', 'User', 'settings.json'),
+				isSettingsJSON: true,
 			}, {
 				from: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Windsurf', 'User', 'keybindings.json'),
 				to: URI.joinPath(URI.from({ scheme: 'file' }), appdata, 'Void', 'User', 'keybindings.json'),
