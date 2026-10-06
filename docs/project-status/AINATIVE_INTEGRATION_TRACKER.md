@@ -28,36 +28,52 @@ Live tracking doc for the AINative backend integration audit, dead-code purge, a
 
 19 agents dispatched across issues #150–169 in isolated worktrees under `/Users/aideveloper/AINativeStudio-IDE-worktrees/`. Status as of last update:
 
-### Done, awaiting merge review
-- **#158** — stale model IDs fixed; corrected a wrong dotted-ID assumption in `BACKEND_CONTRACT_NOTES.md` via live unauthenticated API probing (dashes, not dots)
-- **#157** — duplicate `IAINativeAuthService` renamed to `IAINativeSessionAuthService` / `IAINativeAuthTokenProvider`; surfaced **#172** (unregistered DI service, real runtime bug)
-- **#153** — `ainativeConfig.ts` wired in for the shared host string only (paths stay local, correctly scoped narrower than the issue assumed)
-- **#168** — Cerebras/Fireworks/DigitalOcean added as first-class BYOK providers; caught a gap in the issue's own checklist (`defaultSettingsOfProvider`)
+All 20 agents finished (one session restart mid-flight recovered without losing work — see note below). Merged to `main`, closed on GitHub:
 
-### Done, closed (research/decision, no code)
-- **#151** — ZeroDB OAuth: recommend delete (ZeroDB's real auth is API key, not OAuth)
-- **#152** — secureTokenStorage.ts: recommend delete (same underlying encryption as production path, not an upgrade); surfaced **#170** (real Linux plaintext-credential security bug)
-- **#154** — _markerCheckService.ts: recommend delete (superseded by existing agent tool-call capability); surfaced **#171** (live 5s unthrottled poller running in every window today)
-- **#155** — duplicate GitOperations class: confirmed dead via git archaeology, deleted, closed
-- **#163** — MCP lifecycle: audited, corrected scope (most capability genuinely missing, not just UI — unlike #116)
-- **#164** — billing top-up: confirmed real URL (`app.ainative.studio/billing`), correctly left blocked on #150
-- **#165** — remote dev environments: no code-level blocker found, recommend deprioritizing live-test work
-- **#167** — Cody identity: design doc posted; corrected assumption that `.ainative/CODY.md` is a persona doc (it's actually an ops/compliance checklist)
+| Issue | Title | Commit |
+|---|---|---|
+| #150 | Stranded Tool Logs/Model Browser/Usage Dashboard panels shipped | `dda60b81` |
+| #153 | ainativeConfig.ts wired in for shared host string | `cfe8a15d` |
+| #155 | Duplicate GitOperations class removed | `79af6b3d` |
+| #156 | Duplicate stub skillsRegistry test replaced with real coverage | `d364eab2` |
+| #157 | Duplicate IAINativeAuthService interfaces renamed | `29d3ff97` |
+| #158 | Stale AINative model IDs corrected (dash, not dot) | `d4e4cb1e` |
+| #166 | Settings-import overwrite replaced with safe filtered merge | `af406641` |
+| #169 | Windows + Linux shell-install support added | `df184e8e` |
 
-### New issues filed from this round's findings
-- **#170** — Linux defaults to plaintext-equivalent credential storage silently (no consent, no libsecret attempt) — real security bug
-- **#171** — `_markerCheckService` is a live, unthrottled 5s poller running in every window, doing nothing but logging
-- **#172** — `AINativeAuthService` appears to have no `registerSingleton` call anywhere — `accessor.get()` call sites may throw at runtime
+Merged to `main`, left open (design/first-slice done, follow-on phases remain):
 
-### Still running as of last check
-#150, #156, #159, #160, #161, #162, #166, #169 — statuses to be filled in as they land.
+| Issue | Title | Commit |
+|---|---|---|
+| #159 | Shadow workspace design + phase-0 primitive (unwired) | `1429de1c` |
+| #160 | Semantic retrieval design (no implementation yet) | `fa362434` |
+| #161 | Steering-doc design + real implementation slice (standing context now in chat) | `c03fd6f6` |
+| #162 | Hooks design + first built-in hook (commit-message suggestion, default off) | `4c87b57a` |
+| #168 | Cerebras/Fireworks/DigitalOcean added as BYOK providers (managed-vs-BYOK messaging still undecided) | `5eb90042` |
+
+Closed, research/decision only, no code (comment posted on each issue with the recommendation):
+- **#151** — ZeroDB OAuth: recommend delete
+- **#152** — secureTokenStorage.ts: recommend delete; surfaced **#170**
+- **#154** — _markerCheckService.ts: recommend delete; surfaced **#171**
+- **#163** — MCP lifecycle: audited, corrected scope
+- **#164** — billing top-up: confirmed real URL, left blocked on #150 (now unblocked)
+- **#165** — remote dev environments: no code blocker found
+- **#167** — Cody identity: design doc posted, corrected a wrong assumption about `.ainative/CODY.md`
+
+New issues filed from findings along the way:
+- **#170** — Linux silently defaults to plaintext-equivalent credential storage — real security bug, still open
+- **#171** — `_markerCheckService` is a live unthrottled 5s poller doing nothing but logging — still open
+- **#172** — `AINativeAuthService` may have no `registerSingleton` anywhere — real runtime-crash risk, still open
+
+### Recovery note (2026-10-06)
+The session restarted mid-flight with 7 agents' final commit/report step interrupted. All 7 had real, substantial uncommitted work on disk — none were lost. Each was manually re-reviewed before committing: two had out-of-scope artifacts reverted (a stray unrelated test deletion and package-lock.json version drift on #156; a scratch node_modules/tsconfig on #150), and one real security issue was found and fixed during review — #169's Windows PATH write used string-interpolated `exec` with insufficient escaping for a value that includes the user's full existing PATH; hardened to `execFile` with an argument array before merging.
 
 ## Not yet started
 - #109 (Flatpak) — deferred, large new packaging work
 - #127 (CLAUDE.md structure) — deferred, needs careful handling given this file's operational role
 
-## Next steps (once the 19 finish)
-1. Review and merge all mergeable fixes to `main`
-2. Run local dev build (`npm run watch` + `./scripts/code.sh`), smoke-test
-3. Push to `origin/main`, let GitHub Actions run
-4. Download and install the actual packaged build, verify it launches and works
+## Pipeline status
+1. ✅ All mergeable fixes reviewed and merged to `main`
+2. ⏳ Local dev build + smoke test — next
+3. ⏳ Push to `origin/main`, GitHub Actions
+4. ⏳ Download and install the actual packaged build, verify it launches and works
