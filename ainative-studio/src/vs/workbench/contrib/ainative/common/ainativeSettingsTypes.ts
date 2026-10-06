@@ -484,6 +484,9 @@ export type GlobalSettings = {
 	disableSystemMessage: boolean;
 	autoAcceptLLMChanges: boolean;
 	managedAPI: ManagedAPISettings;
+	/** Hooks (#162): when true, a notification suggesting a one-line summary
+	 * is shown after each git commit. First built-in hook; see HOOKS_DESIGN.md. */
+	enableCommitMessageHook: boolean;
 }
 
 export const defaultManagedAPISettings: ManagedAPISettings = {
@@ -511,6 +514,7 @@ export const defaultGlobalSettings: GlobalSettings = {
 	disableSystemMessage: false,
 	autoAcceptLLMChanges: false,
 	managedAPI: defaultManagedAPISettings,
+	enableCommitMessageHook: false,
 }
 
 export type GlobalSettingName = keyof GlobalSettings
