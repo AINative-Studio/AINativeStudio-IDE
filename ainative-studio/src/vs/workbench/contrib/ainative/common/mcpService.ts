@@ -14,7 +14,7 @@ import { IProductService } from '../../../../platform/product/common/productServ
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { IChannel } from '../../../../base/parts/ipc/common/ipc.js';
 import { IMainProcessService } from '../../../../platform/ipc/common/mainProcessService.js';
-import { MCPServerOfName, MCPConfigFileJSON, MCPServer, MCPToolCallParams, RawMCPToolCall, MCPServerEventResponse } from './mcpServiceTypes.js';
+import { MCPServerOfName, MCPConfigFileJSON, MCPServer, MCPToolCallParams, RawMCPToolCall, MCPServerEventResponse, isMCPToolDisabled } from './mcpServiceTypes.js';
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { InternalToolInfo } from './prompt/prompts.js';
 import { IAINativeSettingsService } from './ainativeSettingsService.js';
@@ -187,7 +187,9 @@ class MCPService extends Disposable implements IMCPService {
 		const allTools: InternalToolInfo[] = []
 		for (const serverName in this.state.mcpServerOfName) {
 			const server = this.state.mcpServerOfName[serverName];
+			const disabledToolNames = this.voidSettingsService.state.mcpUserStateOfName[serverName]?.disabledToolNames;
 			server.tools?.forEach(tool => {
+				if (isMCPToolDisabled(disabledToolNames, tool.name)) return;
 				allTools.push({
 					description: tool.description || '',
 					params: this._transformInputSchemaToParams(tool.inputSchema),
@@ -323,6 +325,14 @@ class MCPService extends Disposable implements IMCPService {
 
 
 	public async callMCPTool(toolData: MCPToolCallParams): Promise<{ result: RawMCPToolCall }> {
+		// Defense in depth, not just hiding disabled tools from getMCPTools()'s output - a caller
+		// (the agent's own already-built tool list from earlier in the conversation, or #174's
+		// manual Test Tool form) could still try to invoke a tool name the user just disabled.
+		const disabledToolNames = this.voidSettingsService.state.mcpUserStateOfName[toolData.serverName]?.disabledToolNames;
+		if (isMCPToolDisabled(disabledToolNames, toolData.toolName)) {
+			throw new Error(`Tool "${toolData.toolName}" is disabled for server "${toolData.serverName}".`)
+		}
+
 		const result = await this.channel.call<RawMCPToolCall>('callTool', toolData);
 		if (result.event === 'error') {
 			throw new Error(`Error: ${result.text}`)

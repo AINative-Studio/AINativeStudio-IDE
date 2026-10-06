@@ -608,4 +608,9 @@ export interface MCPUserStateOfName {
 
 export interface MCPUserState {
 	isOn: boolean;
+	/** Tool names (as reported by the server, not prefixed) the user has individually disabled on
+	 * an otherwise-enabled server. Absent/undefined means no tools are disabled - this keeps the
+	 * common case (every tool on an enabled server is usable) free of an empty-array default
+	 * threaded through every existing caller that only ever set { isOn }. See #175. */
+	disabledToolNames?: string[];
 }

@@ -240,3 +240,14 @@ export interface MCPToolCallParams {
 export const removeMCPToolNamePrefix = (name: string) => {
 	return name.split('_').slice(1).join('_')
 }
+
+/**
+ * True if a tool should be hidden from the agent's tool list / rejected if called, per the
+ * per-tool enable/disable state (#175). Pure function - no service dependencies - so the
+ * filtering logic used by both mcpService.getMCPTools() and mcpService.callMCPTool() is covered
+ * by a real unit test without needing to construct the full MCPService (6 injected dependencies
+ * including live IPC channel setup, impractical to mock cleanly for this one piece of logic).
+ */
+export const isMCPToolDisabled = (disabledToolNames: readonly string[] | undefined, toolName: string): boolean => {
+	return (disabledToolNames ?? []).includes(toolName)
+}

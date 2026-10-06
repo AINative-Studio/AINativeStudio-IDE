@@ -85,6 +85,7 @@ export interface IAINativeSettingsService {
 	addMCPUserStateOfNames(userStateOfName: MCPUserStateOfName): Promise<void>;
 	removeMCPUserStateOfNames(serverNames: string[]): Promise<void>;
 	setMCPServerState(serverName: string, state: MCPUserState): Promise<void>;
+	setMCPToolEnabled(serverName: string, toolName: string, enabled: boolean): Promise<void>;
 }
 
 
@@ -655,6 +656,20 @@ class AINativeSettingsService extends Disposable implements IAINativeSettingsSer
 		}
 		await this._setMCPUserStateOfName(newMCPServerStates)
 		this._metricsService.capture('Update MCP Server State', { serverName, state });
+	}
+
+	setMCPToolEnabled = async (serverName: string, toolName: string, enabled: boolean) => {
+		const { mcpUserStateOfName } = this.state
+		// A server with no user state yet (never toggled) is implicitly on - match that default
+		// here so disabling a tool on a never-explicitly-toggled server doesn't also turn the
+		// whole server off as a side effect.
+		const existing = mcpUserStateOfName[serverName] ?? { isOn: true }
+		const prevDisabled = existing.disabledToolNames ?? []
+		const newDisabled = enabled
+			? prevDisabled.filter(t => t !== toolName)
+			: prevDisabled.includes(toolName) ? prevDisabled : [...prevDisabled, toolName]
+
+		await this.setMCPServerState(serverName, { ...existing, disabledToolNames: newDisabled })
 	}
 
 }

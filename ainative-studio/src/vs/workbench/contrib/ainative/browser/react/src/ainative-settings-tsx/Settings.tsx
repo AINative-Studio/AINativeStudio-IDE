@@ -1018,6 +1018,7 @@ const MCPTestToolForm = ({ serverName, tools }: { serverName: string, tools: { n
 const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer }) => {
 	const accessor = useAccessor();
 	const mcpService = accessor.get('IMCPService');
+	const voidSettingsService = accessor.get('IAINativeSettingsService');
 
 	const voidSettings = useSettingsState()
 	const isOn = voidSettings.mcpUserStateOfName[name]?.isOn
@@ -1078,23 +1079,36 @@ const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer 
 				</div>
 			</div>
 
-			{/* Tools section */}
+			{/* Tools section - each tool individually enable/disable-able (#175). A disabled tool
+				is hidden from the agent's tool list (mcpService.getMCPTools()) and server-side
+				rejected if called anyway (mcpService.callMCPTool()), not just visually dimmed. */}
 			{isOn && (
 				<div className="mt-3">
 					<div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
 						{(server.tools ?? []).length > 0 ? (
-							(server.tools ?? []).map((tool: { name: string; description?: string }) => (
-								<span
-									key={tool.name}
-									className="px-2 py-0.5 bg-ainative-bg-2 text-ainative-fg-3 rounded-sm text-xs"
+							(server.tools ?? []).map((tool: { name: string; description?: string }) => {
+								const disabledToolNames = voidSettings.mcpUserStateOfName[name]?.disabledToolNames ?? []
+								const toolIsEnabled = !disabledToolNames.includes(tool.name)
+								return (
+									<label
+										key={tool.name}
+										className={`flex items-center gap-1 px-2 py-0.5 bg-ainative-bg-2 rounded-sm text-xs cursor-pointer select-none
+											${toolIsEnabled ? 'text-ainative-fg-3' : 'text-ainative-fg-3/40 line-through'}`}
 
-									data-tooltip-id='ainative-tooltip'
-									data-tooltip-content={tool.description || ''}
-									data-tooltip-class-name='ainative-max-w-[300px]'
-								>
-									{removeUniquePrefix(tool.name)}
-								</span>
-							))
+										data-tooltip-id='ainative-tooltip'
+										data-tooltip-content={tool.description || ''}
+										data-tooltip-class-name='ainative-max-w-[300px]'
+									>
+										<input
+											type='checkbox'
+											className='w-3 h-3'
+											checked={toolIsEnabled}
+											onChange={() => voidSettingsService.setMCPToolEnabled(name, tool.name, !toolIsEnabled)}
+										/>
+										{removeUniquePrefix(tool.name)}
+									</label>
+								)
+							})
 						) : (
 							<span className="text-xs text-ainative-fg-3">No tools available</span>
 						)}
