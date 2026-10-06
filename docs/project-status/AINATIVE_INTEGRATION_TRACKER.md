@@ -222,5 +222,48 @@ pre-merge 0-in-ainative/45-elsewhere split — the merge didn't reintroduce anyt
      Removed the broken `SkillSyncCommand` registration rather than attempting a full IPC redesign
      live (commit `fe42f63b`) — `syncCommand.ts`/`symlinkUtils.ts`/`gitOperations.ts` left
      untouched on disk for a future real IPC-based implementation. Filed as **#182**.
-6. ⏳ Fresh macOS ARM64 build dispatched against `fe42f63b` (run 37508306265) to verify the
-   blank-screen fix actually resolves it — in progress.
+6. ✅ Fresh macOS ARM64 build (37508306265, `fe42f63b`) succeeded. Verified the blank-screen fix
+   both locally (`npm run compile` → `./scripts/code.sh` → CDP connected to the running renderer →
+   confirmed zero uncaught exceptions, real UI rendered) and against the actual packaged build
+   (downloaded, checksum-verified, installed, launched — same result). **#182 closed.**
+7. ✅ Testing the fixed build surfaced a real product gap the original audit missed: first-run
+   onboarding had no path to sign into AINative Cloud at all, only BYOK provider setup — filed as
+   **#183**. Fixed by adding a prominent "Sign In to AINative Cloud" button directly on the
+   onboarding Welcome page (equal footing with "Get Started"), reusing the existing
+   `AINativeLoginModal`/`useAINativeAuth` already wired into Settings.tsx. Correction to the
+   original finding: "Add AINative Cloud" was already technically present as one of nine provider
+   cards in the Paid tab (confirmed via live CDP inspection — `providerNames` isn't filtered to
+   exclude it) — the real gap was discoverability, not total absence. Verified via local CDP
+   (button text confirmed rendered, zero exceptions). Commit `cd3b1cfa`. **#183 closed.**
+   Also found and filed, not fixed tonight: session login doesn't auto-provision a usable
+   chat-completions API key (JWT session auth and the `sk_`/`tmp_`/`zdb_live_` API-key system are
+   fully disconnected) — real backend-contract question, filed as **#184**, left open rather than
+   guessed at.
+8. ✅ Re-verified **#140** (black screen on macOS 26) using the exact diagnostic method from the
+   original report — installed the real signed packaged build, launched the Electron binary
+   directly with `--enable-logging --v=1`, confirmed the GPU process stays alive with zero
+   occurrences of the original report's smoking-gun `GPUProcessTerminationStatus2` /
+   `ABNORMAL_TERMINATION` signature. Root cause was the Electron 34→43.7.7 upgrade. **#140 closed.**
+9. Backlog sweep after the pipeline reached a stable, verified state (user asked to keep iterating
+   on the backlog rather than stop at the pipeline goal):
+   - **#168** (Cerebras/Fireworks/DigitalOcean BYOK providers) — confirmed every item in its scope
+     checklist already complete via direct source audit (`defaultProviderSettings`,
+     `displayInfoOfProviderName`, real `OpenAI`-client wiring in `sendLLMMessage.impl.ts`, visible
+     in onboarding's Paid tab). **Closed**, no code change needed.
+   - **#180** (`out/` committed without `.gitignore`) — added `.gitignore` rules for `out/`,
+     `out-build/`, `out-vscode*/`, `extensions/*/out/` to stop new drift (commit `5c07feaa`).
+     Deliberately did **not** remove the ~6,820 already-tracked files under these paths —
+     confirmed via `git ls-files` count; a repo-wide removal of that size needs its own reviewed
+     commit, not something to fold into an autonomous pass. Left open for that follow-up.
+   - **#171** (`_markerCheckService`'s unthrottled 5s poll) — this was more serious than earlier
+     tracker entries characterized it: `InstantiationType.Eager` means it genuinely runs in every
+     window for every user today, not just dormant/unreachable code. Fixed the active harm by
+     switching to `InstantiationType.Delayed` (commit `f48a35b7`) — confirmed via repo-wide search
+     that nothing injects `IMarkerCheckService`, so it now never instantiates in practice. Left
+     open, still tied to #154's real finish-vs-delete product decision, which this doesn't
+     preempt.
+   - 19 issues remain open as of this update — almost entirely genuine product/design decisions
+     (#109, #127, #151, #152, #154, #160, #164, #165, #167, #184) or real feature-build work
+     (#159, #161, #162, #174–176), plus #181 (Windows ARM64 CI, deliberately deferred — shared
+     build config, risk of breaking other platforms) and #180/#171 (now correctly tracked as
+     partial, not silently resolved).
