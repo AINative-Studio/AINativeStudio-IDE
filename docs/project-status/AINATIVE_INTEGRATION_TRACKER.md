@@ -2,6 +2,14 @@
 
 Live tracking doc for the AINative backend integration audit, dead-code purge, and competitive-gap backlog started 2026-10-04/05. Updated as work lands. Companion artifact: https://claude.ai/code/artifact/be23a9e4-866c-4b7f-9702-977748051f78
 
+**#141 (the original umbrella issue) is closed.** All 7 original sub-issues, the #158 model-ID follow-up, and everything found along the way are resolved or tracked below.
+
+## First real full-project type-check (2026-10-06)
+
+`npm install` succeeded on this machine for the first time this session (previously blocked by `@vscode/spdlog@0.15.1` failing to compile against this machine's Clang 21 — fixed by bumping to `0.15.8`, same `^0.15.0` package.json range). This unlocked the first real `npx tsc -p src/tsconfig.json --noEmit` of the whole session — every prior check used a scratch standalone-TypeScript install that could only see the files directly pointed at, not the full dependency graph.
+
+Found and fixed 4 real errors in the `ainative` tree (3 were expected — missing `react/out/*` modules before `npm run buildreact` ran; 1 was real — `ainativeReactPanels.ts` used `Codicon` as a type instead of `ThemeIcon`, now fixed). Also found 45 pre-existing errors in 17 core `src/vs/base/` files, unrelated to any `ainative` work — iterator-type incompatibilities in `ResourceMap`/`ResourceSet`/`LinkedMap`/`SetWithKey`, almost certainly surfaced by #140's `@types/node` 20.x→24.x bump (required for Electron 43) never having been checked against the full project before. Filed as **#173**.
+
 ## Merged to `main`
 
 | Issue | Title | Commit |
@@ -60,10 +68,11 @@ Closed, research/decision only, no code (comment posted on each issue with the r
 - **#165** — remote dev environments: no code blocker found
 - **#167** — Cody identity: design doc posted, corrected a wrong assumption about `.ainative/CODY.md`
 
-New issues filed from findings along the way:
-- **#170** — Linux silently defaults to plaintext-equivalent credential storage — real security bug, still open
-- **#171** — `_markerCheckService` is a live unthrottled 5s poller doing nothing but logging — still open
-- **#172** — `AINativeAuthService` may have no `registerSingleton` anywhere — real runtime-crash risk, still open
+Issues filed from findings along the way:
+- **#170** — Linux plaintext-equivalent credential default — fixed and closed (`7cb8c787`)
+- **#171** — `_markerCheckService`'s 5s poller — re-verified as currently dead/unreachable code (never imported, so the registration never runs); left open, tied to #154's open finish-vs-delete decision rather than resolved unilaterally
+- **#172** — `AINativeAuthService` missing `registerSingleton` — fixed and closed (`7cb8c787`)
+- **#173** — `@types/node` 24.x bump breaks type-checking in 17 core base-library files — newly found via the first real full-project compile, still open
 
 ### Recovery note (2026-10-06)
 The session restarted mid-flight with 7 agents' final commit/report step interrupted. All 7 had real, substantial uncommitted work on disk — none were lost. Each was manually re-reviewed before committing: two had out-of-scope artifacts reverted (a stray unrelated test deletion and package-lock.json version drift on #156; a scratch node_modules/tsconfig on #150), and one real security issue was found and fixed during review — #169's Windows PATH write used string-interpolated `exec` with insufficient escaping for a value that includes the user's full existing PATH; hardened to `execFile` with an argument array before merging.
@@ -74,6 +83,13 @@ The session restarted mid-flight with 7 agents' final commit/report step interru
 
 ## Pipeline status
 1. ✅ All mergeable fixes reviewed and merged to `main`
-2. ⏳ Local dev build + smoke test — next
-3. ⏳ Push to `origin/main`, GitHub Actions
+2. ✅ Local dev build + smoke test
+   - `npm install`: fixed (spdlog bump), now succeeds cleanly (1875 packages, 0 build failures)
+   - `npm run buildreact`: succeeds (11 entry points, including the 3 panels #150 shipped)
+   - `npx tsc -p src/tsconfig.json --noEmit`: zero errors in the `ainative` tree (45 pre-existing
+     errors elsewhere, tracked as #173)
+   - CI's `macos-14` runner pins an older Xcode/Clang and should be unaffected by the spdlog issue
+     either way; `macos-latest` (used only for remote-server builds) could float to a newer image
+     over time — worth a follow-up check if that job ever starts failing the same way
+3. ⏳ Push to `origin/main`, GitHub Actions — next
 4. ⏳ Download and install the actual packaged build, verify it launches and works
