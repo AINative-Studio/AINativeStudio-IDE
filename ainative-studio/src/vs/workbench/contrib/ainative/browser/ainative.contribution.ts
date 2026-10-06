@@ -25,6 +25,9 @@ import './autocompleteService.js'
 // settings pane
 import './ainativeSettingsPane.js'
 
+// Tool Logs / Model Browser / Usage Dashboard panels (command-triggered editor tabs)
+import './ainativeReactPanels.js'
+
 // register css
 import './media/ainative.css'
 
