@@ -1,0 +1,54 @@
+name: Feature Request
+description: Propose a new feature or enhancement for AINative Studio IDE
+title: "[FEATURE] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing an improvement. Feature requests in this repo tend to work best with a clear problem statement and a concrete, checkable scope — see issues #165 and #168 for examples of the level of detail that's most useful.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear, concise description of the feature or enhancement.
+      placeholder: What should be added or changed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem being solved
+      description: What gap, friction, or missing capability does this address? Link to a competitive gap, related issue, or user pain point if applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: How would you solve it? Include scope as a checklist if it breaks into discrete steps (file/service names if known).
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you considered, and why they were set aside. Include "do nothing / just document" if that's a live option.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Related issues, open questions that should be resolved before implementation, or anything else worth noting.
+    validations:
+      required: false

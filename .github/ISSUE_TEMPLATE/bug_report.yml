@@ -1,0 +1,99 @@
+name: Bug Report
+description: Report something that isn't working in AINative Studio IDE
+title: "[BUG] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. AINative Studio is an Electron desktop app, so platform/version details below matter a lot for reproducing issues — please fill them in as precisely as you can (see issue #140 for a good example).
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear, concise description of the bug.
+      placeholder: What's broken?
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS / Platform version
+      description: Exact OS version and architecture (e.g. "macOS 26.5.1, Apple Silicon (ARM64)", "Ubuntu 24.04 arm64", "Windows 11 23H2 x64").
+      placeholder: e.g. macOS 26.5.1 (Darwin 25.5.0, Build 25F80), Apple Silicon ARM64
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: AINative Studio version
+      description: Help > About, or the installer/filename you used (e.g. AINativeStudio-v1.1.0-Linux-arm64.deb).
+      placeholder: e.g. 2.0.0 (released 2026-01-16)
+    validations:
+      required: true
+
+  - type: input
+    id: electron-version
+    attributes:
+      label: Electron version (if known)
+      description: Found in Help > About, or by checking the app bundle. Leave blank if unknown.
+      placeholder: e.g. 34.3.2
+    validations:
+      required: false
+
+  - type: textarea
+    id: repro-steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps, in order, to trigger the bug. Include commands/output where relevant.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include exact error text/stack traces if any.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnosis
+    attributes:
+      label: What was tried / diagnosis (optional)
+      description: Any workarounds, flags, or debugging steps you already attempted, and what you found. This is often the most useful part of a report — see issue #142 and #140 for examples of the level of detail that's most helpful.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Paste relevant log output (e.g. from `~/Library/Application Support/AINative Studio/logs/` on macOS, or the equivalent on your platform), console output, or attach screenshots. Wrap logs in triple backticks for readability.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else worth noting — related issues, hardware specifics, things you ruled out.
+    validations:
+      required: false
