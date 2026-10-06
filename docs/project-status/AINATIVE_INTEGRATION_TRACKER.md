@@ -135,5 +135,6 @@ pre-merge 0-in-ainative/45-elsewhere split — the merge didn't reintroduce anyt
    - CI's `macos-14` runner pins an older Xcode/Clang and should be unaffected by the spdlog issue
      either way; `macos-latest` (used only for remote-server builds) could float to a newer image
      over time — worth a follow-up check if that job ever starts failing the same way
-3. ⏳ Push to `origin/main`, GitHub Actions — next
-4. ⏳ Download and install the actual packaged build, verify it launches and works
+3. ✅ Pushed to `origin/main` (`719b7fb0`, fast-forward from `4092d5ff`) — GitHub Actions triggered:
+   "Skills Manager Tests" and "Windows ARM64 Signed Build" both running as of push time
+4. ⏳ Download and install the actual packaged build, verify it launches and works — waiting on CI
