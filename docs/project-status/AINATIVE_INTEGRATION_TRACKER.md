@@ -83,6 +83,37 @@ The session restarted mid-flight with 7 agents' final commit/report step interru
 - #109 (Flatpak) — deferred, large new packaging work
 - #127 (CLAUDE.md structure) — deferred, needs careful handling given this file's operational role
 
+## Remote history reconciliation (2026-10-06, before push)
+
+Before pushing, `git fetch origin main` revealed local `main` had been working from a stale
+base all session — `origin/main` was 8 commits ahead (dated Feb-June 2026, merged via real PRs
+#115/#118), never pulled into this checkout. Two of those commits (`3971e357`, `37c3dd0e`)
+independently fixed the exact same two bugs this session found tonight (#172's missing
+`registerSingleton`, and the `usageTrackingService`/`aiModelRegistryService` circular import) —
+confirming #172 was an unwitting re-discovery, not a new bug, and that the GitHub issue numbers
+used throughout tonight (#143 onward) were assigned without knowledge of this real prior history
+(issues #110-114 already covered this exact ground).
+
+Merged `origin/main` into local `main` (`70654881`) rather than ignoring the divergence. 6 files
+conflicted; each resolved by hand after comparing both sides' approach, not by blindly preferring
+either branch:
+- `usageTrackingService.ts`, `aiModelRegistryService.ts`, `aiModelRegistryTypes.ts`: kept origin's
+  more thorough circular-dependency fix (lazy `IInstantiationService` resolution, not just a moved
+  decorator) as the base, then re-applied tonight's independently-verified, more-specific fixes on
+  top — the corrected live model-catalog endpoint (`/v1/public/models/available`, confirmed via
+  live probing tonight; origin's version still pointed at the since-404ing `/api/v1/models/list`)
+  and the `getAINativeConfig()`-sourced base URL.
+- `ainativeAuthService.ts`: kept origin's tested `InstantiationType.Delayed` over tonight's untested
+  `Eager` guess, keeping tonight's `IAINativeSessionAuthService` rename.
+- `ainativeSettingsTypes.ts`, `services.tsx`: additive — both sides added different real things
+  (tonight's Cerebras/Fireworks/DigitalOcean providers + detailed AINative key-prefix guidance;
+  origin's `IGitHubOAuthService` React-accessor fix, closing a real settings-page crash tonight's
+  session was never aware of) — combined rather than choosing one side.
+
+Verified clean after merge: `npx tsc -p src/tsconfig.json --noEmit` → 0 errors (down from the
+pre-merge 0-in-ainative/45-elsewhere split — the merge didn't reintroduce anything). Full
+`npm run compile` re-run as a final check before push.
+
 ## Pipeline status
 1. ✅ All mergeable fixes reviewed and merged to `main`
 2. ✅ Local dev build + smoke test — **fully clean, real launch verified**
