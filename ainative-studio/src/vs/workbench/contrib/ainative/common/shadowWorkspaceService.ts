@@ -46,6 +46,24 @@ export interface ShadowWorkspace {
 	readonly syncedFsPaths: ReadonlySet<string>;
 }
 
+/**
+ * Content-level comparison of one file between a thread's shadow tree and the real workspace, as
+ * produced by diffShadowAgainstReal. Deliberately just before/after text, not a line-level diff -
+ * presenting that nicely is the chat UI's job (design doc §6 phase 1: "reusing editCodeService's
+ * existing per-file diff machinery"), not this service's.
+ */
+export interface FileDiff {
+	readonly realUri: URI;
+	readonly shadowUri: URI;
+	/** 'added': shadow has the file, real doesn't (yet). 'deleted': real has it, shadow doesn't -
+	 * only possible if a caller deletes a file from the shadow tree directly, since this service
+	 * itself never deletes synced files. 'modified': both exist with different content.
+	 * 'unchanged': both exist with identical content. */
+	readonly kind: 'added' | 'deleted' | 'modified' | 'unchanged';
+	readonly realContent: string | undefined;
+	readonly shadowContent: string | undefined;
+}
+
 export interface IShadowWorkspaceService {
 	readonly _serviceBrand: undefined;
 
@@ -79,6 +97,14 @@ export interface IShadowWorkspaceService {
 	 * thread with no shadow workspace (no-op).
 	 */
 	disposeShadow(threadId: string): Promise<void>;
+
+	/**
+	 * Diffs the shadow tree against the real workspace for every file that has been synced into
+	 * this thread's shadow so far (via syncFileIntoShadow), in sync order. Returns an empty array
+	 * for a thread with no shadow workspace. Does not touch any file that was never synced - this
+	 * is a targeted diff of known-touched files, not a full recursive tree walk.
+	 */
+	diffShadowAgainstReal(threadId: string): Promise<FileDiff[]>;
 }
 
 const SHADOW_ROOT_FOLDER_NAME = 'ainative-shadow';
@@ -86,8 +112,13 @@ const SHADOW_ROOT_FOLDER_NAME = 'ainative-shadow';
 export class ShadowWorkspaceService extends Disposable implements IShadowWorkspaceService {
 	_serviceBrand: undefined;
 
-	// threadId -> mutable shadow workspace state
-	private readonly _shadowOfThreadId = new Map<string, { rootUri: URI; syncedFsPaths: Set<string> }>();
+	// threadId -> mutable shadow workspace state. syncedFiles is keyed by real fsPath, in insertion
+	// (sync) order, and also stores each file's workspaceRootUri so diffShadowAgainstReal can
+	// re-derive the shadow URI for every synced file without the caller passing it again.
+	private readonly _shadowOfThreadId = new Map<string, {
+		rootUri: URI;
+		syncedFiles: Map<string, { workspaceRootUri: URI; realUri: URI }>;
+	}>();
 
 	constructor(
 		@IFileService private readonly _fileService: IFileService,
@@ -104,7 +135,7 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 		const rootUri = URI.file(path.join(tmpdir(), SHADOW_ROOT_FOLDER_NAME, this._sanitizeForPath(threadId) + '-' + generateUuid().slice(0, 8)));
 		await this._fileService.createFolder(rootUri);
 
-		const state = { rootUri, syncedFsPaths: new Set<string>() };
+		const state = { rootUri, syncedFiles: new Map<string, { workspaceRootUri: URI; realUri: URI }>() };
 		this._shadowOfThreadId.set(threadId, state);
 		return this._toShadowWorkspace(threadId, state);
 	}
@@ -128,7 +159,7 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 		}
 
 		const shadowUri = this._mapToShadow(state.rootUri, workspaceRootUri, realFileUri);
-		const alreadySynced = state.syncedFsPaths.has(realFileUri.fsPath);
+		const alreadySynced = state.syncedFiles.has(realFileUri.fsPath);
 
 		if (!alreadySynced || opts?.force) {
 			const exists = await this._fileService.exists(realFileUri);
@@ -138,10 +169,54 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 			}
 			// If the real file doesn't exist yet (e.g. the agent is about to create it), there's
 			// nothing to copy - the shadow file simply won't exist until something writes to it.
-			state.syncedFsPaths.add(realFileUri.fsPath);
+			// Map.set on an existing key updates the value but keeps its original insertion
+			// position, which is what we want: re-syncing (even with force) shouldn't reorder a
+			// file that was already touched earlier in the thread.
+			state.syncedFiles.set(realFileUri.fsPath, { workspaceRootUri, realUri: realFileUri });
 		}
 
 		return shadowUri;
+	}
+
+	async diffShadowAgainstReal(threadId: string): Promise<FileDiff[]> {
+		const state = this._shadowOfThreadId.get(threadId);
+		if (!state) return [];
+
+		const diffs: FileDiff[] = [];
+		for (const { workspaceRootUri, realUri } of state.syncedFiles.values()) {
+			const shadowUri = this._mapToShadow(state.rootUri, workspaceRootUri, realUri);
+
+			const [realContent, shadowContent] = await Promise.all([
+				this._readFileIfExists(realUri),
+				this._readFileIfExists(shadowUri),
+			]);
+
+			let kind: FileDiff['kind'];
+			if (realContent === undefined && shadowContent !== undefined) {
+				kind = 'added';
+			} else if (realContent !== undefined && shadowContent === undefined) {
+				kind = 'deleted';
+			} else if (realContent === shadowContent) {
+				kind = 'unchanged';
+			} else {
+				kind = 'modified';
+			}
+
+			diffs.push({ realUri, shadowUri, kind, realContent, shadowContent });
+		}
+
+		return diffs;
+	}
+
+	private async _readFileIfExists(uri: URI): Promise<string | undefined> {
+		try {
+			const content = await this._fileService.readFile(uri);
+			return content.value.toString();
+		} catch {
+			// Covers both "never existed" and "existed then got deleted" - diffShadowAgainstReal
+			// treats both the same way (file absent at diff time), matching FileDiff.kind's design.
+			return undefined;
+		}
 	}
 
 	async disposeShadow(threadId: string): Promise<void> {
@@ -165,8 +240,8 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 		super.dispose();
 	}
 
-	private _toShadowWorkspace(threadId: string, state: { rootUri: URI; syncedFsPaths: Set<string> }): ShadowWorkspace {
-		return { threadId, rootUri: state.rootUri, syncedFsPaths: state.syncedFsPaths };
+	private _toShadowWorkspace(threadId: string, state: { rootUri: URI; syncedFiles: Map<string, { workspaceRootUri: URI; realUri: URI }> }): ShadowWorkspace {
+		return { threadId, rootUri: state.rootUri, syncedFsPaths: new Set(state.syncedFiles.keys()) };
 	}
 
 	private _plannedRootUri(threadId: string): URI {

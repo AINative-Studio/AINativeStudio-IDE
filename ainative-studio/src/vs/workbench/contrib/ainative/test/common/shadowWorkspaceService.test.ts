@@ -134,4 +134,95 @@ suite('ShadowWorkspaceService Tests', () => {
 	test('disposeShadow is a no-op for a thread with no shadow workspace', async () => {
 		await service.disposeShadow('never-existed'); // should not throw
 	});
+
+	test('diffShadowAgainstReal returns an empty array for a thread with no shadow workspace', async () => {
+		const diffs = await service.diffShadowAgainstReal('never-created-for-diff');
+		assert.deepStrictEqual(diffs, []);
+	});
+
+	test('diffShadowAgainstReal reports unchanged for a synced file nobody has touched since', async () => {
+		const realFile = URI.joinPath(testWorkspaceDir, 'unchanged.ts');
+		await fileService.writeFile(realFile, VSBuffer.fromString('same content'));
+		await service.syncFileIntoShadow('thread-diff-1', testWorkspaceDir, realFile);
+
+		const diffs = await service.diffShadowAgainstReal('thread-diff-1');
+		assert.strictEqual(diffs.length, 1);
+		assert.strictEqual(diffs[0].kind, 'unchanged');
+		assert.strictEqual(diffs[0].realContent, 'same content');
+		assert.strictEqual(diffs[0].shadowContent, 'same content');
+	});
+
+	test('diffShadowAgainstReal reports modified when the shadow copy was edited', async () => {
+		const realFile = URI.joinPath(testWorkspaceDir, 'edited.ts');
+		await fileService.writeFile(realFile, VSBuffer.fromString('original'));
+		const shadowUri = await service.syncFileIntoShadow('thread-diff-2', testWorkspaceDir, realFile);
+
+		// simulate an agent edit landing in the shadow tree, real file untouched
+		await fileService.writeFile(shadowUri, VSBuffer.fromString('agent rewrote this'));
+
+		const diffs = await service.diffShadowAgainstReal('thread-diff-2');
+		assert.strictEqual(diffs.length, 1);
+		assert.strictEqual(diffs[0].kind, 'modified');
+		assert.strictEqual(diffs[0].realContent, 'original');
+		assert.strictEqual(diffs[0].shadowContent, 'agent rewrote this');
+	});
+
+	test('diffShadowAgainstReal reports added for a file the agent created only in the shadow tree', async () => {
+		const newFile = URI.joinPath(testWorkspaceDir, 'brand-new.ts');
+		// sync a not-yet-existing file (same pattern as the "tolerates a real file that does not
+		// exist yet" test above), then have the agent write it into the shadow tree directly
+		const shadowUri = await service.syncFileIntoShadow('thread-diff-3', testWorkspaceDir, newFile);
+		await fileService.writeFile(shadowUri, VSBuffer.fromString('export const brandNew = true;'));
+
+		const diffs = await service.diffShadowAgainstReal('thread-diff-3');
+		assert.strictEqual(diffs.length, 1);
+		assert.strictEqual(diffs[0].kind, 'added');
+		assert.strictEqual(diffs[0].realContent, undefined);
+		assert.strictEqual(diffs[0].shadowContent, 'export const brandNew = true;');
+	});
+
+	test('diffShadowAgainstReal reports deleted for a file removed from the shadow tree after syncing', async () => {
+		const realFile = URI.joinPath(testWorkspaceDir, 'to-be-shadow-deleted.ts');
+		await fileService.writeFile(realFile, VSBuffer.fromString('still here on disk'));
+		const shadowUri = await service.syncFileIntoShadow('thread-diff-4', testWorkspaceDir, realFile);
+
+		// simulate an agent deleting the file as part of its edit, directly in the shadow tree
+		await fileService.del(shadowUri);
+
+		const diffs = await service.diffShadowAgainstReal('thread-diff-4');
+		assert.strictEqual(diffs.length, 1);
+		assert.strictEqual(diffs[0].kind, 'deleted');
+		assert.strictEqual(diffs[0].realContent, 'still here on disk');
+		assert.strictEqual(diffs[0].shadowContent, undefined);
+	});
+
+	test('diffShadowAgainstReal only reports files that were actually synced, not the whole tree', async () => {
+		const syncedFile = URI.joinPath(testWorkspaceDir, 'synced.ts');
+		const untouchedFile = URI.joinPath(testWorkspaceDir, 'never-synced.ts');
+		await fileService.writeFile(syncedFile, VSBuffer.fromString('a'));
+		await fileService.writeFile(untouchedFile, VSBuffer.fromString('b'));
+
+		await service.syncFileIntoShadow('thread-diff-5', testWorkspaceDir, syncedFile);
+
+		const diffs = await service.diffShadowAgainstReal('thread-diff-5');
+		assert.strictEqual(diffs.length, 1);
+		assert.strictEqual(diffs[0].realUri.toString(), syncedFile.toString());
+	});
+
+	test('diffShadowAgainstReal preserves sync order across multiple files', async () => {
+		const fileA = URI.joinPath(testWorkspaceDir, 'a-first.ts');
+		const fileB = URI.joinPath(testWorkspaceDir, 'b-second.ts');
+		const fileC = URI.joinPath(testWorkspaceDir, 'c-third.ts');
+		await fileService.writeFile(fileA, VSBuffer.fromString('a'));
+		await fileService.writeFile(fileB, VSBuffer.fromString('b'));
+		await fileService.writeFile(fileC, VSBuffer.fromString('c'));
+
+		// sync out of alphabetical order to prove this is insertion order, not a sort
+		await service.syncFileIntoShadow('thread-diff-6', testWorkspaceDir, fileC);
+		await service.syncFileIntoShadow('thread-diff-6', testWorkspaceDir, fileA);
+		await service.syncFileIntoShadow('thread-diff-6', testWorkspaceDir, fileB);
+
+		const diffs = await service.diffShadowAgainstReal('thread-diff-6');
+		assert.deepStrictEqual(diffs.map(d => d.realUri.toString()), [fileC.toString(), fileA.toString(), fileB.toString()]);
+	});
 });
