@@ -59,20 +59,22 @@ Merged to `main`, left open (design/first-slice done, follow-on phases remain):
 | #162 | Hooks design + first built-in hook (commit-message suggestion, default off) | `4c87b57a` |
 | #168 | Cerebras/Fireworks/DigitalOcean added as BYOK providers (managed-vs-BYOK messaging still undecided) | `5eb90042` |
 
-Closed, research/decision only, no code (comment posted on each issue with the recommendation):
-- **#151** — ZeroDB OAuth: recommend delete
-- **#152** — secureTokenStorage.ts: recommend delete; surfaced **#170**
-- **#154** — _markerCheckService.ts: recommend delete; surfaced **#171**
-- **#163** — MCP lifecycle: audited, corrected scope
-- **#164** — billing top-up: confirmed real URL, left blocked on #150 (now unblocked)
-- **#165** — remote dev environments: no code blocker found
-- **#167** — Cody identity: design doc posted, corrected a wrong assumption about `.ainative/CODY.md`
+Research/decision only, no code (comment posted with a recommendation on each):
+- **#151** — ZeroDB OAuth: recommend delete. **Correction**: an earlier version of this doc said this was closed — it wasn't. It's a genuine product decision (delete working code), correctly left open for an actual decision-maker, not something I should close myself.
+- **#152** — secureTokenStorage.ts: recommend delete; surfaced **#170** (fixed). Same correction as #151 — left open, not closed.
+- **#154** — _markerCheckService.ts: recommend delete; surfaced **#171** (re-verified as currently-dead code, tied to this decision). Same correction — left open, not closed.
+- **#163** — MCP lifecycle: audited, corrected scope, then **closed** in favor of 3 narrower follow-ups per its own recommendation: #174 (quick wins), #175 (per-tool enable/disable), #176 (registry/install/auth/logs — the large pieces)
+- **#164** — billing top-up: confirmed real URL, left open and blocked on #150 (now unblocked — ready to resume)
+- **#165** — remote dev environments: no code blocker found, left open (informational, no action needed unless a real user report surfaces)
+- **#167** — Cody identity: design doc posted, corrected a wrong assumption about `.ainative/CODY.md`, left open pending product sign-off on the design
 
 Issues filed from findings along the way:
 - **#170** — Linux plaintext-equivalent credential default — fixed and closed (`7cb8c787`)
 - **#171** — `_markerCheckService`'s 5s poller — re-verified as currently dead/unreachable code (never imported, so the registration never runs); left open, tied to #154's open finish-vs-delete decision rather than resolved unilaterally
 - **#172** — `AINativeAuthService` missing `registerSingleton` — fixed and closed (`7cb8c787`)
-- **#173** — `@types/node` 24.x bump breaks type-checking in 17 core base-library files — newly found via the first real full-project compile, still open
+- **#173** — `@types/node` 24.x bump breaks type-checking in 17 core base-library files — found via the first real full-project `tsc`, still open
+- **#174, #175, #176** — split from #163's MCP lifecycle audit per its own recommendation (quick wins / per-tool toggles / large registry+auth+logs work respectively), all open
+- **#177** — `extensions/tsconfig.base.json`'s lib list predates ES2022, breaking `Array.prototype.at()` in bundled extensions (5 files, 2 extensions found so far via `npm run compile`) — fixed by adding the missing ES2022 sub-libs, not by patching every call site; closing once the compile confirms zero remaining instances
 
 ### Recovery note (2026-10-06)
 The session restarted mid-flight with 7 agents' final commit/report step interrupted. All 7 had real, substantial uncommitted work on disk — none were lost. Each was manually re-reviewed before committing: two had out-of-scope artifacts reverted (a stray unrelated test deletion and package-lock.json version drift on #156; a scratch node_modules/tsconfig on #150), and one real security issue was found and fixed during review — #169's Windows PATH write used string-interpolated `exec` with insufficient escaping for a value that includes the user's full existing PATH; hardened to `execFile` with an argument array before merging.

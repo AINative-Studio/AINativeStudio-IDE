@@ -24,7 +24,11 @@
 			"ES2020.Intl",
 			"ES2021.Promise",
 			"ES2021.String",
-			"ES2021.WeakRef"
+			"ES2021.WeakRef",
+			"ES2022.Array",
+			"ES2022.Object",
+			"ES2022.String",
+			"ES2022.Error"
 		],
 		"module": "commonjs",
 		"strict": true,

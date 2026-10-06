@@ -21,7 +21,7 @@ export enum MediaKind {
 }
 
 export function getMediaKindForMime(mime: string): MediaKind | undefined {
-	const root = mime.toLowerCase().split('/').at(0);
+	const root = mime.toLowerCase().split('/')[0];
 	switch (root) {
 		case 'image': return MediaKind.Image;
 		case 'video': return MediaKind.Video;
