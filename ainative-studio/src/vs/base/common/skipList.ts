@@ -80,11 +80,11 @@ export class SkipList<K, V> implements Map<K, V> {
 		}
 	}
 
-	[Symbol.iterator](): IterableIterator<[K, V]> {
+	[Symbol.iterator](): MapIterator<[K, V]> {
 		return this.entries();
 	}
 
-	*entries(): IterableIterator<[K, V]> {
+	*entries(): MapIterator<[K, V]> {
 		let node = this._header.forward[0];
 		while (node) {
 			yield [node.key, node.value];
@@ -92,7 +92,7 @@ export class SkipList<K, V> implements Map<K, V> {
 		}
 	}
 
-	*keys(): IterableIterator<K> {
+	*keys(): MapIterator<K> {
 		let node = this._header.forward[0];
 		while (node) {
 			yield node.key;
@@ -100,7 +100,7 @@ export class SkipList<K, V> implements Map<K, V> {
 		}
 	}
 
-	*values(): IterableIterator<V> {
+	*values(): MapIterator<V> {
 		let node = this._header.forward[0];
 		while (node) {
 			yield node.value;
