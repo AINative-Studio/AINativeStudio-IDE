@@ -112,6 +112,15 @@ export const displayInfoOfProviderName = (providerName: ProviderName): DisplayIn
 	else if (providerName === 'ainativeCloud') {
 		return { title: 'AINative Cloud', }
 	}
+	else if (providerName === 'cerebras') {
+		return { title: 'Cerebras', }
+	}
+	else if (providerName === 'fireworks') {
+		return { title: 'Fireworks AI', }
+	}
+	else if (providerName === 'digitalOcean') {
+		return { title: 'DigitalOcean Gradient AI', }
+	}
 
 	throw new Error(`descOfProviderName: Unknown provider name: "${providerName}"`)
 }
@@ -135,6 +144,14 @@ export const subTextMdOfProviderName = (providerName: ProviderName): string => {
 	if (providerName === 'lmStudio') return 'Read more about custom [Endpoints here](https://lmstudio.ai/docs/app/api/endpoints/openai).'
 	if (providerName === 'liteLLM') return 'Read more about endpoints [here](https://docs.litellm.ai/docs/providers/openai_compatible).'
 	if (providerName === 'ainativeCloud') return 'Get your [API Key here](https://app.ainative.studio). Accepted key prefixes are `sk_` (account key), `tmp_` (72-hour instant key), and `zdb_live_` (claimed project key) — keys from other providers will not work.'
+
+	// NOTE: AINative Cloud's own managed catalog already proxies some Cerebras- and
+	// DigitalOcean-hosted models. These entries are for bringing your own key and
+	// billing directly with the provider instead. The exact managed-vs-BYOK wording
+	// is still an open product question — see issue #168.
+	if (providerName === 'cerebras') return 'Get your [API Key here](https://cloud.cerebras.ai). Billed directly by Cerebras — some Cerebras-hosted models are also available through AINative Cloud on AINative billing.'
+	if (providerName === 'fireworks') return 'Get your [API Key here](https://app.fireworks.ai/settings/users/api-keys). Browse the [model library here](https://fireworks.ai/models).'
+	if (providerName === 'digitalOcean') return 'Create a model access key in the [DigitalOcean Control Panel](https://cloud.digitalocean.com/model-studio/manage-keys). Billed directly by DigitalOcean — some DigitalOcean-hosted models are also available through AINative Cloud on AINative billing. See the [supported models list](https://docs.digitalocean.com/products/inference/details/models/).'
 
 	throw new Error(`subTextMdOfProviderName: Unknown provider name: "${providerName}"`)
 }
@@ -167,7 +184,12 @@ export const displayInfoOfSettingName = (providerName: ProviderName, settingName
 															// instant-db keys (`tmp_`, 72h) and claimed-project keys
 															// (`zdb_live_`) are also accepted by the backend.
 															providerName === 'ainativeCloud' ? 'sk_key...' :
-																'',
+																providerName === 'cerebras' ? 'csk-key...' :
+																	providerName === 'fireworks' ? 'fw_key...' :
+																		// DigitalOcean model access keys are created in the Control
+																		// Panel and sent as a plain bearer token.
+																		providerName === 'digitalOcean' ? 'dop_v1_key...' :
+																			'',
 
 			isPasswordField: true,
 		}
@@ -371,6 +393,24 @@ export const defaultSettingsOfProvider: SettingsOfProvider = {
 		...defaultCustomSettings,
 		...defaultProviderSettings.awsBedrock,
 		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.awsBedrock),
+		_didFillInProviderSettings: undefined,
+	},
+	cerebras: { // BYOK, OpenAI-compatible
+		...defaultCustomSettings,
+		...defaultProviderSettings.cerebras,
+		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.cerebras),
+		_didFillInProviderSettings: undefined,
+	},
+	fireworks: { // BYOK, OpenAI-compatible
+		...defaultCustomSettings,
+		...defaultProviderSettings.fireworks,
+		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.fireworks),
+		_didFillInProviderSettings: undefined,
+	},
+	digitalOcean: { // BYOK, OpenAI-compatible (Gradient AI serverless inference)
+		...defaultCustomSettings,
+		...defaultProviderSettings.digitalOcean,
+		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.digitalOcean),
 		_didFillInProviderSettings: undefined,
 	},
 }

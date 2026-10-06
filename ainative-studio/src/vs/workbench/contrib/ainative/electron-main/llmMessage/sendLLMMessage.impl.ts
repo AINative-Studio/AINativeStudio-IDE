@@ -169,6 +169,25 @@ const newOpenAICompatibleSDK = async ({ settingsOfProvider, providerName, includ
 		const thisConfig = settingsOfProvider[providerName]
 		return new OpenAI({ baseURL: 'https://api.mistral.ai/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
 	}
+	else if (providerName === 'cerebras') {
+		// OpenAI-compatible, plain bearer-token auth.
+		// https://inference-docs.cerebras.ai/api-reference/chat-completions
+		const thisConfig = settingsOfProvider[providerName]
+		return new OpenAI({ baseURL: 'https://api.cerebras.ai/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
+	}
+	else if (providerName === 'fireworks') {
+		// OpenAI-compatible, plain bearer-token auth.
+		// https://docs.fireworks.ai/guides/querying-text-models
+		const thisConfig = settingsOfProvider[providerName]
+		return new OpenAI({ baseURL: 'https://api.fireworks.ai/inference/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
+	}
+	else if (providerName === 'digitalOcean') {
+		// DigitalOcean Gradient AI serverless inference. OpenAI-compatible; the
+		// "model access key" is sent as a plain bearer token.
+		// https://docs.digitalocean.com/products/inference/getting-started/quickstart/
+		const thisConfig = settingsOfProvider[providerName]
+		return new OpenAI({ baseURL: 'https://inference.do-ai.run/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
+	}
 
 	else throw new Error(`Void providerName was invalid: ${providerName}.`)
 }
@@ -1054,6 +1073,27 @@ export const sendLLMMessageToProviderImplementation = {
 	},
 	ainativeCloud: {
 		sendChat: sendAINativeCloudChat,
+		sendFIM: null,
+		list: null,
+	},
+
+	// All three reuse the shared OpenAI-compatible path: each exposes an
+	// OpenAI-shaped /v1/chat/completions and authenticates with a plain
+	// `Authorization: Bearer <key>` header, so no bespoke provider class is needed.
+	// `list` stays null because model refresh only runs for
+	// `refreshableProviderNames` (local providers).
+	cerebras: {
+		sendChat: (params) => _sendOpenAICompatibleChat(params),
+		sendFIM: null,
+		list: null,
+	},
+	fireworks: {
+		sendChat: (params) => _sendOpenAICompatibleChat(params),
+		sendFIM: null,
+		list: null,
+	},
+	digitalOcean: {
+		sendChat: (params) => _sendOpenAICompatibleChat(params),
 		sendFIM: null,
 		list: null,
 	},
