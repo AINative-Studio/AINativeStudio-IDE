@@ -516,4 +516,5 @@ export class AINativeAuthService extends Disposable implements IAINativeSessionA
 	}
 }
 
-registerSingleton(IAINativeSessionAuthService, AINativeAuthService, InstantiationType.Eager);
+// Register the service with VS Code dependency injection
+registerSingleton(IAINativeSessionAuthService, AINativeAuthService, InstantiationType.Delayed);

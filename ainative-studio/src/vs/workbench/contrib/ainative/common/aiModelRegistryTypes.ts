@@ -536,13 +536,14 @@ export class ModelRegistryError extends Error {
  *
  * Declared here (rather than in aiModelRegistryService.ts, where the
  * implementation lives) to avoid a circular module dependency: this service
- * and usageTrackingService.ts each inject the other via constructor DI, and
- * decorator metadata evaluates at module load time, not lazily - so if both
- * decorators lived in their respective implementation files, whichever
- * module's exports load second would hit the other's in its temporal dead
- * zone. Importing a decorator from a dependency-free types file breaks the
- * cycle at the module level while the service-level circular dependency
- * (legitimate under VS Code's DI, which instantiates lazily) is unaffected.
+ * and usageTrackingService.ts reference each other, and decorator metadata
+ * evaluates at module load time, not lazily - so if both decorators lived in
+ * their respective implementation files, whichever module's exports load
+ * second would hit the other's in its temporal dead zone. Importing a
+ * decorator from a dependency-free types file breaks the cycle at the module
+ * level. usageTrackingService.ts additionally resolves this service lazily
+ * via IInstantiationService rather than direct constructor injection, as a
+ * second layer of protection against the same class of issue.
  */
 export const IAIModelRegistryService = createDecorator<IAIModelRegistryService>('aiModelRegistryService');
 

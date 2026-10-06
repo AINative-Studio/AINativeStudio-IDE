@@ -10,11 +10,11 @@
 
 import { Emitter } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
+import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IAINativeCloudAuthService } from './ainativeCloudAuthTypes.js';
 import {
-	IAIModelRegistryService,
 	AIModel,
 	ModelFilters,
 	ModelInvocationRequest,
@@ -27,12 +27,14 @@ import {
 	ModelRegistryErrorCode,
 	ModelCapability,
 	PricingTier,
-	ModelParameterType
+	ModelParameterType,
+	IAIModelRegistryService
 } from './aiModelRegistryTypes.js';
 import { IModelConfigManager, ModelConfigManager } from './aiModelConfig.js';
-import { IUsageTrackingService } from './usageTrackingService.js';
+import { IUsageTrackingService } from './usageTrackingTypes.js';
 import { getAINativeConfig } from './ainativeConfig.js';
 
+// Re-export for backward compatibility
 export { IAIModelRegistryService } from './aiModelRegistryTypes.js';
 
 /**
@@ -41,11 +43,6 @@ export { IAIModelRegistryService } from './aiModelRegistryTypes.js';
 export class AIModelRegistryService extends Disposable implements IAIModelRegistryService {
 	readonly _serviceBrand: undefined;
 
-	/**
-	 * Host sourced from the centralized `ainativeConfig` service (issue #153)
-	 * instead of a local literal. Defaults to `https://api.ainative.studio`,
-	 * overridable via `AINATIVE_API_BASE_URL`.
-	 */
 	private static readonly API_BASE = getAINativeConfig().apiBaseUrl;
 
 	/**
@@ -88,15 +85,15 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 	private _cacheTimestamp: number = 0;
 	private _configManager: IModelConfigManager;
 	private _usageTrackingService: IUsageTrackingService | null = null;
+	private _usageTrackingResolved = false;
 
 	constructor(
 		@IAINativeCloudAuthService private readonly cloudAuthService: IAINativeCloudAuthService,
 		@IStorageService storageService: IStorageService,
-		@IUsageTrackingService usageTrackingService: IUsageTrackingService
+		@IInstantiationService private readonly _instantiationService: IInstantiationService
 	) {
 		super();
 
-		this._usageTrackingService = usageTrackingService;
 		this._configManager = new ModelConfigManager(storageService);
 		this._register(this._configManager.onDidChangeModelSelection(config => {
 			this._onDidChangeModelSelection.fire(config);
@@ -112,8 +109,28 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 	}
 
 	/**
+	 * Lazily resolve IUsageTrackingService to avoid circular DI dependency.
+	 * usageTrackingService depends on aiModelRegistryService, so we cannot
+	 * inject it directly in the constructor.
+	 */
+	private _getUsageTrackingService(): IUsageTrackingService | null {
+		if (!this._usageTrackingResolved) {
+			this._usageTrackingResolved = true;
+			try {
+				this._usageTrackingService = this._instantiationService.invokeFunction(
+					accessor => accessor.get(IUsageTrackingService)
+				);
+			} catch {
+				// Service not yet available
+			}
+		}
+		return this._usageTrackingService;
+	}
+
+	/**
 	 * Fetch models from API
-	 *
+	 */
+	/**
 	 * SCOPE NOTE (issue #143): the endpoint path below is corrected to the
 	 * confirmed live catalog route, but replacing this service's mock/registry
 	 * data with the live catalog end-to-end is explicitly OUT OF SCOPE for #143
@@ -425,8 +442,9 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 
 			// Track invocation for usage stats (both cloud and local)
 			await this._trackInvocation(request.modelId, data.usage);
-			if (this._usageTrackingService && data.usage) {
-				await this._usageTrackingService.trackUsage(
+			const usageService = this._getUsageTrackingService();
+			if (usageService && data.usage) {
+				await usageService.trackUsage(
 					request.modelId,
 					data.usage.input_tokens ?? 0,
 					data.usage.output_tokens ?? 0
@@ -559,8 +577,9 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 			// Track invocation after streaming completes (both cloud and local)
 			if (finalUsage) {
 				await this._trackInvocation(request.modelId, finalUsage);
-				if (this._usageTrackingService) {
-					await this._usageTrackingService.trackUsage(
+				const usageService = this._getUsageTrackingService();
+				if (usageService) {
+					await usageService.trackUsage(
 						request.modelId,
 						finalUsage.input_tokens ?? finalUsage.inputTokens ?? 0,
 						finalUsage.output_tokens ?? finalUsage.outputTokens ?? 0

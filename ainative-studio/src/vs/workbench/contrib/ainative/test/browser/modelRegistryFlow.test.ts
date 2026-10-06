@@ -148,10 +148,20 @@ suite('Model Registry Flow Integration Tests - Issue #47', () => {
 			{ state: { settingsOfProvider: { ainativeCloud: { apiKey: '' } } }, onDidChangeState: () => ({ dispose: () => { } }) } as any
 		));
 
+		const mockInstantiationService = {
+			_serviceBrand: undefined,
+			invokeFunction: (fn: any) => fn({
+				get: () => usageTracking
+			}),
+			createInstance: () => { throw new Error('Not implemented'); },
+			createChild: () => { throw new Error('Not implemented'); },
+			dispose: () => { }
+		};
+
 		modelRegistry = disposables.add(new AIModelRegistryService(
 			authService as any,
 			storageService,
-			usageTracking
+			mockInstantiationService as any
 		));
 
 		// Update usageTracking with modelRegistry reference
