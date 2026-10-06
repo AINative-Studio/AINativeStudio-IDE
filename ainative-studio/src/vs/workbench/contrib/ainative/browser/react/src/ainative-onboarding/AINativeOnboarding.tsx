@@ -4,11 +4,13 @@
  *--------------------------------------------------------------------------------------*/
 
 import { useEffect, useRef, useState } from 'react';
-import { useAccessor, useIsDark, useSettingsState } from '../util/services.js';
+import { useAccessor, useAINativeAuth, useIsDark, useSettingsState } from '../util/services.js';
 import { Brain, Check, ChevronRight, DollarSign, ExternalLink, Lock, Terminal, X } from 'lucide-react';
 import { displayInfoOfProviderName, ProviderName, providerNames, localProviderNames, featureNames, FeatureName, isFeatureNameDisabled } from '../../../../common/ainativeSettingsTypes.js';
 import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js';
 import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, ModelDump } from '../ainative-settings-tsx/Settings.js';
+import { AINativeLoginModal } from '../ainative-settings-tsx/AINativeLoginModal.js';
+import { AINativeButtonBgDarken } from '../util/inputs.js';
 import { ColorScheme } from '../../../../../../../platform/theme/common/theme.js';
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js';
 import { isLinux } from '../../../../../../../base/common/platform.js';
@@ -127,7 +129,10 @@ const featureNameMap: { display: string, featureName: FeatureName }[] = [
 ];
 
 const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPageIndex: (index: number) => void }) => {
-	const [currentTab, setCurrentTab] = useState<TabName>('Free');
+	const auth = useAINativeAuth()
+	// Default to the tab that has "Add AINative Cloud" when the user just signed in on the
+	// Welcome page, since they came here specifically to paste their API key, not to browse.
+	const [currentTab, setCurrentTab] = useState<TabName>(auth.isAuthenticated ? 'Paid' : 'Free');
 	const settingsState = useSettingsState();
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -201,9 +206,20 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 			</div>
 
 			{providerNamesOfTab[currentTab].map((providerName) => (
-				<div key={providerName} className="w-full max-w-xl mb-10">
+				<div
+					key={providerName}
+					className={`w-full max-w-xl mb-10 ${providerName === 'ainativeCloud' && auth.isAuthenticated
+						? 'ring-1 ring-[#0e70c0] rounded-lg p-4 -m-4 mb-6'
+						: ''
+						}`}
+				>
 					<div className="text-xl mb-2">
 						Add {displayInfoOfProviderName(providerName).title}
+						{providerName === 'ainativeCloud' && auth.isAuthenticated && (
+							<span className="ml-2 text-xs align-middle px-2 py-0.5 rounded-full bg-[#0e70c0]/20 text-[#0e70c0] font-normal">
+								Signed in — paste your key to finish
+							</span>
+						)}
 						{providerName === 'gemini' && (
 							<span
 								data-tooltip-id="ainative-tooltip-provider-info"
@@ -543,6 +559,8 @@ const AINativeOnboardingContent = () => {
 	const voidMetricsService = accessor.get('IMetricsService')
 
 	const voidSettingsState = useSettingsState()
+	const auth = useAINativeAuth()
+	const [showLoginModal, setShowLoginModal] = useState(false)
 
 	const [pageIndex, setPageIndex] = useState(0)
 
@@ -671,16 +689,29 @@ const AINativeOnboardingContent = () => {
 						{!isLinux && <AINativeIcon />}
 					</div>
 
-
-					<FadeIn
-						delayMs={1000}
-					>
-						<PrimaryActionButton
-							onClick={() => { setPageIndex(1) }}
-						>
-							Get Started
-						</PrimaryActionButton>
-					</FadeIn>
+					{auth.isAuthenticated ? (
+						<FadeIn delayMs={1000} className='flex flex-col items-center gap-3'>
+							<div className='text-ainative-fg-3 text-sm'>
+								Signed in as {auth.user?.name || auth.user?.email}
+							</div>
+							<PrimaryActionButton onClick={() => { setPageIndex(1) }}>
+								Get Started
+							</PrimaryActionButton>
+						</FadeIn>
+					) : (
+						<FadeIn delayMs={1000} className='flex flex-col items-center gap-3'>
+							<PrimaryActionButton onClick={() => { setShowLoginModal(true) }}>
+								Sign In to AINative Cloud
+							</PrimaryActionButton>
+							<button
+								type='button'
+								className='text-ainative-fg-3 text-sm hover:text-ainative-fg-1 underline underline-offset-2'
+								onClick={() => { setPageIndex(1) }}
+							>
+								Skip and bring your own API key instead
+							</button>
+						</FadeIn>
+					)}
 
 				</div>
 			}
@@ -731,6 +762,19 @@ const AINativeOnboardingContent = () => {
 					/>
 				))}
 			</div>
+		)}
+
+		{showLoginModal && (
+			<AINativeLoginModal
+				onClose={() => { setShowLoginModal(false) }}
+				onSuccess={() => {
+					setShowLoginModal(false)
+					// Session auth doesn't provision a chat-completions API key on its own today -
+					// take the user straight to the provider step, where "Add AINative Cloud" is
+					// already listed, so they can paste the key from app.ainative.studio.
+					setPageIndex(1)
+				}}
+			/>
 		)}
 	</div>
 
