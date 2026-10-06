@@ -166,11 +166,19 @@ export const defaultModelsOfProvider = {
 	googleVertex: [],
 	microsoftAzure: [],
 	awsBedrock: [],
-	ainativeCloud: [ // AINative Cloud unified API
+	// AINative Cloud unified API. IDs confirmed against the live catalog
+	// (`GET /api/v1/public/ai-registry/models`, unauthenticated) on 2026-10-05.
+	// Note the spelling: the backend uses DASH-separated versions (`gpt-5-3-codex`),
+	// not dots. A dotted ID is rejected with `{"detail":"Model not found"}`, so
+	// do not "correct" these to `gpt-5.3-codex` / `claude-sonnet-4.5`.
+	// Longer term this static list should be replaced by a live call to
+	// `GET /v1/public/models/available` — see docs/api/BACKEND_CONTRACT_NOTES.md.
+	ainativeCloud: [
+		'gpt-5-3-codex',
+		'qwen3-coder-30b-a3b',
+		'qwen-coder-32b',
 		'claude-sonnet-4-5',
-		'claude-haiku-4',
-		'gpt-4o',
-		'gpt-4o-mini',
+		'claude-opus-4-6',
 	],
 	liteLLM: [],
 
@@ -1467,19 +1475,68 @@ const openRouterSettings: VoidStaticProviderInfo = {
 }
 
 // ---------------- AINATIVE CLOUD ----------------
+// Context windows below are the live values reported by the AINative model
+// catalog (`GET /api/v1/public/ai-registry/models`, unauthenticated) as of
+// 2026-10-05. Where the catalog reports 0 (an unpopulated record rather than a
+// real limit) the model family's documented window is used instead and marked.
+//
+// `cost` is 0 for every entry because AINative Cloud inference is billed in
+// account credits, not per-token at the provider's list price — the IDE's
+// per-token cost estimate does not apply. Credits balance comes from the
+// separate `GET /api/v1/public/credits/balance` call.
 const ainativeCloudModelOptions = {
+	'gpt-5-3-codex': {
+		contextWindow: 131_072,
+		reservedOutputTokenSpace: 32_768,
+		cost: { input: 0, output: 0 }, // billed in credits, see above
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style' as const,
+		supportsSystemMessage: 'system-role' as const,
+		reasoningCapabilities: false as const,
+	},
+	'qwen3-coder-30b-a3b': {
+		contextWindow: 262_144,
+		reservedOutputTokenSpace: 32_768,
+		cost: { input: 0, output: 0 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style' as const,
+		supportsSystemMessage: 'system-role' as const,
+		reasoningCapabilities: false as const,
+	},
+	'qwen-coder-32b': {
+		contextWindow: 131_072,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0, output: 0 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style' as const,
+		supportsSystemMessage: 'system-role' as const,
+		reasoningCapabilities: false as const,
+	},
+	'qwen-coder-7b': {
+		contextWindow: 131_072,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0, output: 0 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style' as const,
+		supportsSystemMessage: 'system-role' as const,
+		reasoningCapabilities: false as const,
+	},
 	'claude-sonnet-4-5': {
 		contextWindow: 200_000,
 		reservedOutputTokenSpace: 8_192,
-		cost: { input: 0, output: 0 }, // Charged via subscription
+		cost: { input: 0, output: 0 },
 		downloadable: false,
 		supportsFIM: false,
 		specialToolFormat: 'openai-style' as const,
 		supportsSystemMessage: 'system-role' as const,
 		reasoningCapabilities: false as const,
 	},
-	'claude-haiku-4': {
-		contextWindow: 200_000,
+	'claude-sonnet-4-6': {
+		contextWindow: 200_000, // catalog reports 0 (unpopulated); Claude family default
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0, output: 0 },
 		downloadable: false,
@@ -1488,9 +1545,9 @@ const ainativeCloudModelOptions = {
 		supportsSystemMessage: 'system-role' as const,
 		reasoningCapabilities: false as const,
 	},
-	'gpt-4o': {
-		contextWindow: 128_000,
-		reservedOutputTokenSpace: 16_384,
+	'claude-opus-4-5': {
+		contextWindow: 200_000, // catalog reports 0 (unpopulated); Claude family default
+		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0, output: 0 },
 		downloadable: false,
 		supportsFIM: false,
@@ -1498,9 +1555,9 @@ const ainativeCloudModelOptions = {
 		supportsSystemMessage: 'system-role' as const,
 		reasoningCapabilities: false as const,
 	},
-	'gpt-4o-mini': {
-		contextWindow: 128_000,
-		reservedOutputTokenSpace: 16_384,
+	'claude-opus-4-6': {
+		contextWindow: 200_000, // catalog reports 0 (unpopulated); Claude family default
+		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0, output: 0 },
 		downloadable: false,
 		supportsFIM: false,
@@ -1512,7 +1569,24 @@ const ainativeCloudModelOptions = {
 
 const ainativeCloudSettings: VoidStaticProviderInfo = {
 	modelOptions: ainativeCloudModelOptions,
-	modelOptionsFallback: (modelName) => { return null },
+	// Map a few near-miss spellings onto the real catalog IDs so a user who typed
+	// a dotted version (or carried over a stale default) still gets correct
+	// capabilities rather than the unrecognized-model fallback. This does not
+	// change the ID sent to the backend — only the capabilities looked up for it.
+	modelOptionsFallback: (modelName) => {
+		const lower = modelName.toLowerCase().replace(/\./g, '-')
+		let fallbackName: keyof typeof ainativeCloudModelOptions | null = null
+		if (lower.includes('gpt-5-3-codex')) fallbackName = 'gpt-5-3-codex'
+		else if (lower.includes('qwen3-coder-30b')) fallbackName = 'qwen3-coder-30b-a3b'
+		else if (lower.includes('qwen-coder-32b')) fallbackName = 'qwen-coder-32b'
+		else if (lower.includes('qwen-coder-7b')) fallbackName = 'qwen-coder-7b'
+		else if (lower.includes('claude-opus-4-6')) fallbackName = 'claude-opus-4-6'
+		else if (lower.includes('claude-opus-4-5')) fallbackName = 'claude-opus-4-5'
+		else if (lower.includes('claude-sonnet-4-6')) fallbackName = 'claude-sonnet-4-6'
+		else if (lower.includes('claude-sonnet-4-5')) fallbackName = 'claude-sonnet-4-5'
+		if (fallbackName) return { modelName, recognizedModelName: fallbackName, ...ainativeCloudModelOptions[fallbackName] }
+		return null
+	},
 	providerReasoningIOSettings: {
 		input: { includeInPayload: openAICompatIncludeInPayloadReasoning },
 	},
