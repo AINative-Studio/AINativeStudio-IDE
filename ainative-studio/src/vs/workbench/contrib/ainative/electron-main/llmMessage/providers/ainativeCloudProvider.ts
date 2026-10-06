@@ -5,6 +5,7 @@
 
 import { IAINativeAuthTokenProvider } from '../../../common/ainativeAuthServiceTypes.js';
 import { OnText, OnFinalMessage, OnError, AnthropicReasoning } from '../../../common/sendLLMMessageTypes.js';
+import { getAINativeConfig } from '../../../common/ainativeConfig.js';
 
 /**
  * Chat completion parameters for AINative Cloud API
@@ -86,7 +87,13 @@ interface SSEChunk {
  *    for installs that still carry a session token.
  */
 export class AINativeCloudProvider {
-	private static readonly API_BASE = 'https://api.ainative.studio';
+	/**
+	 * Base host, sourced from the centralized `ainativeConfig` service (issue
+	 * #153) instead of a local literal, so it stays in sync with the other
+	 * AINative services that read `apiBaseUrl` from the same place. Defaults to
+	 * `https://api.ainative.studio`, overridable via `AINATIVE_API_BASE_URL`.
+	 */
+	private static readonly API_BASE = getAINativeConfig().apiBaseUrl;
 	/**
 	 * Confirmed OpenAI-compatible chat endpoint. Note the `/api` prefix — the
 	 * previous value (`/v1/chat/completions`) was wrong and 404'd.

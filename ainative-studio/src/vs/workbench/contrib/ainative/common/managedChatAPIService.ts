@@ -7,6 +7,7 @@ import { Disposable } from '../../../../base/common/lifecycle.js';
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { IAINativeCloudAuthService } from './ainativeCloudAuthTypes.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
+import { getAINativeConfig } from './ainativeConfig.js';
 
 /**
  * Service identifier for dependency injection
@@ -300,7 +301,11 @@ export class ManagedChatAPIService extends Disposable implements IManagedChatAPI
 	// API key. Note the distinction from raw inference: the OpenAI-compatible
 	// `POST /api/v1/chat/completions` used by AINativeCloudProvider authenticates
 	// with `X-API-Key` instead. See docs/api/BACKEND_CONTRACT_NOTES.md.
-	private readonly baseURL = 'https://api.ainative.studio/api/v1/managed';
+	// Host sourced from the centralized `ainativeConfig` service (issue #153)
+	// instead of a local literal; the `/api/v1/managed` path suffix stays here
+	// since it is specific to this service and is not shared with any other
+	// AINative service's endpoint.
+	private readonly baseURL = `${getAINativeConfig().apiBaseUrl}/api/v1/managed`;
 
 	/**
 	 * Credits balance is NOT under `/api/v1/managed`. The confirmed path is
@@ -315,7 +320,7 @@ export class ManagedChatAPIService extends Disposable implements IManagedChatAPI
 	 * Wiring this up (and the `creditsRemaining` sync it feeds) is issue #147's
 	 * scope; it is declared here so the correct path is recorded in one place.
 	 */
-	public static readonly CREDITS_BALANCE_URL = 'https://api.ainative.studio/api/v1/public/credits/balance';
+	public static readonly CREDITS_BALANCE_URL = `${getAINativeConfig().apiBaseUrl}/api/v1/public/credits/balance`;
 
 	// Retry configuration for rate limiting
 	private readonly MAX_RETRIES = 3;

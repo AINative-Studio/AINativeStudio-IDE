@@ -31,6 +31,7 @@ import {
 } from './aiModelRegistryTypes.js';
 import { IModelConfigManager, ModelConfigManager } from './aiModelConfig.js';
 import { IUsageTrackingService } from './usageTrackingService.js';
+import { getAINativeConfig } from './ainativeConfig.js';
 
 /**
  * Service interface for AI Model Registry
@@ -117,7 +118,12 @@ export interface IAIModelRegistryService {
 export class AIModelRegistryService extends Disposable implements IAIModelRegistryService {
 	readonly _serviceBrand: undefined;
 
-	private static readonly API_BASE = 'https://api.ainative.studio';
+	/**
+	 * Host sourced from the centralized `ainativeConfig` service (issue #153)
+	 * instead of a local literal. Defaults to `https://api.ainative.studio`,
+	 * overridable via `AINATIVE_API_BASE_URL`.
+	 */
+	private static readonly API_BASE = getAINativeConfig().apiBaseUrl;
 
 	/**
 	 * Live model catalog path (issue #143).
