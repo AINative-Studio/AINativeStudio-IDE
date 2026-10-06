@@ -24,17 +24,26 @@ export class EncryptionMainService implements IEncryptionMainService {
 		@ILogService private readonly logService: ILogService
 	) {
 
-		// Void added this as a nice default for linux so you don't need to specify encryption provider
-		if (isLinux && !app.commandLine.getSwitchValue('password-store')) {
-			this.logService.trace('[EncryptionMainService] No password-store switch, defaulting to basic...');
-			app.commandLine.appendSwitch('password-store', PasswordStoreCLIOption.basic);
-		}
-
-		// if this commandLine switch is set, the user has opted in to using basic text encryption
+		// If the user explicitly opted in to basic (plaintext-equivalent) encryption via the
+		// password-store command line switch, honor that.
 		if (app.commandLine.getSwitchValue('password-store') === PasswordStoreCLIOption.basic) {
-			this.logService.trace('[EncryptionMainService] setting usePlainTextEncryption to true...');
+			this.logService.trace('[EncryptionMainService] setting usePlainTextEncryption to true (explicit password-store=basic)...');
 			safeStorage.setUsePlainTextEncryption?.(true);
 			this.logService.trace('[EncryptionMainService] set usePlainTextEncryption to true');
+			return;
+		}
+
+		// On Linux, without an explicit opt-in, let safeStorage attempt a real OS keyring
+		// (libsecret/kwallet) first rather than forcing plaintext-equivalent storage by default.
+		// A prior version of this code unconditionally appended `--password-store=basic` here
+		// whenever no switch was set, which silently weakened every credential this app stores
+		// (including AINative Cloud session tokens) to plaintext-equivalent protection with no
+		// user consent and no attempt at the real keyring. If the real keyring genuinely isn't
+		// available, safeStorage.isEncryptionAvailable() will reflect that and callers relying
+		// on IEncryptionService.isEncryptionAvailable() can decide how to handle it (today: a
+		// trace log here; a user-facing consent flow before falling back is tracked separately).
+		if (isLinux && !safeStorage.isEncryptionAvailable()) {
+			this.logService.warn('[EncryptionMainService] No OS keyring available on Linux and no explicit password-store switch was set; secrets will be stored without real encryption until one is configured (see --password-store).');
 		}
 	}
 

@@ -32,6 +32,7 @@ import { ServicesAccessor } from '../../../../editor/browser/editorExtensions.js
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { URI } from '../../../../base/common/uri.js';
 import { Codicon } from '../../../../base/common/codicons.js';
+import { ThemeIcon } from '../../../../base/common/themables.js';
 import { toDisposable } from '../../../../base/common/lifecycle.js';
 
 import { mountToolLogsPanel } from './react/out/tool-logs/index.js';
@@ -48,7 +49,7 @@ function registerReactPanel(options: {
 	readonly scheme: string;
 	readonly titleKey: string;
 	readonly title: string;
-	readonly icon: Codicon;
+	readonly icon: ThemeIcon;
 	readonly commandId: string;
 	readonly commandTitleKey: string;
 	readonly commandTitle: string;

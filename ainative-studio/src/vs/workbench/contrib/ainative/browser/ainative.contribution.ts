@@ -114,8 +114,5 @@ import '../common/usageTrackingService.js'
 // AINative Auth service
 import '../common/ainativeAuthService.js'
 
-// AINative Cloud Auth service
-import '../common/ainativeCloudAuthService.js'
-
 // AINative Cloud Auth UI and commands
 import './ainativeAuthActions.js'
