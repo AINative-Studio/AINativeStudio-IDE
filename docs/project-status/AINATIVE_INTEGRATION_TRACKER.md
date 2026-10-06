@@ -186,7 +186,41 @@ pre-merge 0-in-ainative/45-elsewhere split — the merge didn't reintroduce anyt
      hosted CI images have the toolchain preinstalled) with no bespoke reasoning recorded. Filed as
      **#181** for a maintainer to scope the fix (per-package override, or install VS Build Tools in
      the workflow) rather than changing it unilaterally.
-5. ⏳ Fresh runs dispatched against `06bd6e0c` (both fixes): macOS ARM64 (37491027548) and
-   Skills Manager Tests (37489624983, already in progress from the push trigger) — waiting on
-   results before downloading and installing the actual packaged build to verify it launches and
-   works on this machine (macOS 26.6.2 — directly relevant to #140's black-screen report).
+5. ✅ macOS ARM64 build (37491027548, `06bd6e0c`) succeeded — build, sign, and package all green.
+   **Real milestone: the first-ever successfully packaged, signed build of this session.**
+   Downloaded the signed DMG, verified its sha256 checksum, mounted it, verified the code
+   signature (real Developer ID Application cert, Apple Root CA chain, hardened runtime) —
+   signed but **not notarized** (Gatekeeper `spctl` rejects it as "Unnotarized Developer ID";
+   expected, since this pipeline doesn't notarize, and not something to fix tonight). Installed
+   to `/Applications`, dequarantined for local testing, and launched it.
+   - ❌ Skills Manager Tests (37489624983, `06bd6e0c`) still failed, but progressed much further
+     than before — the X11-headers fix worked (`native-keymap` built fine). New root cause: 4 of
+     its jobs run `npm ci` at the `ainative-studio` root, which recurses into every extension via
+     `build/npm/postinstall.js` — `extensions/open-remote-ssh` depends on `ssh2`/`simple-socks`
+     forks pinned via `git+ssh://git@github.com/...` in its lockfile (npm always canonicalizes
+     GitHub git deps to SSH form regardless of how the `package.json` spec is written). CI runners
+     have no SSH key for arbitrary git+ssh npm installs, so the clone fails silently (npm's own
+     error text goes only to a debug log file, never surfaced to CI's captured stdout). Fixed by
+     adding a `git config --global url."https://github.com/".insteadOf "git@github.com:"` step
+     before every `npm ci` in this workflow (standard anonymous-HTTPS rewrite for CI). Commit
+     `06bd6e0c` (included with the NLS/X11 fixes). Not applied to the other 9 build workflows
+     since they aren't currently broken by it (the macOS build above succeeded without this fix).
+   - 🔴 **CRITICAL finding from the real launch**: the app opened to a completely blank window —
+     no menu bar, no sidebar, no editor, just bare Electron chrome. Different from #140 (stable
+     process, no GPU crash loop). Connected Chrome DevTools Protocol directly to the packaged
+     renderer and found the real cause: `SkillSyncCommand` (registered from
+     `common/skills/cli/skillCommands.contribution.ts`, reachable from the main workbench bundle)
+     did a dynamic `await import('./syncCommand.js')`, which transitively imports
+     `node/skills/symlinkUtils.ts` and `node/skills/gitOperations.ts` — both correctly placed in
+     `node/` but containing direct `fs`/`path` Node imports. This build's esbuild config doesn't
+     code-split the desktop workbench bundle, so the dynamic import got flattened into the single
+     `workbench.desktop.main.js` exactly like a static import — the `fs` import threw at
+     module-evaluation time on every single launch. Traced by grepping the actual 38MB packaged
+     bundle for the thrown specifier and walking the import chain back to source. `syncCommand.ts`
+     itself is unfinished/never-wired main-process-only logic (direct `process.cwd()` call,
+     `INativeEnvironmentService` injected into `common/` code, zero non-test callers anywhere).
+     Removed the broken `SkillSyncCommand` registration rather than attempting a full IPC redesign
+     live (commit `fe42f63b`) — `syncCommand.ts`/`symlinkUtils.ts`/`gitOperations.ts` left
+     untouched on disk for a future real IPC-based implementation. Filed as **#182**.
+6. ⏳ Fresh macOS ARM64 build dispatched against `fe42f63b` (run 37508306265) to verify the
+   blank-screen fix actually resolves it — in progress.
