@@ -125,11 +125,16 @@ pre-merge 0-in-ainative/45-elsewhere split — the merge didn't reintroduce anyt
    - Electron download checksum file was still pinned to v34.3.2 after #140's v43.7.7 upgrade,
      blocking any actual launch — fixed with the official v43.7.7 SHASUMS256.txt
    - **Real app launch**: found and fixed two genuine runtime crashes neither `tsc` nor gulp's
-     compile step could ever catch — a `process is not defined` crash in the renderer (#178) and
-     a circular-import temporal-dead-zone crash between `usageTrackingService.ts` and
-     `aiModelRegistryService.ts` (#179). After both fixes: **confirmed via live process
-     inspection** (not just logs) that the app launches to a real, stable window with zero errors —
-     the first clean launch of this build all session.
+     compile step could ever catch — a `process is not defined` crash in the renderer (#178,
+     **closed**) and a circular-import temporal-dead-zone crash between `usageTrackingService.ts`
+     and `aiModelRegistryService.ts` (#179, **closed**). After both fixes: **confirmed via live
+     process inspection** (not just logs) that the app launches to a real, stable window with zero
+     errors — the first clean launch of this build all session.
+   - Found a third real crash during this same launch testing, fixed after the push below:
+     `deleteBlacklistExtensions()` in `extensionTransferService.ts` threw an unhandled rejection
+     calling `fileService.resolve()` on an extensions folder that simply doesn't exist on a fresh
+     install (every CI/test environment, and this session's own test machine). Wrapped in
+     try/catch — "folder doesn't exist" just means nothing to clean up. Commit `5e6722a8`.
    - Found `out/`/`extensions/*/out/` compiled output is committed to git with no `.gitignore`
      entry — filed as tech debt (#180), not fixed tonight (large, separate decision)
    - CI's `macos-14` runner pins an older Xcode/Clang and should be unaffected by the spdlog issue
@@ -137,4 +142,19 @@ pre-merge 0-in-ainative/45-elsewhere split — the merge didn't reintroduce anyt
      over time — worth a follow-up check if that job ever starts failing the same way
 3. ✅ Pushed to `origin/main` (`719b7fb0`, fast-forward from `4092d5ff`) — GitHub Actions triggered:
    "Skills Manager Tests" and "Windows ARM64 Signed Build" both running as of push time
-4. ⏳ Download and install the actual packaged build, verify it launches and works — waiting on CI
+   - **New systemic bug found via live CI failure**: all 11 `.github/workflows/*.yml` files were
+     pinned to Node 20, but Electron 43.7.7 (#140's upgrade) declares `"node": ">=22.12.0"` in its
+     own `package.json` — `npm ci` failed rebuilding `native-keymap`'s node-gyp addon on every
+     workflow. Confirmed via `gh run view --log-failed` on the "Skills Manager Tests" failure
+     (run 37486335210) and the "Windows ARM64 Signed Build" failure (run 37486335106) — both
+     failed the same way. Fixed by bumping every `node-version` pin from `20`/`20.x` to
+     `22`/`22.x` across all 11 workflow files. Commit `b0dd569a`.
+   - Pushed both fixes (`b0dd569a` Node version, `5e6722a8` extensionTransferService) to
+     `origin/main` — new CI runs dispatched against the fix: Windows ARM64 (37487574697) and
+     Skills Manager Tests (37487574912), plus a Windows ARM64 run against the Node fix alone
+     (37486666952) and the still-running macOS ARM64 signed build dispatched before the Node fix
+     landed (37486588189, headSha `719b7fb0` — may or may not hit the same wall depending on
+     whether that runner's image ships Node ≥22 independent of our workflow pin).
+4. ⏳ All 4 of the above CI runs in progress as of this update — waiting on results before
+   downloading and installing the actual packaged build to verify it launches and works on this
+   machine (macOS 26.6.2 — directly relevant to #140's black-screen report).
