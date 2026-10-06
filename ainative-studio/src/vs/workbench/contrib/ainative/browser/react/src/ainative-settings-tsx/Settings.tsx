@@ -922,6 +922,98 @@ export const OneClickSwitchButton = ({ fromEditor = 'VS Code', className = '' }:
 
 // full settings
 
+// Ad-hoc tool invocation form for one MCP server - lets a user verify a tool works without
+// going through a full chat turn. Params are entered as raw JSON since tool input schemas vary
+// arbitrarily per-tool; this is a developer/debugging affordance, not meant to generate a
+// schema-driven form (see #174).
+const MCPTestToolForm = ({ serverName, tools }: { serverName: string, tools: { name: string; description?: string }[] }) => {
+	const accessor = useAccessor();
+	const mcpService = accessor.get('IMCPService');
+
+	const [selectedToolName, setSelectedToolName] = useState(tools[0]?.name ?? '')
+	const [paramsJson, setParamsJson] = useState('{}')
+	const [isRunning, setIsRunning] = useState(false)
+	const [result, setResult] = useState<{ ok: true; text: string } | { ok: false; error: string } | null>(null)
+
+	const runTool = useCallback(async () => {
+		let params: Record<string, unknown>
+		try {
+			const parsed = JSON.parse(paramsJson)
+			if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+				setResult({ ok: false, error: 'Arguments must be a JSON object, e.g. {"path": "foo.ts"}' })
+				return
+			}
+			params = parsed
+		} catch (e) {
+			setResult({ ok: false, error: `Invalid JSON: ${e instanceof Error ? e.message : String(e)}` })
+			return
+		}
+
+		setIsRunning(true)
+		setResult(null)
+		try {
+			const { result: toolResult } = await mcpService.callMCPTool({ serverName, toolName: selectedToolName, params })
+			if (toolResult.event === 'error') {
+				setResult({ ok: false, error: toolResult.text })
+			} else if (toolResult.event === 'text') {
+				setResult({ ok: true, text: toolResult.text })
+			} else {
+				// image/audio/resource responses aren't text-renderable here - just confirm the call
+				// succeeded and name the response kind, rather than attempting to render binary data.
+				setResult({ ok: true, text: `(${toolResult.event} response - ${toolResult.text ?? 'no text summary'})` })
+			}
+		} catch (e) {
+			setResult({ ok: false, error: e instanceof Error ? e.message : String(e) })
+		} finally {
+			setIsRunning(false)
+		}
+	}, [mcpService, serverName, selectedToolName, paramsJson])
+
+	if (tools.length === 0) return null
+
+	return (
+		<div className="mt-3 border-t border-ainative-border-2 pt-3">
+			<div className="text-xs text-ainative-fg-3 mb-2">Test a tool:</div>
+			<div className="flex flex-col gap-2">
+				<select
+					className="bg-ainative-bg-2 text-ainative-fg-1 text-xs rounded-sm px-2 py-1 border border-ainative-border-2"
+					value={selectedToolName}
+					onChange={(e) => { setSelectedToolName(e.target.value); setResult(null) }}
+				>
+					{tools.map(tool => (
+						<option key={tool.name} value={tool.name}>{tool.name}</option>
+					))}
+				</select>
+				<AINativeSimpleInputBox
+					value={paramsJson}
+					onChangeValue={setParamsJson}
+					placeholder='Arguments as JSON, e.g. {"path": "foo.ts"}'
+					className='font-mono text-xs'
+					compact
+				/>
+				<div className="flex items-center gap-2">
+					<AINativeButtonBgDarken
+						className="px-3 py-1 text-xs"
+						disabled={isRunning || !selectedToolName}
+						onClick={runTool}
+					>
+						{isRunning ? 'Running...' : 'Run'}
+					</AINativeButtonBgDarken>
+				</div>
+				{result && (
+					result.ok ? (
+						<div className="px-2 py-1 bg-ainative-bg-2 text-xs font-mono overflow-x-auto whitespace-pre-wrap text-ainative-fg-2 rounded-sm max-h-40 overflow-y-auto">
+							{result.text}
+						</div>
+					) : (
+						<WarningBox text={result.error} />
+					)
+				)}
+			</div>
+		</div>
+	)
+}
+
 // MCP Server component
 const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer }) => {
 	const accessor = useAccessor();
@@ -929,8 +1021,21 @@ const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer 
 
 	const voidSettings = useSettingsState()
 	const isOn = voidSettings.mcpUserStateOfName[name]?.isOn
+	const [isReconnecting, setIsReconnecting] = useState(false)
 
 	const removeUniquePrefix = (name: string) => name.split('_').slice(1).join('_')
+
+	const reconnect = useCallback(async () => {
+		setIsReconnecting(true)
+		try {
+			// There's no dedicated "reconnect" call on the service today - toggling off then on is
+			// the same underlying operation a user would otherwise do by hand in two clicks (#174).
+			await mcpService.toggleServerIsOn(name, false)
+			await mcpService.toggleServerIsOn(name, true)
+		} finally {
+			setIsReconnecting(false)
+		}
+	}, [mcpService, name])
 
 	return (
 		<div className="border border-ainative-border-2 bg-ainative-bg-1 py-3 px-4 rounded-sm my-2">
@@ -950,13 +1055,27 @@ const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer 
 					<div className="text-sm font-medium text-ainative-fg-1">{name}</div>
 				</div>
 
-				{/* Right side - power toggle switch */}
-				<AINativeSwitch
-					value={isOn ?? false}
-					size='xs'
-					disabled={server.status === 'error'}
-					onChange={() => mcpService.toggleServerIsOn(name, !isOn)}
-				/>
+				{/* Right side - reconnect + power toggle switch */}
+				<div className="flex items-center gap-2">
+					{isOn && (
+						<button
+							type="button"
+							className="text-ainative-fg-3 hover:text-ainative-fg-1 disabled:opacity-50"
+							disabled={isReconnecting}
+							onClick={reconnect}
+							data-tooltip-id='ainative-tooltip'
+							data-tooltip-content='Reconnect'
+						>
+							<RefreshCw className={`w-3.5 h-3.5 ${isReconnecting ? 'animate-spin' : ''}`} />
+						</button>
+					)}
+					<AINativeSwitch
+						value={isOn ?? false}
+						size='xs'
+						disabled={server.status === 'error'}
+						onChange={() => mcpService.toggleServerIsOn(name, !isOn)}
+					/>
+				</div>
 			</div>
 
 			{/* Tools section */}
@@ -991,6 +1110,11 @@ const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer 
 						{server.command}
 					</div>
 				</div>
+			)}
+
+			{/* Test tool form */}
+			{isOn && server.status === 'success' && (
+				<MCPTestToolForm serverName={name} tools={server.tools ?? []} />
 			)}
 
 			{/* Error message if present */}
