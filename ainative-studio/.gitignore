@@ -10,3 +10,14 @@ test-results.xml
 *.snap.actual
 .vscode-test
 .build/
+
+# Compiled build output (gulp/tsc regenerate these from src/ on every real
+# build; tracking them produces large diffs unrelated to actual source
+# changes and lets committed output silently drift from source - see #180.
+# Only affects new/untracked files; already-tracked ones need a separate,
+# reviewed removal commit (`git rm -r --cached`) since .gitignore alone
+# doesn't untrack existing files.
+/out/
+/out-build/
+/out-vscode*/
+extensions/*/out/
