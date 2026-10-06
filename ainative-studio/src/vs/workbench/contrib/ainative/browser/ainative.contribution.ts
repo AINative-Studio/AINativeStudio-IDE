@@ -64,6 +64,9 @@ import './fileService.js'
 // register source control management
 import './ainativeSCMService.js'
 
+// register hooks (event-driven agent automation, #162)
+import './hooksService.js'
+
 // ---------- common (unclear if these actually need to be imported, because they're already imported wherever they're used) ----------
 
 // llmMessage
