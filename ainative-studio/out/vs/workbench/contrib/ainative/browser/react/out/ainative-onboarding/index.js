@@ -41,7 +41,9 @@ import { IExtensionManagementService } from '../../../../../../../platform/exten
 import { IMCPService } from '../../../../common/mcpService.js';
 import { IStorageService } from '../../../../../../../platform/storage/common/storage.js';
 import '../../../../common/storageKeys.js';
-import { AuthState, IAINativeAuthService } from '../../../../common/ainativeAuthService.js';
+import { AuthState, IAINativeSessionAuthService } from '../../../../common/ainativeAuthService.js';
+import { IAIModelRegistryService } from '../../../../common/aiModelRegistryService.js';
+import { IUsageTrackingService } from '../../../../common/usageTrackingService.js';
 import { providerNames, localProviderNames, displayInfoOfProviderName, isFeatureNameDisabled, isProviderNameDisabled, customSettingNamesOfProvider, subTextMdOfProviderName, displayInfoOfSettingName } from '../../../../common/ainativeSettingsTypes.js';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 import { convertToVscodeLang, detectLanguage } from '../../../../common/helpers/languageHelpers.js';
@@ -19648,7 +19650,7 @@ var _registerServices = (accessor) => {
     voidCommandBarService: accessor.get(IAINativeCommandBarService),
     modelService: accessor.get(IModelService),
     mcpService: accessor.get(IMCPService),
-    ainativeAuthService: accessor.get(IAINativeAuthService)
+    ainativeAuthService: accessor.get(IAINativeSessionAuthService)
   };
   const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, mcpService, ainativeAuthService } = stateServices;
   chatThreadsState = chatThreadsStateService.state;
@@ -19759,7 +19761,9 @@ var getReactAccessor = (accessor) => {
     IExtensionTransferService: accessor.get(IExtensionTransferService),
     IMCPService: accessor.get(IMCPService),
     IStorageService: accessor.get(IStorageService),
-    IAINativeAuthService: accessor.get(IAINativeAuthService)
+    IAINativeAuthService: accessor.get(IAINativeSessionAuthService),
+    IAIModelRegistryService: accessor.get(IAIModelRegistryService),
+    IUsageTrackingService: accessor.get(IUsageTrackingService)
   };
   return reactAccessor;
 };
@@ -19997,12 +20001,19 @@ var __iconNode10 = [
 ];
 var Square = createLucideIcon("square", __iconNode10);
 
-// ../../../../../../../node_modules/lucide-react/dist/esm/icons/x.js
+// ../../../../../../../node_modules/lucide-react/dist/esm/icons/terminal.js
 var __iconNode11 = [
+  ["polyline", { points: "4 17 10 11 4 5", key: "akl6gq" }],
+  ["line", { x1: "12", x2: "20", y1: "19", y2: "19", key: "q2wloq" }]
+];
+var Terminal = createLucideIcon("terminal", __iconNode11);
+
+// ../../../../../../../node_modules/lucide-react/dist/esm/icons/x.js
+var __iconNode12 = [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
-var X = createLucideIcon("x", __iconNode11);
+var X = createLucideIcon("x", __iconNode12);
 
 // src2/ainative-settings-tsx/Settings.tsx
 var import_react17 = __toESM(require_react(), 1);
@@ -26538,6 +26549,17 @@ var PreviousButton = ({ onClick, ...props }) => {
     }
   );
 };
+var SkipButton = ({ onClick, children, ...props }) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+    "button",
+    {
+      onClick,
+      className: "ainative-px-6 ainative-py-2 ainative-rounded ainative-text-ainative-fg-3 ainative-opacity-80 hover:ainative-brightness-115 ainative-duration-600 ainative-transition-all",
+      ...props,
+      children: children ?? "Skip"
+    }
+  );
+};
 var OnboardingPageShell = ({
   top,
   bottom,
@@ -26567,6 +26589,50 @@ var PrimaryActionButton = ({ children, className, ringSize, ...props }) => {
           }
         )
       ]
+    }
+  );
+};
+var INSTALL_SHELL_COMMAND_ID = "workbench.action.installCommandLine";
+var ShellSetupPage = ({ pageIndex, setPageIndex }) => {
+  const accessor = useAccessor();
+  const commandService = accessor.get("ICommandService");
+  const voidMetricsService = accessor.get("IMetricsService");
+  const [isInstalling, setIsInstalling] = (0, import_react18.useState)(false);
+  const onInstall = async () => {
+    setIsInstalling(true);
+    try {
+      await commandService.executeCommand(INSTALL_SHELL_COMMAND_ID);
+      voidMetricsService.capture("Onboarding - Installed Shell Command", {});
+    } catch (e) {
+    } finally {
+      setIsInstalling(false);
+    }
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+    OnboardingPageShell,
+    {
+      content: /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "ainative-flex ainative-flex-col ainative-items-center ainative-gap-8 ainative-text-center", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(Terminal, { className: "ainative-w-16 ainative-h-16 ainative-opacity-80" }),
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "ainative-text-5xl ainative-font-light ainative-text-center", children: "Set up shell" }),
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "ainative-text-ainative-fg-3 ainative-max-w-md ainative-mx-auto", children: "This integrates AINative Studio with your shell and allows you to open files and projects from the terminal." }),
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+          PrimaryActionButton,
+          {
+            onClick: onInstall,
+            disabled: isInstalling,
+            className: isInstalling ? "ainative-opacity-60 ainative-cursor-not-allowed" : "",
+            children: isInstalling ? "Installing..." : `Install 'ainative' command`
+          }
+        )
+      ] }),
+      bottom: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "ainative-max-w-[600px] ainative-w-full ainative-mx-auto ainative-flex ainative-flex-col ainative-items-end", children: /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "ainative-flex ainative-items-center ainative-gap-2", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(PreviousButton, { onClick: () => {
+          setPageIndex(pageIndex - 1);
+        } }),
+        /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(SkipButton, { onClick: () => {
+          setPageIndex(pageIndex + 1);
+        } })
+      ] }) })
     }
   );
 };
@@ -26675,7 +26741,11 @@ var AINativeOnboardingContent = () => {
         content: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(AddProvidersPage, { pageIndex, setPageIndex })
       }
     ),
-    2: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+    // Shell integration is installable on macOS, Linux, and Windows
+    // (see installActions.ts / nativeHostMainService.ts), so this step
+    // is shown on all platforms.
+    2: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(ShellSetupPage, { pageIndex, setPageIndex }),
+    3: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
       OnboardingPageShell,
       {
         content: /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { children: [
@@ -26691,7 +26761,19 @@ var AINativeOnboardingContent = () => {
       }
     )
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "ainative-w-full ainative-h-[80vh] ainative-text-left ainative-mx-auto ainative-flex ainative-flex-col ainative-items-center ainative-justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(ErrorBoundary_default, { children: contentOfIdx[pageIndex] }) }, pageIndex);
+  const pageIndices = Object.keys(contentOfIdx).map(Number).sort((a, b) => a - b);
+  return /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "ainative-w-full ainative-h-[80vh] ainative-text-left ainative-mx-auto ainative-flex ainative-flex-col ainative-items-center ainative-justify-center", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(ErrorBoundary_default, { children: contentOfIdx[pageIndex] }),
+    pageIndex !== 0 && /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "ainative-flex ainative-items-center ainative-gap-2 ainative-pb-4", children: pageIndices.map(
+      (idx) => /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
+        "div",
+        {
+          className: `ainative-w-1.5 ainative-h-1.5 ainative-rounded-full ainative-transition-all ainative-duration-300 ${idx === pageIndex ? "ainative-bg-ainative-fg-1 ainative-opacity-90" : "ainative-bg-ainative-fg-3 ainative-opacity-30"}`
+        },
+        idx
+      )
+    ) })
+  ] }, pageIndex);
 };
 
 // src2/ainative-onboarding/index.tsx
@@ -26767,6 +26849,7 @@ lucide-react/dist/esm/icons/folder.js:
 lucide-react/dist/esm/icons/play.js:
 lucide-react/dist/esm/icons/plus.js:
 lucide-react/dist/esm/icons/square.js:
+lucide-react/dist/esm/icons/terminal.js:
 lucide-react/dist/esm/icons/x.js:
 lucide-react/dist/esm/lucide-react.js:
   (**

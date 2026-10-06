@@ -54,7 +54,9 @@ import { IExtensionManagementService } from '../../../../../../../platform/exten
 import { IMCPService } from '../../../../common/mcpService.js';
 import { IStorageService, StorageScope } from '../../../../../../../platform/storage/common/storage.js'
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js'
-import { IAINativeAuthService, AuthState, AINativeUser } from '../../../../common/ainativeAuthService.js'
+import { IAINativeSessionAuthService, AuthState, AINativeUser } from '../../../../common/ainativeAuthService.js'
+import { IAIModelRegistryService } from '../../../../common/aiModelRegistryService.js'
+import { IUsageTrackingService } from '../../../../common/usageTrackingService.js'
 
 
 // normally to do this you'd use a useEffect that calls .onDidChangeState(), but useEffect mounts too late and misses initial state changes
@@ -106,7 +108,7 @@ export const _registerServices = (accessor: ServicesAccessor) => {
 		voidCommandBarService: accessor.get(IAINativeCommandBarService),
 		modelService: accessor.get(IModelService),
 		mcpService: accessor.get(IMCPService),
-		ainativeAuthService: accessor.get(IAINativeAuthService),
+		ainativeAuthService: accessor.get(IAINativeSessionAuthService),
 	}
 
 	const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, modelService, mcpService, ainativeAuthService } = stateServices
@@ -242,7 +244,9 @@ const getReactAccessor = (accessor: ServicesAccessor) => {
 		IMCPService: accessor.get(IMCPService),
 
 		IStorageService: accessor.get(IStorageService),
-		IAINativeAuthService: accessor.get(IAINativeAuthService),
+		IAINativeAuthService: accessor.get(IAINativeSessionAuthService),
+		IAIModelRegistryService: accessor.get(IAIModelRegistryService),
+		IUsageTrackingService: accessor.get(IUsageTrackingService),
 
 	} as const
 	return reactAccessor

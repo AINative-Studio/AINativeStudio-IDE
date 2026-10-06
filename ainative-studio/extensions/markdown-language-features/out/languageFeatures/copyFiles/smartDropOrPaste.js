@@ -119,7 +119,7 @@ async function shouldSmartPasteForSelection(parser, document, selectedRange, tok
         //
         // In this case pasting will cause the html block to be created even though the cursor is not currently inside a block
         if (token.type === 'html_block' && token.map[1] === selectedRange.start.line) {
-            const nextToken = tokens.at(i + 1);
+            const nextToken = tokens[i + 1];
             // The next token does not need to be a html_block, but it must be on the next line
             if (nextToken?.map?.[0] === selectedRange.end.line + 1) {
                 return false;

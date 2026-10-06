@@ -41,7 +41,9 @@ import { IExtensionManagementService } from '../../../../../../../platform/exten
 import { IMCPService } from '../../../../common/mcpService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../../../platform/storage/common/storage.js';
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js';
-import { AuthState, IAINativeAuthService } from '../../../../common/ainativeAuthService.js';
+import { AuthState, IAINativeSessionAuthService } from '../../../../common/ainativeAuthService.js';
+import { IAIModelRegistryService } from '../../../../common/aiModelRegistryService.js';
+import { IUsageTrackingService } from '../../../../common/usageTrackingService.js';
 import { localProviderNames, nonlocalProviderNames, displayInfoOfFeatureName, providerNames, displayInfoOfProviderName, refreshableProviderNames, isProviderNameDisabled, customSettingNamesOfProvider, subTextMdOfProviderName, displayInfoOfSettingName, isFeatureNameDisabled as isFeatureNameDisabled$1 } from '../../../../common/ainativeSettingsTypes.js';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 import { convertToVscodeLang, detectLanguage } from '../../../../common/helpers/languageHelpers.js';
@@ -19647,7 +19649,7 @@ var _registerServices = (accessor) => {
     voidCommandBarService: accessor.get(IAINativeCommandBarService),
     modelService: accessor.get(IModelService),
     mcpService: accessor.get(IMCPService),
-    ainativeAuthService: accessor.get(IAINativeAuthService)
+    ainativeAuthService: accessor.get(IAINativeSessionAuthService)
   };
   const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, mcpService, ainativeAuthService } = stateServices;
   chatThreadsState = chatThreadsStateService.state;
@@ -19759,7 +19761,9 @@ var getReactAccessor = (accessor) => {
     IExtensionTransferService: accessor.get(IExtensionTransferService),
     IMCPService: accessor.get(IMCPService),
     IStorageService: accessor.get(IStorageService),
-    IAINativeAuthService: accessor.get(IAINativeAuthService)
+    IAINativeAuthService: accessor.get(IAINativeSessionAuthService),
+    IAIModelRegistryService: accessor.get(IAIModelRegistryService),
+    IUsageTrackingService: accessor.get(IUsageTrackingService)
   };
   return reactAccessor;
 };

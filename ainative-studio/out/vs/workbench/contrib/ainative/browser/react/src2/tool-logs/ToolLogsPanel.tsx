@@ -25,6 +25,7 @@ import {
   ExportFormat } from
 './types';
 import { fetchToolLogs, fetchToolLogsStatistics, exportToolLogs, downloadFile } from './toolLogsService';
+import { useChatThreadsState } from '../util/services.js';
 import './tool-logs.css';
 
 interface ToolLogsPanelProps {
@@ -55,6 +56,10 @@ export const ToolLogsPanel: React.FC<ToolLogsPanelProps> = ({
   showStatistics = true,
   height = '100%'
 }) => {
+  // Local tool execution history lives in chat thread state — see
+  // toolLogsService.ts for why this panel does not call a backend.
+  const chatThreadsState = useChatThreadsState();
+
   // State
   const [filter, setFilter] = useState<Filter>(initialFilter ?? (threadId ? { threadId } : {}));
   const [sortOptions, setSortOptions] = useState<ToolLogsSortOptions>({ field: 'timestamp', direction: 'desc' });
@@ -75,7 +80,7 @@ export const ToolLogsPanel: React.FC<ToolLogsPanelProps> = ({
     setError(null);
 
     try {
-      const data = await fetchToolLogs(filter, sortOptions, pagination);
+      const data = await fetchToolLogs(chatThreadsState.allThreads, filter, sortOptions, pagination);
       setLogsData(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tool logs');
@@ -83,7 +88,7 @@ export const ToolLogsPanel: React.FC<ToolLogsPanelProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [filter, sortOptions, pagination]);
+  }, [chatThreadsState, filter, sortOptions, pagination]);
 
   /**
    * Load statistics
@@ -94,12 +99,12 @@ export const ToolLogsPanel: React.FC<ToolLogsPanelProps> = ({
     }
 
     try {
-      const stats = await fetchToolLogsStatistics(filter);
+      const stats = await fetchToolLogsStatistics(chatThreadsState.allThreads, filter);
       setStatistics(stats);
     } catch (err) {
       console.error('[ToolLogsPanel] Error loading statistics:', err);
     }
-  }, [filter, showStatistics]);
+  }, [chatThreadsState, filter, showStatistics]);
 
   /**
    * Load data on mount and when dependencies change
@@ -228,6 +233,16 @@ export const ToolLogsPanel: React.FC<ToolLogsPanelProps> = ({
 					</button>
 				</div>
 			</div>
+
+			{logsData?.isSampleData &&
+      <div className="ainative-tool-logs-sample-banner" role="status">
+					<span className="ainative-codicon ainative-codicon-warning"></span>
+					<span>
+						Showing sample data — no tool executions have been recorded in this workspace yet.
+						This is not real data.
+					</span>
+				</div>
+      }
 
 			{showStatistics && statistics &&
       <StatsPanel statistics={statistics} />

@@ -14,7 +14,7 @@ import { createDecorator } from '../../../../platform/instantiation/common/insta
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IAINativeCloudAuthService } from './ainativeCloudAuthTypes.js';
-import { IAIModelRegistryService } from './aiModelRegistryService.js';
+import { IAIModelRegistryService } from './aiModelRegistryTypes.js';
 import { IAINativeSettingsService } from './ainativeSettingsService.js';
 import { AIModel } from './aiModelRegistryTypes.js';
 import { ManagedChatAPIService } from './managedChatAPIService.js';

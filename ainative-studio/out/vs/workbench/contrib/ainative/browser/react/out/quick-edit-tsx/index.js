@@ -41,7 +41,9 @@ import { IExtensionManagementService } from '../../../../../../../platform/exten
 import { IMCPService } from '../../../../common/mcpService.js';
 import { IStorageService } from '../../../../../../../platform/storage/common/storage.js';
 import '../../../../common/storageKeys.js';
-import { AuthState, IAINativeAuthService } from '../../../../common/ainativeAuthService.js';
+import { AuthState, IAINativeSessionAuthService } from '../../../../common/ainativeAuthService.js';
+import { IAIModelRegistryService } from '../../../../common/aiModelRegistryService.js';
+import { IUsageTrackingService } from '../../../../common/usageTrackingService.js';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 import '../../../../common/helpers/languageHelpers.js';
 import '../../../../common/ainativeSettingsTypes.js';
@@ -19647,7 +19649,7 @@ var _registerServices = (accessor) => {
     voidCommandBarService: accessor.get(IAINativeCommandBarService),
     modelService: accessor.get(IModelService),
     mcpService: accessor.get(IMCPService),
-    ainativeAuthService: accessor.get(IAINativeAuthService)
+    ainativeAuthService: accessor.get(IAINativeSessionAuthService)
   };
   const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, mcpService, ainativeAuthService } = stateServices;
   chatThreadsState = chatThreadsStateService.state;
@@ -19758,7 +19760,9 @@ var getReactAccessor = (accessor) => {
     IExtensionTransferService: accessor.get(IExtensionTransferService),
     IMCPService: accessor.get(IMCPService),
     IStorageService: accessor.get(IStorageService),
-    IAINativeAuthService: accessor.get(IAINativeAuthService)
+    IAINativeAuthService: accessor.get(IAINativeSessionAuthService),
+    IAIModelRegistryService: accessor.get(IAIModelRegistryService),
+    IUsageTrackingService: accessor.get(IUsageTrackingService)
   };
   return reactAccessor;
 };

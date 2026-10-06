@@ -22,7 +22,7 @@ var MediaKind;
     MediaKind[MediaKind["Audio"] = 3] = "Audio";
 })(MediaKind || (exports.MediaKind = MediaKind = {}));
 function getMediaKindForMime(mime) {
-    const root = mime.toLowerCase().split('/').at(0);
+    const root = mime.toLowerCase().split('/')[0];
     switch (root) {
         case 'image': return MediaKind.Image;
         case 'video': return MediaKind.Video;

@@ -124,9 +124,19 @@ function parseInt(value: string | undefined, defaultValue: number): number {
  * Configuration is loaded from environment variables with fallback to defaults.
  * Environment variables are prefixed with AINATIVE_ or are standard variables like NODE_ENV.
  *
+ * This module is shared with the renderer process, where `process` is not defined
+ * (the renderer is sandboxed - see this repo's Security Architecture notes). There is
+ * no way to pass OS environment variables into a sandboxed renderer directly, so in
+ * that context this always falls back to DEFAULT_CONFIG; only a real Node/electron-main
+ * context can meaningfully read process.env here.
+ *
  * @returns {AINativeConfig} Configuration object
  */
 export function getAINativeConfig(): AINativeConfig {
+	if (typeof process === 'undefined' || !process.env) {
+		return { ...DEFAULT_CONFIG };
+	}
+
 	const nodeEnv = process.env['NODE_ENV'] || 'production';
 	const environment = nodeEnv === 'development' ? 'development' :
 		nodeEnv === 'test' ? 'test' : 'production';

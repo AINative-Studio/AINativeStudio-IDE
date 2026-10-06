@@ -72,7 +72,7 @@ const loader: ISkillLoader = ...;
 
 // Load all skill metadata at startup
 const allMetadata = await loader.getAllMetadata();
-// Returns: [{ name, description, tags, category, location }, ...]
+// Returns: [{ name, description, tags, version, source, path }, ...]
 // Size: ~1000 tokens for 10 skills
 ```
 
@@ -144,31 +144,45 @@ loader.clearCache();
 
 ### Dependencies
 
-The SkillLoader requires three dependencies (to be implemented):
+The SkillLoader composes the existing skills services via constructor injection:
 
 ```typescript
-// Component 1 - Registry (provides skill paths)
-interface ISkillsRegistry {
-  getSkillPath(skillName: string): Promise<string | null>;
-  getAllInstalledSkills(): Promise<string[]>;
-}
+import { ISkillsRegistry } from './skillRegistryTypes.js';  // where a skill lives on disk
+import { ISkillParser } from './skillParserTypes.js';       // parses SKILL.md
+import { IFileService } from '../../../../../platform/files/common/files.js';
+import { ILogService } from '../../../../../platform/log/common/log.js';
 
-// Component 2 - Parser (parses SKILL.md files)
-interface ISkillParser {
-  parseMetadataOnly(content: string): SkillMetadata;
-  parseFullSkill(content: string): { metadata, body, resources };
-}
-
-// VS Code Platform Service
-import { IFileService } from 'vs/platform/files/common/files';
+constructor(
+  @ISkillsRegistry private readonly registry: ISkillsRegistry,
+  @ISkillParser private readonly parser: ISkillParser,
+  @IFileService private readonly fileService: IFileService,
+  @ILogService private readonly logService: ILogService
+) { ... }
 ```
+
+The methods it relies on:
+
+- `ISkillsRegistry.get(skillName): Promise<RegistryEntry | null>` — resolves an
+  installed skill to its `RegistryEntry` (`path`, `version`, `source`, ...).
+- `ISkillsRegistry.list(): Promise<RegistryEntry[]>` — enumerates installed skills.
+- `ISkillParser.parseSkillFile(filePath): Promise<Skill>` — reads and parses a
+  `SKILL.md`, returning `{ metadata, body, resources, fullPath }`. The parser does
+  its own file I/O, so the loader uses `IFileService` directly only for reference
+  files under a skill's `references/` directory.
 
 ### Service Registration
 
+`ISkillLoader` is **not yet registered as a singleton**: nothing in the product
+currently requests a skill's full body or reference files (the CLI commands and
+marketplace only need registry metadata). The service is implemented and tested
+so it is ready to wire up, but registering it before a real consumer exists would
+only add dead startup work. When a call site appears — e.g. including an invoked
+skill's body in an AI prompt — register it in `skillsModule.ts`:
+
 ```typescript
-import { registerSingleton } from 'vs/platform/instantiation/common/extensions';
-import { ISkillLoader } from './skillLoaderTypes';
-import { SkillLoader } from './skillLoader';
+import { registerSingleton, InstantiationType } from '../../../../../platform/instantiation/common/extensions.js';
+import { ISkillLoader } from './skillLoaderTypes.js';
+import { SkillLoader } from './skillLoader.js';
 
 registerSingleton(ISkillLoader, SkillLoader, InstantiationType.Delayed);
 ```
@@ -295,9 +309,10 @@ await runAllExamples(loader);
 
 ## Related Components
 
-- **Component 1**: SkillsRegistry (provides skill paths)
-- **Component 2**: SkillParser (parses SKILL.md files)
-- **Component 4**: SkillManager (orchestrates all components)
+- `skillsRegistry.ts` — `SkillsRegistry` (`ISkillsRegistry`): install/uninstall/list
+  management, persisted to `~/.ainative/skills/registry.json`
+- `skillParser.ts` — `SkillParser` (`ISkillParser`): parses `SKILL.md` frontmatter,
+  body, and bundled resources
 
 ## References
 

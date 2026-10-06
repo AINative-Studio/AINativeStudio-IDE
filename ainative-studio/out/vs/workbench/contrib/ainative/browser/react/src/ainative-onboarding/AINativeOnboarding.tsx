@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAccessor, useIsDark, useSettingsState } from '../util/services.js';
-import { Brain, Check, ChevronRight, DollarSign, ExternalLink, Lock, X } from 'lucide-react';
+import { Brain, Check, ChevronRight, DollarSign, ExternalLink, Lock, Terminal, X } from 'lucide-react';
 import { displayInfoOfProviderName, ProviderName, providerNames, localProviderNames, featureNames, FeatureName, isFeatureNameDisabled } from '../../../../common/ainativeSettingsTypes.js';
 import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js';
 import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, ModelDump } from '../ainative-settings-tsx/Settings.js';
@@ -351,6 +351,18 @@ const PreviousButton = ({ onClick, ...props }: { onClick: () => void } & React.B
 	)
 }
 
+const SkipButton = ({ onClick, children, ...props }: { onClick: () => void, children?: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
+	return (
+		<button
+			onClick={onClick}
+			className="px-6 py-2 rounded text-ainative-fg-3 opacity-80 hover:brightness-115 duration-600 transition-all"
+			{...props}
+		>
+			{children ?? 'Skip'}
+		</button>
+	)
+}
+
 
 
 const OnboardingPageShell = ({ top, bottom, content, hasMaxWidth = true, className = '', }: {
@@ -464,6 +476,62 @@ const PrimaryActionButton = ({ children, className, ringSize, ...props }: { chil
 	)
 }
 
+
+// Command registered in src/vs/workbench/electron-sandbox/actions/installActions.ts.
+// It already handles platform privilege elevation and shows its own success/error dialogs,
+// so this step only needs to trigger it and let it report its own outcome.
+const INSTALL_SHELL_COMMAND_ID = 'workbench.action.installCommandLine'
+
+const ShellSetupPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPageIndex: (index: number) => void }) => {
+	const accessor = useAccessor()
+	const commandService = accessor.get('ICommandService')
+	const voidMetricsService = accessor.get('IMetricsService')
+
+	const [isInstalling, setIsInstalling] = useState(false)
+
+	const onInstall = async () => {
+		setIsInstalling(true)
+		try {
+			await commandService.executeCommand(INSTALL_SHELL_COMMAND_ID)
+			voidMetricsService.capture('Onboarding - Installed Shell Command', {})
+		} catch (e) {
+			// InstallShellScriptAction already shows its own error dialog on failure
+			// (and silently no-ops on user cancellation), so there's nothing more to surface here.
+		} finally {
+			setIsInstalling(false)
+		}
+	}
+
+	return <OnboardingPageShell
+		content={
+			<div className='flex flex-col items-center gap-8 text-center'>
+				<Terminal className='w-16 h-16 opacity-80' />
+
+				<div className="text-5xl font-light text-center">Set up shell</div>
+
+				<div className="text-ainative-fg-3 max-w-md mx-auto">
+					This integrates AINative Studio with your shell and allows you to open files and projects from the terminal.
+				</div>
+
+				<PrimaryActionButton
+					onClick={onInstall}
+					disabled={isInstalling}
+					className={isInstalling ? 'opacity-60 cursor-not-allowed' : ''}
+				>
+					{isInstalling ? 'Installing...' : `Install 'ainative' command`}
+				</PrimaryActionButton>
+			</div>
+		}
+		bottom={
+			<div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
+				<div className="flex items-center gap-2">
+					<PreviousButton onClick={() => { setPageIndex(pageIndex - 1) }} />
+					<SkipButton onClick={() => { setPageIndex(pageIndex + 1) }} />
+				</div>
+			</div>
+		}
+	/>
+}
 
 type WantToUseOption = 'smart' | 'private' | 'cheap' | 'all'
 
@@ -623,7 +691,11 @@ const AINativeOnboardingContent = () => {
 				<AddProvidersPage pageIndex={pageIndex} setPageIndex={setPageIndex} />
 			}
 		/>,
-		2: <OnboardingPageShell
+		// Shell integration is installable on macOS, Linux, and Windows
+		// (see installActions.ts / nativeHostMainService.ts), so this step
+		// is shown on all platforms.
+		2: <ShellSetupPage pageIndex={pageIndex} setPageIndex={setPageIndex} />,
+		3: <OnboardingPageShell
 
 			content={
 				<div>
@@ -642,10 +714,24 @@ const AINativeOnboardingContent = () => {
 	}
 
 
+	const pageIndices = Object.keys(contentOfIdx).map(Number).sort((a, b) => a - b)
+
 	return <div key={pageIndex} className="w-full h-[80vh] text-left mx-auto flex flex-col items-center justify-center">
 		<ErrorBoundary>
 			{contentOfIdx[pageIndex]}
 		</ErrorBoundary>
+
+		{pageIndex !== 0 && (
+			<div className="flex items-center gap-2 pb-4">
+				{pageIndices.map(idx => (
+					<div
+						key={idx}
+						className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === pageIndex ? 'bg-ainative-fg-1 opacity-90' : 'bg-ainative-fg-3 opacity-30'
+							}`}
+					/>
+				))}
+			</div>
+		)}
 	</div>
 
 }
