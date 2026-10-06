@@ -432,89 +432,9 @@ class SkillMarketplaceBrowseCommand extends Action2 {
 	}
 }
 
-/**
- * Skill Sync Command
- */
-class SkillSyncCommand extends Action2 {
-	constructor() {
-		super({
-			id: 'ainative.skill.sync',
-			title: localize2('skillSync', 'Sync Skills from Core Repository'),
-			category: localize2('skillCategory', 'Skills'),
-			f1: true,
-			metadata: {
-				description: localize('skillSync.description', 'Sync skills from core repository when .claude is symlinked')
-			}
-		});
-	}
-
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const registry = accessor.get(ISkillsRegistry);
-
-		try {
-			// Import sync command dynamically
-			const { SyncCommand } = await import('./syncCommand.js');
-			const { INativeEnvironmentService } = await import('../../../../../../platform/environment/common/environment.js');
-			const { ILogService } = await import('../../../../../../platform/log/common/log.js');
-
-			const envService = accessor.get(INativeEnvironmentService);
-			const logService = accessor.get(ILogService);
-
-			// Create sync command instance
-			const syncCommand = new SyncCommand(registry, envService, logService);
-
-			// Execute sync
-			const result = await syncCommand.execute();
-
-			if (result.success) {
-				// Show success notification
-				notificationService.info(
-					localize(
-						'skillSync.success',
-						'Skills synced successfully! {0} updated, {1} new, {2} removed',
-						result.refreshResult?.updated.length || 0,
-						result.refreshResult?.new.length || 0,
-						result.refreshResult?.removed.length || 0
-					)
-				);
-
-				// Show detailed output in info message
-				if (result.output) {
-					console.log(result.output);
-				}
-			} else {
-				// Show error notification
-				notificationService.error(
-					localize(
-						'skillSync.failed',
-						'Skills sync failed: {0}',
-						result.errorMessage || 'Unknown error'
-					)
-				);
-
-				// Log detailed output
-				if (result.output) {
-					console.error(result.output);
-				}
-			}
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			notificationService.error(
-				localize(
-					'skillSync.error',
-					'Failed to sync skills: {0}',
-					errorMessage
-				)
-			);
-		}
-	}
-}
-
 // Register all commands
 registerAction2(SkillInstallCommand);
 registerAction2(SkillUninstallCommand);
 registerAction2(SkillListCommand);
 registerAction2(SkillCreateCommand);
 registerAction2(SkillMarketplaceBrowseCommand);
-registerAction2(SkillSyncCommand);
