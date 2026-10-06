@@ -134,4 +134,10 @@ class MarkerCheckService extends Disposable implements IMarkerCheckService {
 
 }
 
-registerSingleton(IMarkerCheckService, MarkerCheckService, InstantiationType.Eager);
+// Delayed, not Eager: nothing currently injects IMarkerCheckService (confirmed via
+// repo-wide search - see #171), and its constructor starts an unconditional 5s
+// setInterval poll the moment it's instantiated. Eager meant every window ran that
+// poll forever with zero consumers. Delayed means it only instantiates - and only
+// starts polling - if/when something actually requests it, which today never
+// happens. See #154 for the open finish-vs-delete decision on this file as a whole.
+registerSingleton(IMarkerCheckService, MarkerCheckService, InstantiationType.Delayed);
