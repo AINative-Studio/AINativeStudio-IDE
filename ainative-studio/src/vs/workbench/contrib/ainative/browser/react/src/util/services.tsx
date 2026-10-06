@@ -55,6 +55,8 @@ import { IMCPService } from '../../../../common/mcpService.js';
 import { IStorageService, StorageScope } from '../../../../../../../platform/storage/common/storage.js'
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js'
 import { IAINativeSessionAuthService, AuthState, AINativeUser } from '../../../../common/ainativeAuthService.js'
+import { IAIModelRegistryService } from '../../../../common/aiModelRegistryService.js'
+import { IUsageTrackingService } from '../../../../common/usageTrackingService.js'
 
 
 // normally to do this you'd use a useEffect that calls .onDidChangeState(), but useEffect mounts too late and misses initial state changes
@@ -243,6 +245,8 @@ const getReactAccessor = (accessor: ServicesAccessor) => {
 
 		IStorageService: accessor.get(IStorageService),
 		IAINativeAuthService: accessor.get(IAINativeSessionAuthService),
+		IAIModelRegistryService: accessor.get(IAIModelRegistryService),
+		IUsageTrackingService: accessor.get(IUsageTrackingService),
 
 	} as const
 	return reactAccessor
