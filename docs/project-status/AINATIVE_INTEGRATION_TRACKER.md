@@ -155,6 +155,38 @@ pre-merge 0-in-ainative/45-elsewhere split — the merge didn't reintroduce anyt
      (37486666952) and the still-running macOS ARM64 signed build dispatched before the Node fix
      landed (37486588189, headSha `719b7fb0` — may or may not hit the same wall depending on
      whether that runner's image ships Node ≥22 independent of our workflow pin).
-4. ⏳ All 4 of the above CI runs in progress as of this update — waiting on results before
-   downloading and installing the actual packaged build to verify it launches and works on this
-   machine (macOS 26.6.2 — directly relevant to #140's black-screen report).
+4. All 4 of the above CI runs completed — 3 new real bugs found, 2 fixed and pushed, 1 filed:
+   - **macOS ARM64 build failed** (run 37486588189) on a genuine bug, independent of Node/X11:
+     `registerReactPanel()`'s generic factory (added for #150 tonight) called
+     `nls.localize()`/`localize2()` with variable arguments (`options.titleKey`, `options.title`)
+     instead of string literals. VS Code's NLS extraction tooling statically parses `localize()`
+     call sites via AST and `eval()`s the extracted source text standalone — a bare identifier has
+     no scope at eval time, so every production build target (`gulp vscode-*`) crashed with
+     `ReferenceError: options is not defined` in `build/lib/nls.js`. Invisible to `tsc` and to dev
+     builds, which skip the NLS patch step — only a real packaged build caught it. Fixed by moving
+     the `localize()`/`localize2()` calls back to literal call sites (one per panel). Commit
+     `06bd6e0c`.
+   - **Skills Manager Tests failed again** even after the Node fix (run 37487574912) — different
+     root cause this time: its `unit-tests`/`integration-tests`/`performance-tests`/`coverage`
+     jobs run `npm ci` at the `ainative-studio` root on bare `ubuntu-latest`, pulling in
+     `native-keymap`'s node-gyp build, which needs X11 dev headers (`libx11-dev`,
+     `libxkbfile-dev`, etc.) that aren't installed by default. Every other Linux workflow in this
+     repo only runs `npm ci` inside `build/` (a smaller, separate `package.json` without this
+     dependency), so this was never hit before. Upstream VS Code's own Azure Pipelines config
+     installs exactly this package set before any root `npm ci`; added the same `apt-get` step
+     here. Commit `06bd6e0c` (same commit as the NLS fix above).
+   - **Windows ARM64 Signed Build (Free Runner) failed** (runs 37486335106, 37487574697) on a
+     third, unrelated root cause: `build/.npmrc` sets `build_from_source="true"` for the whole
+     `build/` tooling tree, forcing `tree-sitter`'s native module to always compile from source via
+     `node-gyp rebuild` even though it ships a working `win32-arm64` prebuild. The free-tier
+     Windows ARM64 runner has no Visual Studio C++ Build Tools installed, so the forced compile
+     fails. Investigated but **not fixed tonight** — `build_from_source` can't be blindly deleted
+     since `keytar` (also in `build/`) ships no prebuilds at all and may need it; this is shared
+     config affecting every platform build, inherited verbatim from upstream VS Code (whose own
+     hosted CI images have the toolchain preinstalled) with no bespoke reasoning recorded. Filed as
+     **#181** for a maintainer to scope the fix (per-package override, or install VS Build Tools in
+     the workflow) rather than changing it unilaterally.
+5. ⏳ Fresh runs dispatched against `06bd6e0c` (both fixes): macOS ARM64 (37491027548) and
+   Skills Manager Tests (37489624983, already in progress from the push trigger) — waiting on
+   results before downloading and installing the actual packaged build to verify it launches and
+   works on this machine (macOS 26.6.2 — directly relevant to #140's black-screen report).
