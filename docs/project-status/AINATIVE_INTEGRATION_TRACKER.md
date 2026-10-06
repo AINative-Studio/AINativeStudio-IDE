@@ -72,9 +72,9 @@ Issues filed from findings along the way:
 - **#170** — Linux plaintext-equivalent credential default — fixed and closed (`7cb8c787`)
 - **#171** — `_markerCheckService`'s 5s poller — re-verified as currently dead/unreachable code (never imported, so the registration never runs); left open, tied to #154's open finish-vs-delete decision rather than resolved unilaterally
 - **#172** — `AINativeAuthService` missing `registerSingleton` — fixed and closed (`7cb8c787`)
-- **#173** — `@types/node` 24.x bump breaks type-checking in 17 core base-library files — found via the first real full-project `tsc`, still open
+- **#173** — `@types/node` 24.x / newer-TypeScript iterator-protocol break across 5 core base-library classes (`ResourceMap`, `ResourceSet`, `LinkedMap`, `SetWithKey`, `SkipList`) plus 5 unrelated errors elsewhere — **fixed and closed** (`fcbc8d72`). Full `npm run compile` now finishes with 0 errors.
 - **#174, #175, #176** — split from #163's MCP lifecycle audit per its own recommendation (quick wins / per-tool toggles / large registry+auth+logs work respectively), all open
-- **#177** — `extensions/tsconfig.base.json`'s lib list predates ES2022, breaking `Array.prototype.at()` in bundled extensions (5 files, 2 extensions found so far via `npm run compile`) — fixed by adding the missing ES2022 sub-libs, not by patching every call site; closing once the compile confirms zero remaining instances
+- **#177** — `extensions/tsconfig.base.json`'s lib list predates ES2022, breaking `Array.prototype.at()` in bundled extensions — **fixed and closed** (`78fea128`, folded into #173's fix)
 
 ### Recovery note (2026-10-06)
 The session restarted mid-flight with 7 agents' final commit/report step interrupted. All 7 had real, substantial uncommitted work on disk — none were lost. Each was manually re-reviewed before committing: two had out-of-scope artifacts reverted (a stray unrelated test deletion and package-lock.json version drift on #156; a scratch node_modules/tsconfig on #150), and one real security issue was found and fixed during review — #169's Windows PATH write used string-interpolated `exec` with insufficient escaping for a value that includes the user's full existing PATH; hardened to `execFile` with an argument array before merging.
@@ -85,11 +85,12 @@ The session restarted mid-flight with 7 agents' final commit/report step interru
 
 ## Pipeline status
 1. ✅ All mergeable fixes reviewed and merged to `main`
-2. ✅ Local dev build + smoke test
-   - `npm install`: fixed (spdlog bump), now succeeds cleanly (1875 packages, 0 build failures)
+2. ✅ Local dev build + smoke test — **fully clean**
+   - `npm install`: fixed (spdlog bump), succeeds cleanly (1875 packages, 0 build failures)
    - `npm run buildreact`: succeeds (11 entry points, including the 3 panels #150 shipped)
-   - `npx tsc -p src/tsconfig.json --noEmit`: zero errors in the `ainative` tree (45 pre-existing
-     errors elsewhere, tracked as #173)
+   - `npm run compile` (the real gulp production compile, not just a scoped `tsc`): **0 errors**,
+     confirmed after fixing #173 (iterator protocol + 5 unrelated pre-existing errors) and #177
+     (ES2022 lib gap in bundled extensions) — 6m22s end to end
    - CI's `macos-14` runner pins an older Xcode/Clang and should be unaffected by the spdlog issue
      either way; `macos-latest` (used only for remote-server builds) could float to a newer image
      over time — worth a follow-up check if that job ever starts failing the same way
