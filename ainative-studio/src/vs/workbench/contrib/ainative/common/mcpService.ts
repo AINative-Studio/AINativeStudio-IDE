@@ -14,7 +14,7 @@ import { IProductService } from '../../../../platform/product/common/productServ
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { IChannel } from '../../../../base/parts/ipc/common/ipc.js';
 import { IMainProcessService } from '../../../../platform/ipc/common/mainProcessService.js';
-import { MCPServerOfName, MCPConfigFileJSON, MCPServer, MCPToolCallParams, RawMCPToolCall, MCPServerEventResponse, isMCPToolDisabled } from './mcpServiceTypes.js';
+import { MCPServerOfName, MCPConfigFileJSON, MCPServer, MCPToolCallParams, RawMCPToolCall, MCPServerEventResponse, isMCPToolDisabled, MCPRegistryEntry, MCPInstallResult, mergeRegistryEntryIntoConfig } from './mcpServiceTypes.js';
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { InternalToolInfo } from './prompt/prompts.js';
 import { IAINativeSettingsService } from './ainativeSettingsService.js';
@@ -30,6 +30,7 @@ export interface IMCPService {
 	readonly _serviceBrand: undefined;
 	revealMCPConfigFile(): Promise<void>;
 	toggleServerIsOn(serverName: string, isOn: boolean): Promise<void>;
+	installFromRegistry(entry: MCPRegistryEntry, installAsName?: string): Promise<MCPInstallResult>;
 
 	readonly state: MCPServiceState; // NOT persisted
 	onDidChangeState: Event<void>;
@@ -313,6 +314,25 @@ class MCPService extends Disposable implements IMCPService {
 			toolResultStr = JSON.stringify(result)
 		}
 		return toolResultStr
+	}
+
+	// Install a server from the built-in registry (#176) by writing its config into mcp.json.
+	// The existing file watcher (_addMCPConfigFileWatcher) picks up the write and runs
+	// _refreshMCPServers itself, same as if the user had hand-edited the file - no separate
+	// "now go connect it" step needed here.
+	public async installFromRegistry(entry: MCPRegistryEntry, installAsName?: string): Promise<MCPInstallResult> {
+		const currentConfig = await this._parseMCPConfigFile();
+		if (!currentConfig) {
+			return { ok: false, error: 'Could not read mcp.json (it may have a syntax error - check the error banner).' };
+		}
+
+		const result = mergeRegistryEntryIntoConfig(currentConfig, entry, installAsName);
+		if (!result.ok) return result;
+
+		const mcpConfigUri = await this._getMCPConfigFilePath();
+		const buffer = VSBuffer.fromString(JSON.stringify(result.configFileJSON, null, 2));
+		await this.fileService.writeFile(mcpConfigUri, buffer);
+		return result;
 	}
 
 	// toggle MCP server and update isOn in void settings

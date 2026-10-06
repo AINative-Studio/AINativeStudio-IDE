@@ -5,6 +5,7 @@
 
 import * as assert from 'assert';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { SkillLoader } from '../../common/skills/skillLoader.js';
 import { SkillParser } from '../../common/skills/skillParser.js';
 import { ISkillsRegistry, RegistryEntry, SkillRefreshResult } from '../../common/skills/skillRegistryTypes.js';
@@ -13,6 +14,8 @@ import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskFileSystemProvider.js';
 import { Schemas } from '../../../../../base/common/network.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Integration tests for SkillLoader against the REAL ISkillParser implementation

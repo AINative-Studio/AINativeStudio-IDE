@@ -251,3 +251,111 @@ export const removeMCPToolNamePrefix = (name: string) => {
 export const isMCPToolDisabled = (disabledToolNames: readonly string[] | undefined, toolName: string): boolean => {
 	return (disabledToolNames ?? []).includes(toolName)
 }
+
+// MCP REGISTRY (#176) ------------------------------------------
+//
+// There is no backend MCP catalog/registry endpoint today (confirmed against the live
+// api.ainative.studio OpenAPI spec - no /mcp/* routes of any kind exist), so this starts as a
+// small, curated, build-time list of well-known community MCP servers rather than something
+// fetched over the network. It gives users an "install" action instead of "open mcp.json and
+// hand-write JSON," which is the entire gap this issue is about. When/if a real backend catalog
+// ships, only _defaultRegistry below needs to change - everything that consumes
+// RegistryEntry/mergeRegistryEntryIntoConfig stays the same.
+
+export interface MCPRegistryEntry {
+	/** Unique id within the registry; becomes the key under mcpServers if installed under its default name. */
+	readonly id: string;
+	readonly displayName: string;
+	readonly description: string;
+	readonly homepage?: string;
+	/** The exact config entry to write into mcp.json's mcpServers[name] on install. */
+	readonly config: MCPConfigFileEntryJSON;
+	/**
+	 * Names of env vars the server process expects (e.g. API keys). Purely descriptive - the
+	 * registry never stores values, only which keys a user will be prompted to fill in. See
+	 * #176's "approved-environment-variable tracking": this is the list install-time UI would
+	 * show as "this server wants access to: X, Y" before anything is written to disk.
+	 */
+	readonly requiredEnvVars?: readonly string[];
+}
+
+const _defaultRegistry: readonly MCPRegistryEntry[] = [
+	{
+		id: 'memory',
+		displayName: 'Memory',
+		description: 'Simple persistent key-value memory for the agent, backed by a local knowledge graph.',
+		homepage: 'https://github.com/modelcontextprotocol/servers/tree/main/src/memory',
+		config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
+	},
+	{
+		id: 'filesystem',
+		displayName: 'Filesystem',
+		description: 'Read/write access to a specific local directory, scoped outside the current workspace.',
+		homepage: 'https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem',
+		config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/allowed/files'] },
+	},
+	{
+		id: 'fetch',
+		displayName: 'Fetch',
+		description: 'Fetches a URL and converts its content to markdown for the agent to read.',
+		homepage: 'https://github.com/modelcontextprotocol/servers/tree/main/src/fetch',
+		config: { command: 'uvx', args: ['mcp-server-fetch'] },
+	},
+	{
+		id: 'github',
+		displayName: 'GitHub',
+		description: 'Search repos, read/write files, and manage issues and PRs on GitHub.',
+		homepage: 'https://github.com/github/github-mcp-server',
+		config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
+		requiredEnvVars: ['GITHUB_PERSONAL_ACCESS_TOKEN'],
+	},
+	{
+		id: 'brave-search',
+		displayName: 'Brave Search',
+		description: 'Web and local search via the Brave Search API.',
+		homepage: 'https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search',
+		config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-brave-search'] },
+		requiredEnvVars: ['BRAVE_API_KEY'],
+	},
+];
+
+export const getMCPRegistry = (): readonly MCPRegistryEntry[] => _defaultRegistry;
+
+export const findMCPRegistryEntry = (id: string): MCPRegistryEntry | undefined =>
+	_defaultRegistry.find(e => e.id === id);
+
+export type MCPInstallResult = {
+	ok: true;
+	configFileJSON: MCPConfigFileJSON;
+	/** True if this install overwrote an existing entry under the same name. */
+	overwritten: boolean;
+} | {
+	ok: false;
+	error: string;
+};
+
+/**
+ * Pure merge of a registry entry into an existing parsed mcp.json, under `installAsName`
+ * (defaults to the entry's id). Returns the new config object rather than writing anything -
+ * callers (MCPService) own the actual file I/O, keeping this testable without a filesystem.
+ */
+export const mergeRegistryEntryIntoConfig = (
+	currentConfig: MCPConfigFileJSON,
+	entry: MCPRegistryEntry,
+	installAsName?: string,
+): MCPInstallResult => {
+	const name = installAsName === undefined ? entry.id : installAsName.trim();
+	if (!name) {
+		return { ok: false, error: 'Server name cannot be empty.' };
+	}
+
+	const overwritten = name in currentConfig.mcpServers;
+	const configFileJSON: MCPConfigFileJSON = {
+		...currentConfig,
+		mcpServers: {
+			...currentConfig.mcpServers,
+			[name]: entry.config,
+		},
+	};
+	return { ok: true, configFileJSON, overwritten };
+};

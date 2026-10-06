@@ -8,10 +8,12 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { glob as globCallback } from 'glob';
+import globPkg from 'glob';
 import { promisify } from 'util';
+import { fileURLToPath } from 'url';
 
-const glob = promisify(globCallback);
+const glob = promisify(globPkg);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 suite('Branding - File Naming Tests', () => {
 	const rootDir = path.join(__dirname, '../../../../');

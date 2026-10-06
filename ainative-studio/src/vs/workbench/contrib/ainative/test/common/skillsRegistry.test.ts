@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import { tmpdir } from 'os';
+import { fileURLToPath } from 'url';
 import { URI } from '../../../../../base/common/uri.js';
 import { FileService } from '../../../../../platform/files/common/fileService.js';
 import { NullLogService } from '../../../../../platform/log/common/log.js';
@@ -17,6 +18,8 @@ import { Skill, SkillMetadata } from '../../common/skills/skillTypes.js';
 import { ISkillParser } from '../../common/skills/skillParserTypes.js';
 import { SkillParser } from '../../common/skills/skillParser.js';
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Import the actual SkillsRegistry class
 // Note: We need to access the class directly since it's not exported by default

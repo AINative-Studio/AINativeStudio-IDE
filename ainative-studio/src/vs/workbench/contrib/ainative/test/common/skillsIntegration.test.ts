@@ -6,6 +6,7 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import { tmpdir } from 'os';
+import { fileURLToPath } from 'url';
 import { URI } from '../../../../../base/common/uri.js';
 import { FileService } from '../../../../../platform/files/common/fileService.js';
 import { NullLogService } from '../../../../../platform/log/common/log.js';
@@ -19,6 +20,8 @@ import { Workspace } from '../../../../../platform/workspace/common/workspace.js
 import { VSBuffer } from '../../../../../base/common/buffer.js';
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
 import { ISkillsRegistry } from '../../common/skills/skillRegistryTypes.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 suite('Skills Manager Integration Tests', () => {
 	let fileService: FileService;

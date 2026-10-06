@@ -5,6 +5,7 @@
 
 import * as assert from 'assert';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { SkillParser } from '../../common/skills/skillParser.js';
 import { SkillParseError } from '../../common/skills/skillTypes.js';
 import { FileService } from '../../../../../platform/files/common/fileService.js';
@@ -16,6 +17,8 @@ import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskF
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 // @ts-expect-error - Unused variable
 import { URI } from '../../../../../base/common/uri.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 suite('SkillParser Tests', () => {
 	let parser: SkillParser;
