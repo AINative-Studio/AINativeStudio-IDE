@@ -85,12 +85,22 @@ The session restarted mid-flight with 7 agents' final commit/report step interru
 
 ## Pipeline status
 1. ✅ All mergeable fixes reviewed and merged to `main`
-2. ✅ Local dev build + smoke test — **fully clean**
+2. ✅ Local dev build + smoke test — **fully clean, real launch verified**
    - `npm install`: fixed (spdlog bump), succeeds cleanly (1875 packages, 0 build failures)
    - `npm run buildreact`: succeeds (11 entry points, including the 3 panels #150 shipped)
    - `npm run compile` (the real gulp production compile, not just a scoped `tsc`): **0 errors**,
      confirmed after fixing #173 (iterator protocol + 5 unrelated pre-existing errors) and #177
-     (ES2022 lib gap in bundled extensions) — 6m22s end to end
+     (ES2022 lib gap in bundled extensions)
+   - Electron download checksum file was still pinned to v34.3.2 after #140's v43.7.7 upgrade,
+     blocking any actual launch — fixed with the official v43.7.7 SHASUMS256.txt
+   - **Real app launch**: found and fixed two genuine runtime crashes neither `tsc` nor gulp's
+     compile step could ever catch — a `process is not defined` crash in the renderer (#178) and
+     a circular-import temporal-dead-zone crash between `usageTrackingService.ts` and
+     `aiModelRegistryService.ts` (#179). After both fixes: **confirmed via live process
+     inspection** (not just logs) that the app launches to a real, stable window with zero errors —
+     the first clean launch of this build all session.
+   - Found `out/`/`extensions/*/out/` compiled output is committed to git with no `.gitignore`
+     entry — filed as tech debt (#180), not fixed tonight (large, separate decision)
    - CI's `macos-14` runner pins an older Xcode/Clang and should be unaffected by the spdlog issue
      either way; `macos-latest` (used only for remote-server builds) could float to a newer image
      over time — worth a follow-up check if that job ever starts failing the same way
