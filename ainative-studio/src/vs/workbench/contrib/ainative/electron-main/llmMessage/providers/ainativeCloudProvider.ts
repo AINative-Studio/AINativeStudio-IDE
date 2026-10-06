@@ -3,7 +3,7 @@
  *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
  *--------------------------------------------------------------------------------------*/
 
-import { IAINativeAuthService } from '../../../common/ainativeAuthServiceTypes.js';
+import { IAINativeAuthTokenProvider } from '../../../common/ainativeAuthServiceTypes.js';
 import { OnText, OnFinalMessage, OnError, AnthropicReasoning } from '../../../common/sendLLMMessageTypes.js';
 
 /**
@@ -82,8 +82,8 @@ interface SSEChunk {
  *    also accepted. Keys from other vendors (e.g. `sk-ant-`) are rejected 401.
  *  - JWT bearer auth belongs to the `/api/v1/auth/*` user-session endpoints
  *    (login/register/refresh/logout) and is NOT accepted interchangeably here,
- *    so `IAINativeAuthService` is retained only as an optional fallback for
- *    installs that still carry a session token.
+ *    so `IAINativeAuthTokenProvider` is retained only as an optional fallback
+ *    for installs that still carry a session token.
  */
 export class AINativeCloudProvider {
 	private static readonly API_BASE = 'https://api.ainative.studio';
@@ -98,13 +98,13 @@ export class AINativeCloudProvider {
 	private static readonly MAX_RETRIES = 1;
 
 	/**
-	 * @param authService JWT session service, kept for `/api/v1/auth/*` session
+	 * @param authService JWT token provider, kept for `/api/v1/auth/*` session
 	 *   concerns and used only as a fallback credential when no API key is set.
 	 * @param apiKey The `ainativeCloud` provider API key from settings
 	 *   (`settingsOfProvider.ainativeCloud.apiKey`). Preferred credential.
 	 */
 	constructor(
-		private readonly authService: IAINativeAuthService,
+		private readonly authService: IAINativeAuthTokenProvider,
 		private readonly apiKey?: string | undefined
 	) { }
 

@@ -27,8 +27,9 @@ import { AINativeSDKClient } from './ainativeSDKClient.js';
  * AINativeCloudAuthService implementation
  * Handles cloud authentication with encrypted storage and automatic token refresh
  *
- * This service is separate from the ZeroDB authentication service (ainativeAuthService)
- * and uses different storage keys to avoid conflicts.
+ * This service is separate from the ZeroDB session authentication service
+ * (`IAINativeSessionAuthService` in ainativeAuthService.ts) and uses different
+ * storage keys to avoid conflicts.
  */
 export class AINativeCloudAuthService extends Disposable implements IAINativeCloudAuthService {
 	readonly _serviceBrand: undefined;

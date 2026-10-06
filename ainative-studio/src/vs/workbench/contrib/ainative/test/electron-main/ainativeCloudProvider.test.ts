@@ -5,13 +5,13 @@
 
 import * as assert from 'assert';
 import { AINativeCloudProvider } from '../../electron-main/llmMessage/providers/ainativeCloudProvider.js';
-import { IAINativeAuthService } from '../../common/ainativeAuthServiceTypes.js';
+import { IAINativeAuthTokenProvider } from '../../common/ainativeAuthServiceTypes.js';
 import { OnText, OnFinalMessage, OnError } from '../../common/sendLLMMessageTypes.js';
 
 /**
  * Mock authentication service for testing
  */
-class MockAuthService implements IAINativeAuthService {
+class MockAuthService implements IAINativeAuthTokenProvider {
 	private token: string | null = 'mock-jwt-token';
 	private shouldFail: boolean = false;
 	public refreshCallCount: number = 0;

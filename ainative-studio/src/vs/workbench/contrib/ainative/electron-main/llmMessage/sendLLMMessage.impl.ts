@@ -21,7 +21,7 @@ import { extractReasoningWrapper, extractXMLToolsWrapper } from './extractGramma
 import { availableTools, InternalToolInfo } from '../../common/prompt/prompts.js';
 import { generateUuid } from '../../../../../base/common/uuid.js';
 import { AINativeCloudProvider } from './providers/ainativeCloudProvider.js';
-import { IAINativeAuthService } from '../../common/ainativeAuthServiceTypes.js';
+import { IAINativeAuthTokenProvider } from '../../common/ainativeAuthServiceTypes.js';
 
 const getGoogleApiKey = async () => {
 	// module‑level singleton
@@ -895,7 +895,7 @@ const ainativeCloudMessageOfLLMMessage = (message: LLMChatMessage): { role: 'use
 }
 
 /**
- * Minimal `IAINativeAuthService` used when no JWT session is reachable.
+ * Minimal `IAINativeAuthTokenProvider` used when no JWT session is reachable.
  *
  * Chat completions authenticate with the `X-API-Key` header taken from
  * `settingsOfProvider.ainativeCloud.apiKey` (see
@@ -905,7 +905,7 @@ const ainativeCloudMessageOfLLMMessage = (message: LLMChatMessage): { role: 'use
  * injected here. The provider's JWT path is therefore inert: it asks for a token,
  * gets null, and falls through to the API-key error copy.
  */
-const ainativeCloudNoSessionAuthService: IAINativeAuthService = {
+const ainativeCloudNoSessionAuthService: IAINativeAuthTokenProvider = {
 	getToken: async () => null,
 	refreshToken: async () => null,
 	isAuthenticated: async () => false,

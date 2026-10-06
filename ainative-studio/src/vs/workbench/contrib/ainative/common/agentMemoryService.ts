@@ -7,7 +7,7 @@ import { Event, Emitter } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
-import { IAINativeAuthService } from './ainativeAuthService.js';
+import { IAINativeSessionAuthService } from './ainativeAuthService.js';
 
 export const IAgentMemoryService = createDecorator<IAgentMemoryService>('agentMemoryService');
 
@@ -96,7 +96,7 @@ export class AgentMemoryService extends Disposable implements IAgentMemoryServic
 	readonly onDidStoreMemory = this._onDidStoreMemory.event;
 
 	constructor(
-		@IAINativeAuthService private readonly _authService: IAINativeAuthService
+		@IAINativeSessionAuthService private readonly _authService: IAINativeSessionAuthService
 	) {
 		super();
 	}

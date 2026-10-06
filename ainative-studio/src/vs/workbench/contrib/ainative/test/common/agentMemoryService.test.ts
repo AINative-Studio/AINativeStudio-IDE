@@ -18,12 +18,12 @@ import {
 	MemoryEntry,
 	ContextWindow
 } from '../../common/agentMemoryService.js';
-import { IAINativeAuthService, AuthState, AINativeUser, AINativeAuthResult } from '../../common/ainativeAuthService.js';
+import { IAINativeSessionAuthService, AuthState, AINativeUser, AINativeAuthResult } from '../../common/ainativeAuthService.js';
 
 /**
  * Mock authentication service for testing
  */
-class MockAuthService implements IAINativeAuthService {
+class MockAuthService implements IAINativeSessionAuthService {
 	readonly _serviceBrand: undefined;
 
 	private readonly _onDidChangeAuthState = new Emitter<AuthState>();
