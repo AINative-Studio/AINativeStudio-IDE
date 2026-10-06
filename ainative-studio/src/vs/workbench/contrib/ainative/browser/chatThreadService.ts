@@ -29,6 +29,9 @@ import { findLast, findLastIdx } from '../../../../base/common/arraysFind.js';
 import { IEditCodeService } from './editCodeServiceInterface.js';
 import { VoidFileSnapshot } from '../common/editCodeServiceTypes.js';
 import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
+import { IOpenerService } from '../../../../platform/opener/common/opener.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import { AINATIVE_OPEN_SETTINGS_ACTION_ID } from './ainativeSettingsPane.js';
 import { truncate } from '../../../../base/common/strings.js';
 import { THREAD_STORAGE_KEY, LEGACY_THREAD_STORAGE_KEY } from '../common/storageKeys.js';
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
@@ -327,6 +330,8 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		@IMetricsService private readonly _metricsService: IMetricsService,
 		@IEditCodeService private readonly _editCodeService: IEditCodeService,
 		@INotificationService private readonly _notificationService: INotificationService,
+		@IOpenerService private readonly _openerService: IOpenerService,
+		@ICommandService private readonly _commandService: ICommandService,
 		@IConvertToLLMMessageService private readonly _convertToLLMMessagesService: IConvertToLLMMessageService,
 		@IWorkspaceContextService private readonly _workspaceContextService: IWorkspaceContextService,
 		@IDirectoryStrService private readonly _directoryStringService: IDirectoryStrService,
@@ -2367,18 +2372,20 @@ We only need to do it for files that were edited since `from`, ie files between 
 		let actionCallback: (() => void) | undefined;
 
 		if (error.isInsufficientCredits()) {
-			errorMessage = 'Insufficient credits. Please upgrade your plan to continue using the managed API.';
-			actionLabel = 'Upgrade Plan';
+			// Insufficient credits mid-subscription is exactly what /refills is
+			// for (confirmed with the user) - not /pricing, which is for
+			// choosing a plan in the first place.
+			errorMessage = 'Insufficient credits. Please buy a refill to continue using the managed API.';
+			actionLabel = 'Buy Refill';
 			actionCallback = () => {
-				const upgradeUrl = error.getUpgradeURL() || 'https://ainative.studio/pricing';
-				// TODO: Open upgrade URL in external browser
-				console.log('Opening upgrade URL:', upgradeUrl);
+				const refillUrl = error.getUpgradeURL() || 'https://ainative.studio/refills';
+				this._openerService.open(URI.parse(refillUrl));
 			};
 		} else if (error.isModelNotAvailable()) {
 			errorMessage = 'The selected model is not available for your plan. Please upgrade or select a different model.';
 			actionLabel = 'View Plans';
 			actionCallback = () => {
-				console.log('Opening pricing page');
+				this._openerService.open(URI.parse('https://ainative.studio/pricing'));
 			};
 		} else if (error.isRateLimited()) {
 			errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
@@ -2386,7 +2393,9 @@ We only need to do it for files that were edited since `from`, ie files between 
 			errorMessage = 'Authentication error. Please log in again.';
 			actionLabel = 'Log In';
 			actionCallback = () => {
-				console.log('Triggering login');
+				// Opens Settings, where the real "Sign In to AINative Cloud" flow
+				// lives (see #183) - there is no standalone login command.
+				this._commandService.executeCommand(AINATIVE_OPEN_SETTINGS_ACTION_ID);
 			};
 		}
 

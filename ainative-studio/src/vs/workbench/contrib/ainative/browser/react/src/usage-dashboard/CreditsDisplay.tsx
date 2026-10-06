@@ -4,8 +4,15 @@
  *--------------------------------------------------------------------------------------*/
 
 import React from 'react';
-import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, ExternalLink } from 'lucide-react';
 import { CreditsStatus } from '../../../../common/usageTrackingTypes.js';
+
+// Refills (buying more credits mid-subscription-period) is handled entirely
+// by the existing, working checkout flow on the public site - not
+// reimplemented in the IDE. See #164: an embedded Stripe checkout was
+// drafted and then deliberately reverted once it was confirmed this page
+// already exists and already works.
+const REFILLS_URL = 'https://ainative.studio/refills';
 
 interface CreditsDisplayProps {
 	creditsStatus: CreditsStatus | null;
@@ -54,9 +61,19 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 					<h3 className="text-lg font-medium text-ainative-fg-1">Credits Status</h3>
 				</div>
 
-				{/* Plan Badge */}
-				<div className="px-3 py-1 bg-ainative-bg-2 rounded-full text-xs font-medium text-ainative-fg-1 capitalize">
-					{planTier} Plan
+				{/* Plan Badge + Buy Refill */}
+				<div className="flex items-center gap-2">
+					<div className="px-3 py-1 bg-ainative-bg-2 rounded-full text-xs font-medium text-ainative-fg-1 capitalize">
+						{planTier} Plan
+					</div>
+					<button
+						type="button"
+						className="flex items-center gap-1 px-3 py-1 bg-[#0e70c0] hover:bg-[#1177cb] text-white rounded-full text-xs font-medium transition-colors"
+						onClick={() => window.open(REFILLS_URL, '_blank')}
+					>
+						Buy Refill
+						<ExternalLink size={12} />
+					</button>
 				</div>
 			</div>
 
@@ -64,11 +81,19 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 			{isLow && (
 				<div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md flex items-start gap-3">
 					<AlertTriangle size={18} className="text-yellow-500 mt-0.5 flex-shrink-0" />
-					<div>
+					<div className="flex-1">
 						<h4 className="text-sm font-medium text-yellow-500 mb-1">Credits Running Low</h4>
-						<p className="text-xs text-ainative-fg-3">
-							You have used {percentUsed.toFixed(0)}% of your credits. Consider upgrading your plan.
+						<p className="text-xs text-ainative-fg-3 mb-2">
+							You have used {percentUsed.toFixed(0)}% of your credits.
 						</p>
+						<button
+							type="button"
+							className="flex items-center gap-1 text-xs font-medium text-yellow-500 hover:text-yellow-400 underline underline-offset-2"
+							onClick={() => window.open(REFILLS_URL, '_blank')}
+						>
+							Buy a credit refill
+							<ExternalLink size={11} />
+						</button>
 					</div>
 				</div>
 			)}
