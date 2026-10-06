@@ -20,4 +20,4 @@ test-results.xml
 /out/
 /out-build/
 /out-vscode*/
-extensions/*/out/
+extensions/**/out/
