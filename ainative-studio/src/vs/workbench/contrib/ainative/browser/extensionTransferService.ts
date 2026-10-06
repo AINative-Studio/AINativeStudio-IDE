@@ -234,7 +234,16 @@ class ExtensionTransferService extends Disposable implements IExtensionTransferS
 		const fileService = this._fileService
 		const extensionsURI = getExtensionsFolder(os)
 		if (!extensionsURI) return
-		const eURI = await fileService.resolve(extensionsURI)
+
+		let eURI
+		try {
+			eURI = await fileService.resolve(extensionsURI)
+		} catch {
+			// Nothing to clean up on a fresh install - this extensions folder
+			// (from a prior app version/name) may simply never have existed.
+			return
+		}
+
 		for (const child of eURI.children ?? []) {
 
 
