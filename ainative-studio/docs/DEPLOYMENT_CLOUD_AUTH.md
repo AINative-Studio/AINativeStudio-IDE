@@ -85,7 +85,7 @@ All required dependencies are already included in `package.json`:
 {
   "@ainative/sdk": "^1.0.3",
   "typescript": "^5.x",
-  "electron": "^34.3.2"
+  "electron": "^43.7.7"
 }
 ```
 
