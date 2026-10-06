@@ -79,6 +79,23 @@ export const defaultProviderSettings = {
 		// exactly like every other BYOK provider.
 		apiKey: '',
 	},
+	cerebras: {
+		// Cerebras Inference is OpenAI-API-compatible and authenticates with a plain
+		// bearer token: `Authorization: Bearer <key>`, base URL https://api.cerebras.ai/v1.
+		// Keys are created in the Cerebras Cloud console (https://cloud.cerebras.ai).
+		apiKey: '',
+	},
+	fireworks: {
+		// Fireworks AI is OpenAI-API-compatible and authenticates with a plain bearer
+		// token: `Authorization: Bearer <key>`, base URL https://api.fireworks.ai/inference/v1.
+		apiKey: '',
+	},
+	digitalOcean: {
+		// DigitalOcean Gradient AI serverless inference is OpenAI-API-compatible and
+		// authenticates with a model access key as a plain bearer token:
+		// `Authorization: Bearer <key>`, base URL https://inference.do-ai.run/v1.
+		apiKey: '',
+	},
 
 } as const
 
@@ -173,6 +190,34 @@ export const defaultModelsOfProvider = {
 		'gpt-4o-mini',
 	],
 	liteLLM: [],
+	cerebras: [ // https://inference-docs.cerebras.ai/models/overview
+		// Cerebras Shared Inference currently serves a short, fast-rotating lineup.
+		// Verified against the public model overview — re-check when models change.
+		'gpt-oss-120b',
+		'qwen-3.8-27b',
+	],
+	fireworks: [ // https://docs.fireworks.ai/guides/querying-text-models
+		// NOTE: Fireworks exposes two ID namespaces — full paths under
+		// `accounts/fireworks/models/...` and short canonical router IDs (e.g.
+		// `firerouter/opus`, `kimi-latest`). Fireworks' own docs call the alias list
+		// "a snapshot" that moves to newer models or retires, so this list WILL go
+		// stale; the authoritative lineup is https://fireworks.ai/models.
+		'accounts/fireworks/models/kimi-k3',
+		'accounts/fireworks/models/deepseek-v4p1-flash',
+		'accounts/fireworks/models/glm-5p3',
+		'accounts/fireworks/models/gpt-oss-120b',
+	],
+	digitalOcean: [ // https://docs.digitalocean.com/products/inference/details/models/
+		// DigitalOcean Gradient AI proxies 70+ models; these are the coding-relevant
+		// flagships. The full catalog (which changes often) is at the URL above —
+		// users can add any other model ID manually in Settings.
+		'anthropic-claude-sonnet-5.5',
+		'openai-gpt-5.3-codex',
+		'deepseek-v4.1-flash',
+		'kimi-k3',
+		'glm-5.3',
+		'openai-gpt-oss-120b',
+	],
 
 
 } as const satisfies Record<ProviderName, string[]>
@@ -1519,6 +1564,177 @@ const ainativeCloudSettings: VoidStaticProviderInfo = {
 }
 
 
+// ---------------- CEREBRAS ----------------
+// OpenAI-compatible (bearer token, https://api.cerebras.ai/v1).
+// https://inference-docs.cerebras.ai/models/overview
+const cerebrasModelOptions = {
+	'gpt-oss-120b': {
+		contextWindow: 131_000, // 65k on the free tier, 131k on paid
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0.25, output: 0.69 }, // pricing not published per-model in docs; approximate
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: false, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'qwen-3.8-27b': {
+		contextWindow: 128_000, // 64k free tier / 128k paid
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0.25, output: 0.69 }, // approximate, see above
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+} as const satisfies { [s: string]: VoidStaticModelInfo }
+const cerebrasSettings: VoidStaticProviderInfo = {
+	modelOptions: cerebrasModelOptions,
+	// Cerebras rotates its lineup often, so fall back to generic open-source
+	// heuristics rather than refusing unrecognized model names.
+	modelOptionsFallback: (modelName) => extensiveModelOptionsFallback(modelName),
+	providerReasoningIOSettings: {
+		input: { includeInPayload: openAICompatIncludeInPayloadReasoning },
+		output: { nameOfFieldInDelta: 'reasoning' },
+	},
+}
+
+
+// ---------------- FIREWORKS AI ----------------
+// OpenAI-compatible (bearer token, https://api.fireworks.ai/inference/v1).
+// https://docs.fireworks.ai/guides/querying-text-models
+const fireworksModelOptions = {
+	'accounts/fireworks/models/kimi-k3': {
+		contextWindow: 256_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 3.00, output: 15.00 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'accounts/fireworks/models/deepseek-v4p1-flash': {
+		contextWindow: 163_840,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0.30, output: 1.20 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'accounts/fireworks/models/glm-5p3': {
+		contextWindow: 200_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 1.40, output: 4.40 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'accounts/fireworks/models/gpt-oss-120b': {
+		contextWindow: 131_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0.15, output: 0.60 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: false, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+} as const satisfies { [s: string]: VoidStaticModelInfo }
+const fireworksSettings: VoidStaticProviderInfo = {
+	modelOptions: fireworksModelOptions,
+	// Fireworks serves 100+ models plus moving aliases, so unrecognized names must
+	// still work rather than erroring out.
+	modelOptionsFallback: (modelName) => extensiveModelOptionsFallback(modelName),
+	providerReasoningIOSettings: {
+		input: { includeInPayload: openAICompatIncludeInPayloadReasoning },
+		output: { nameOfFieldInDelta: 'reasoning_content' },
+	},
+}
+
+
+// ---------------- DIGITALOCEAN (Gradient AI serverless inference) ----------------
+// OpenAI-compatible (model access key as bearer token, https://inference.do-ai.run/v1).
+// https://docs.digitalocean.com/products/inference/details/models/
+const digitalOceanModelOptions = {
+	'anthropic-claude-sonnet-5.5': {
+		contextWindow: 200_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 2.00, output: 10.00 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true },
+	},
+	'openai-gpt-5.3-codex': {
+		contextWindow: 400_000,
+		reservedOutputTokenSpace: 32_768,
+		cost: { input: 1.25, output: 10.00 }, // pricing not individually confirmed
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'developer-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: false, canTurnOffReasoning: false },
+	},
+	'deepseek-v4.1-flash': {
+		contextWindow: 163_840,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0.30, output: 1.20 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'kimi-k3': {
+		contextWindow: 256_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 3.00, output: 15.00 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'glm-5.3': {
+		contextWindow: 200_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 1.40, output: 4.40 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'openai-gpt-oss-120b': {
+		contextWindow: 131_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0.10, output: 0.70 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: false, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+} as const satisfies { [s: string]: VoidStaticModelInfo }
+const digitalOceanSettings: VoidStaticProviderInfo = {
+	modelOptions: digitalOceanModelOptions,
+	// DigitalOcean proxies 70+ models and adds new ones continuously; `GET /v1/models`
+	// is the source of truth, so unrecognized names fall back instead of erroring.
+	modelOptionsFallback: (modelName) => extensiveModelOptionsFallback(modelName),
+	providerReasoningIOSettings: {
+		input: { includeInPayload: openAICompatIncludeInPayloadReasoning },
+		output: { nameOfFieldInDelta: 'reasoning_content' },
+	},
+}
+
+
 // ---------------- model settings of everything above ----------------
 
 const modelSettingsOfProvider: { [providerName in ProviderName]: VoidStaticProviderInfo } = {
@@ -1545,6 +1761,11 @@ const modelSettingsOfProvider: { [providerName in ProviderName]: VoidStaticProvi
 	microsoftAzure: microsoftAzureSettings,
 	awsBedrock: awsBedrockSettings,
 	ainativeCloud: ainativeCloudSettings,
+
+	// BYOK OpenAI-compatible inference providers
+	cerebras: cerebrasSettings,
+	fireworks: fireworksSettings,
+	digitalOcean: digitalOceanSettings,
 } as const
 
 
