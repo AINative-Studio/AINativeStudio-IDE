@@ -267,24 +267,74 @@ has a confirmed home at `POST /api/v1/managed/chat/completions`, so
 
 ## 4. Current coding model IDs
 
+**Spelling uses DASHES, not dots** (corrected by #158 — see below):
+
 ```
-gpt-5.3-codex
+gpt-5-3-codex
 qwen3-coder-30b-a3b
 qwen-coder-32b
 qwen-coder-7b
-claude-sonnet-4.5
-claude-sonnet-4.6
-claude-opus-4.5
-claude-opus-4.6
+claude-sonnet-4-5
+claude-sonnet-4-6
+claude-opus-4-5
+claude-opus-4-6
 ```
 
-Heads-up for #144 and anyone touching the model list: the IDE's hard-coded
-defaults in `modelCapabilities.ts` (`defaultModelsOfProvider.ainativeCloud` and
-`ainativeCloudModelOptions`) are **stale** — they still list `claude-sonnet-4-5`,
-`claude-haiku-4`, `gpt-4o`, `gpt-4o-mini`. Refreshing those lists was left out of
-#143 on purpose: it is model-catalog work, not endpoint/auth correctness, and
-touching it would collide with #144. Note the dash-vs-dot spelling difference
-(`claude-sonnet-4-5` vs `claude-sonnet-4.5`) when you do reconcile them.
+### Correction (#158): this section previously listed dotted IDs and was wrong
+
+An earlier revision of this section listed `gpt-5.3-codex`, `claude-sonnet-4.5`
+etc. with dots, and told the next reader to "note the dash-vs-dot spelling
+difference" when reconciling `modelCapabilities.ts`. That was backwards. The dots
+came from the models' **display names** ("GPT-5.3 Codex"), not from their
+identifiers. Following that guidance would have replaced one set of
+backend-rejected IDs with another.
+
+Evidence gathered for #158 on 2026-10-05:
+
+- `GET /api/v1/public/ai-registry/models?limit=300` — **unauthenticated, 200 OK**,
+  85 models. Every record's `slug` is dash-spelled: `gpt-5-3-codex`,
+  `claude-sonnet-4-5`, `qwen3-coder-30b-a3b`, `glm-5-3`. Dots appear only in the
+  human-readable `name` field.
+- `GET /api/v1/public/ai-registry/models/by-slug/gpt-5-3-codex` → **200 OK**.
+  `GET .../by-slug/gpt-5.3-codex` → **404 `{"detail":"Model not found"}`**.
+- `openapi.json` (6.6MB) contains **zero** dotted model identifiers. Every
+  model-name example in it is dash-spelled, e.g. the `/api/v1/rlhf/feedback/export`
+  `model` filter documents "e.g., claude-opus-4-8, gpt-oss-120b", and
+  `CodingSessionCreate.model` defaults to `claude-sonnet-4-20250514`.
+
+This registry is the public catalog and is keyed by URL slug. `ChatCompletionRequest.model`
+is an unconstrained `string | null` in the OpenAPI document (no enum), so the
+schema alone cannot confirm an accepted value — the slug/`by-slug` agreement plus
+the absence of any dotted form anywhere is the basis for the dash spelling.
+
+Note that `claude-sonnet-4-5` happened to be correct in the old IDE defaults; the
+genuinely stale entries were `claude-haiku-4`, `gpt-4o`, and `gpt-4o-mini`, none
+of which exist in the live catalog.
+
+Context windows, also from that live catalog (`context_window`):
+
+| Model | Context window |
+| --- | --- |
+| `gpt-5-3-codex` | 131,072 |
+| `qwen3-coder-30b-a3b` | 262,144 |
+| `qwen-coder-32b` | 131,072 |
+| `qwen-coder-7b` | 131,072 |
+| `claude-sonnet-4-5` | 200,000 |
+| `claude-sonnet-4-6` | reported `0` — unpopulated record, not a real limit |
+| `claude-opus-4-5` | reported `0` — unpopulated record |
+| `claude-opus-4-6` | reported `0` — unpopulated record |
+
+The `0` values are missing data in the registry, so `modelCapabilities.ts` uses
+the Claude family's documented 200k window for those three and marks each with a
+comment. The registry reports no `pricing` for any chat model (AINative Cloud
+inference is billed in account credits), so the IDE's `cost` stays `{input: 0,
+output: 0}` for all of them.
+
+`modelCapabilities.ts` was refreshed in #158. The long-term fix — replacing the
+static list with a live `GET /v1/public/models/available` call — remains separate
+roadmap scope; that endpoint requires an `X-API-Key` (401 unauthenticated),
+whereas the `ai-registry` catalog above does not and is therefore the easier
+source to verify against by hand.
 
 ---
 
@@ -398,7 +448,7 @@ that #144-#148 start from a clean, conflict-free base.
 - Mounting the real auth webview — #146.
 - Usage-tracking sync logic — #147 (**done**, see section 8).
 - Tool logs — #148.
-- Refreshing the stale hard-coded model lists (section 4).
+- Refreshing the stale hard-coded model lists (section 4) — done in #158.
 
 ---
 
