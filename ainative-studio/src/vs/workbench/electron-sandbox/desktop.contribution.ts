@@ -57,11 +57,9 @@ import { registerWorkbenchContribution2, WorkbenchPhase } from '../common/contri
 		});
 	}
 
-	// Actions: Install Shell Script (macOS only)
-	if (isMacintosh) {
-		registerAction2(InstallShellScriptAction);
-		registerAction2(UninstallShellScriptAction);
-	}
+	// Actions: Install Shell Script
+	registerAction2(InstallShellScriptAction);
+	registerAction2(UninstallShellScriptAction);
 
 	// Quit
 	KeybindingsRegistry.registerCommandAndKeybindingRule({

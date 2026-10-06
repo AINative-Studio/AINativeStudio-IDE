@@ -11,7 +11,7 @@ import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js';
 import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, ModelDump } from '../ainative-settings-tsx/Settings.js';
 import { ColorScheme } from '../../../../../../../platform/theme/common/theme.js';
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js';
-import { isLinux, isMacintosh } from '../../../../../../../base/common/platform.js';
+import { isLinux } from '../../../../../../../base/common/platform.js';
 
 const OVERRIDE_VALUE = false
 
@@ -691,13 +691,11 @@ const AINativeOnboardingContent = () => {
 				<AddProvidersPage pageIndex={pageIndex} setPageIndex={setPageIndex} />
 			}
 		/>,
-		// Shell integration is only installable on macOS today (see installActions.ts),
-		// so this step is only shown there - everywhere else, onboarding goes straight
-		// from providers to the final settings/themes page.
-		...(isMacintosh ? {
-			2: <ShellSetupPage pageIndex={pageIndex} setPageIndex={setPageIndex} />,
-		} : {}),
-		[isMacintosh ? 3 : 2]: <OnboardingPageShell
+		// Shell integration is installable on macOS, Linux, and Windows
+		// (see installActions.ts / nativeHostMainService.ts), so this step
+		// is shown on all platforms.
+		2: <ShellSetupPage pageIndex={pageIndex} setPageIndex={setPageIndex} />,
+		3: <OnboardingPageShell
 
 			content={
 				<div>

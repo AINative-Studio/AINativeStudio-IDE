@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as fs from 'fs';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { app, BrowserWindow, clipboard, Display, Menu, MessageBoxOptions, MessageBoxReturnValue, OpenDevToolsOptions, OpenDialogOptions, OpenDialogReturnValue, powerMonitor, SaveDialogOptions, SaveDialogReturnValue, screen, shell, webContents } from 'electron';
 import { arch, cpus, freemem, loadavg, platform, release, totalmem, type } from 'os';
 import { promisify } from 'util';
@@ -353,9 +353,28 @@ export class NativeHostMainService extends Disposable implements INativeHostMain
 	//#endregion
 
 
-	//#region macOS Shell Command
+	//#region Shell Command
 
 	async installShellCommand(windowId: number | undefined): Promise<void> {
+		if (isWindows) {
+			return this.installShellCommandWindows();
+		}
+
+		return this.installShellCommandPosix(windowId);
+	}
+
+	async uninstallShellCommand(windowId: number | undefined): Promise<void> {
+		if (isWindows) {
+			return this.uninstallShellCommandWindows();
+		}
+
+		return this.uninstallShellCommandPosix(windowId);
+	}
+
+	// macOS & Linux: symlink the CLI into /usr/local/bin, escalating
+	// privileges only when the user cannot write there directly.
+
+	private async installShellCommandPosix(windowId: number | undefined): Promise<void> {
 		const { source, target } = await this.getShellCommandLink();
 
 		// Only install unless already existing
@@ -377,10 +396,16 @@ export class NativeHostMainService extends Disposable implements INativeHostMain
 		}
 
 		try {
+			await fs.promises.mkdir(dirname(source), { recursive: true });
 			await fs.promises.symlink(target, source);
 		} catch (error) {
-			if (error.code !== 'EACCES' && error.code !== 'ENOENT') {
+			if (error.code !== 'EACCES' && error.code !== 'EPERM' && error.code !== 'ENOENT') {
 				throw error;
+			}
+
+			if (!isMacintosh) {
+				// Linux: elevate via pkexec/sudo rather than macOS' osascript
+				return this.installShellCommandPosixElevated(windowId, source, target);
 			}
 
 			const { response } = await this.showMessageBox(windowId, {
@@ -405,14 +430,65 @@ export class NativeHostMainService extends Disposable implements INativeHostMain
 		}
 	}
 
-	async uninstallShellCommand(windowId: number | undefined): Promise<void> {
+	private async installShellCommandPosixElevated(windowId: number | undefined, source: string, target: string): Promise<void> {
+		const { response } = await this.showMessageBox(windowId, {
+			type: 'info',
+			message: localize('warnEscalationLinux', "{0} does not have permission to write to '{1}' and will now prompt for Administrator privileges to install the shell command.", this.productService.nameShort, dirname(source)),
+			buttons: [
+				localize({ key: 'ok', comment: ['&& denotes a mnemonic'] }, "&&OK"),
+				localize('cancel', "Cancel")
+			]
+		});
+
+		if (response === 1 /* Cancel */) {
+			throw new CancellationError();
+		}
+
+		try {
+			const sudoPrompt = await import('@vscode/sudo-prompt');
+			const command = `mkdir -p '${dirname(source)}' && ln -sf '${target}' '${source}'`;
+			await new Promise<void>((resolve, reject) => {
+				sudoPrompt.exec(command, { name: this.productService.nameLong.replace('-', '') }, (error?) => error ? reject(error) : resolve());
+			});
+		} catch (error) {
+			throw new Error(localize('cantCreateBinFolder', "Unable to install the shell command '{0}'.", source));
+		}
+	}
+
+	private async uninstallShellCommandPosix(windowId: number | undefined): Promise<void> {
 		const { source } = await this.getShellCommandLink();
 
 		try {
 			await fs.promises.unlink(source);
 		} catch (error) {
 			switch (error.code) {
-				case 'EACCES': {
+				case 'EACCES':
+				case 'EPERM': {
+					if (!isMacintosh) {
+						const { response } = await this.showMessageBox(windowId, {
+							type: 'info',
+							message: localize('warnEscalationUninstallLinux', "{0} does not have permission to modify '{1}' and will now prompt for Administrator privileges to uninstall the shell command.", this.productService.nameShort, dirname(source)),
+							buttons: [
+								localize({ key: 'ok', comment: ['&& denotes a mnemonic'] }, "&&OK"),
+								localize('cancel', "Cancel")
+							]
+						});
+
+						if (response === 1 /* Cancel */) {
+							throw new CancellationError();
+						}
+
+						try {
+							const sudoPrompt = await import('@vscode/sudo-prompt');
+							await new Promise<void>((resolve, reject) => {
+								sudoPrompt.exec(`rm '${source}'`, { name: this.productService.nameLong.replace('-', '') }, (error?) => error ? reject(error) : resolve());
+							});
+						} catch (error) {
+							throw new Error(localize('cantUninstall', "Unable to uninstall the shell command '{0}'.", source));
+						}
+						break;
+					}
+
 					const { response } = await this.showMessageBox(windowId, {
 						type: 'info',
 						message: localize('warnEscalationUninstall', "{0} will now prompt with 'osascript' for Administrator privileges to uninstall the shell command.", this.productService.nameShort),
@@ -443,7 +519,7 @@ export class NativeHostMainService extends Disposable implements INativeHostMain
 	}
 
 	private async getShellCommandLink(): Promise<{ readonly source: string; readonly target: string }> {
-		const target = resolve(this.environmentMainService.appRoot, 'bin', 'code');
+		const target = isMacintosh ? resolve(this.environmentMainService.appRoot, 'bin', 'code') : this.cliPath;
 		const source = `/usr/local/bin/${this.productService.applicationName}`;
 
 		// Ensure source exists
@@ -453,6 +529,88 @@ export class NativeHostMainService extends Disposable implements INativeHostMain
 		}
 
 		return { source, target };
+	}
+
+	// Windows: add the CLI's directory to the current user's PATH via
+	// HKCU\Environment so no admin elevation is required.
+
+	private async installShellCommandWindows(): Promise<void> {
+		const cliDir = dirname(this.cliPath);
+
+		const cliDirExists = await Promises.exists(this.cliPath);
+		if (!cliDirExists) {
+			throw new Error(localize('sourceMissing', "Unable to find shell script in '{0}'", this.cliPath));
+		}
+
+		const currentPath = await this.readUserPathRegKey();
+		if (this.pathEntryExists(currentPath, cliDir)) {
+			return; // already installed
+		}
+
+		const newPath = currentPath && currentPath.length > 0 ? `${currentPath};${cliDir}` : cliDir;
+		await this.writeUserPathRegKey(newPath);
+	}
+
+	private async uninstallShellCommandWindows(): Promise<void> {
+		const cliDir = dirname(this.cliPath);
+
+		const currentPath = await this.readUserPathRegKey();
+		if (!currentPath || !this.pathEntryExists(currentPath, cliDir)) {
+			return; // not installed
+		}
+
+		const newPath = currentPath
+			.split(';')
+			.filter(entry => entry.length > 0 && resolve(entry) !== resolve(cliDir))
+			.join(';');
+
+		await this.writeUserPathRegKey(newPath);
+	}
+
+	private pathEntryExists(path: string | undefined, entry: string): boolean {
+		if (!path) {
+			return false;
+		}
+
+		return path.split(';').some(segment => segment.length > 0 && resolve(segment) === resolve(entry));
+	}
+
+	private async readUserPathRegKey(): Promise<string | undefined> {
+		const Registry = await import('@vscode/windows-registry');
+		try {
+			return Registry.GetStringRegKey('HKEY_CURRENT_USER', 'Environment', 'Path');
+		} catch (error) {
+			throw new Error(localize('cantReadPath', "Unable to read the current user PATH from the registry."));
+		}
+	}
+
+	private async writeUserPathRegKey(value: string): Promise<void> {
+		try {
+			// `@vscode/windows-registry` only exposes read access today, so we
+			// shell out to `reg.exe` (bundled with Windows) to write HKCU\Environment.
+			// This keeps the change scoped to the current user and requires no
+			// elevation. Using REG_EXPAND_SZ matches how Windows itself stores
+			// the user PATH (preserving any %VAR% expansions already present).
+			// Uses execFile with an argument array (not exec with an interpolated
+			// string) so `value` - the full existing user PATH plus our new entry,
+			// not something we fully control - is passed as a literal argument
+			// rather than parsed by cmd.exe, closing off shell injection via special
+			// characters that could legitimately appear in a PATH.
+			await promisify(execFile)('reg', ['add', 'HKCU\\Environment', '/v', 'Path', '/t', 'REG_EXPAND_SZ', '/d', value, '/f']);
+
+			// Notify other processes (e.g. Explorer) that the environment changed
+			// so newly opened shells pick up the updated PATH without a reboot.
+			try {
+				const script = `$code = '[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);'; Add-Type -MemberDefinition $code -Name NativeMethods -Namespace Win32 -PassThru | Out-Null; $result = [UIntPtr]::Zero; [Win32.NativeMethods]::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$result) | Out-Null`;
+				await promisify(execFile)('powershell', ['-NoProfile', '-Command', script]);
+			} catch (error) {
+				// Best-effort only: the PATH change is already persisted; broadcasting
+				// WM_SETTINGCHANGE just avoids requiring a logoff for new shells to see it.
+				this.logService.warn(`Unable to broadcast WM_SETTINGCHANGE after updating PATH: ${error}`);
+			}
+		} catch (error) {
+			throw new Error(localize('cantWritePath', "Unable to update the current user PATH in the registry."));
+		}
 	}
 
 	//#endregion
