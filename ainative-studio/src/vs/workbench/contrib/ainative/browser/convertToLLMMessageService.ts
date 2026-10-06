@@ -4,6 +4,7 @@ import { IModelService } from '../../../../editor/common/services/model.js';
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
+import { IFileService } from '../../../../platform/files/common/files.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { ChatMessage } from '../common/chatThreadServiceTypes.js';
 import { getIsReasoningEnabledState, getReservedOutputTokenSpace, getModelCapabilities } from '../common/modelCapabilities.js';
@@ -541,6 +542,7 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		@IAINativeSettingsService private readonly ainativeSettingsService: IAINativeSettingsService,
 		@IAINativeModelService private readonly ainativeModelService: IAINativeModelService,
 		@IMCPService private readonly mcpService: IMCPService,
+		@IFileService private readonly fileService: IFileService,
 	) {
 		super()
 	}
@@ -563,14 +565,65 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		}
 	}
 
-	// Get combined global rules from settings and .ainativerules files
-	private _getCombinedGlobalRules(): string {
+	// Settings-based instructions + .ainativerules file contents (sync, no steering docs).
+	// Shared by call sites that don't go through the main chat loop (FIM, one-shot simple messages).
+	private _getGlobalRulesAndSettingsInstructions(): string {
 		const globalAIInstructions = this.ainativeSettingsService.state.globalSettings.aiInstructions;
 		const globalRulesFileContent = this._getGlobalRulesFileContents();
+		return [globalAIInstructions, globalRulesFileContent].filter(Boolean).join('\n\n');
+	}
+
+	// Read standing project-context ("steering") docs from .ainative/steering/*.md in each workspace folder.
+	// These are always-on context (coding conventions, architecture notes, "never touch X") that the
+	// agent should consult every turn, analogous to how this tool itself reads CLAUDE.md/AGENTS.md.
+	private async _getSteeringFileContents(): Promise<string> {
+		try {
+			const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+			const sections: string[] = [];
+			for (const folder of workspaceFolders) {
+				const steeringDirUri = URI.joinPath(folder.uri, '.ainative', 'steering');
+				let children
+				try {
+					const stat = await this.fileService.resolve(steeringDirUri);
+					children = stat.children
+				}
+				catch (e) {
+					continue // no .ainative/steering directory in this workspace folder
+				}
+				if (!children) continue
+				const mdFiles = children
+					.filter(c => !c.isDirectory && c.name.toLowerCase().endsWith('.md'))
+					.sort((a, b) => a.name.localeCompare(b.name))
+				for (const file of mdFiles) {
+					try {
+						const { model } = await this.ainativeModelService.getModelSafe(file.resource);
+						if (!model) continue
+						const content = model.getValue(EndOfLinePreference.LF).trim();
+						if (!content) continue
+						sections.push(`### ${file.name}\n${content}`);
+					}
+					catch (e) {
+						continue // skip unreadable steering file, don't fail the whole load
+					}
+				}
+			}
+			return sections.join('\n\n').trim();
+		}
+		catch (e) {
+			return ''
+		}
+	}
+
+	// Get combined global rules from settings, .ainativerules files, and .ainative/steering/*.md docs.
+	// Used by the main chat loop (prepareLLMChatMessages), where an extra async directory read per
+	// message is an acceptable, one-time-per-turn cost.
+	private async _getCombinedGlobalRules(): Promise<string> {
+		const baseInstructions = this._getGlobalRulesAndSettingsInstructions();
+		const steeringFileContent = await this._getSteeringFileContents();
 
 		const ans: string[] = []
-		if (globalAIInstructions) ans.push(globalAIInstructions)
-		if (globalRulesFileContent) ans.push(globalRulesFileContent)
+		if (baseInstructions) ans.push(baseInstructions)
+		if (steeringFileContent) ans.push(steeringFileContent)
 		return ans.join('\n\n')
 	}
 
@@ -648,8 +701,11 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 
 		const modelSelectionOptions = this.ainativeSettingsService.state.optionsOfModelSelection[featureName][modelSelection.providerName]?.[modelSelection.modelName]
 
-		// Get combined global rules
-		const aiInstructions = this._getCombinedGlobalRules();
+		// Get combined global rules (settings + .ainativerules). Note: prepareLLMSimpleMessages backs
+		// one-shot auxiliary flows (commit messages, quick-edit, apply) and intentionally does not include
+		// .ainative/steering/ docs — standing project steering is scoped to the main chat loop for now
+		// (see prepareLLMChatMessages) to avoid an async directory read on every one-shot call site.
+		const aiInstructions = this._getGlobalRulesAndSettingsInstructions();
 
 		const isReasoningEnabled = getIsReasoningEnabledState(featureName, providerName, modelName, modelSelectionOptions, overridesOfModel)
 		const reservedOutputTokenSpace = getReservedOutputTokenSpace(providerName, modelName, { isReasoningEnabled, overridesOfModel })
@@ -686,7 +742,7 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		const modelSelectionOptions = this.ainativeSettingsService.state.optionsOfModelSelection['Chat'][modelSelection.providerName]?.[modelSelection.modelName]
 
 		// Get combined global rules
-		const aiInstructions = this._getCombinedGlobalRules();
+		const aiInstructions = await this._getCombinedGlobalRules();
 		const isReasoningEnabled = getIsReasoningEnabledState('Chat', providerName, modelName, modelSelectionOptions, overridesOfModel)
 		const reservedOutputTokenSpace = getReservedOutputTokenSpace(providerName, modelName, { isReasoningEnabled, overridesOfModel })
 		const llmMessages = this._chatMessagesToSimpleMessages(chatMessages)
@@ -709,8 +765,11 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 	// --- FIM ---
 
 	prepareFIMMessage: IConvertToLLMMessageService['prepareFIMMessage'] = ({ messages }) => {
-		// Get combined global rules with the provided aiInstructions as the base
-		const combinedInstructions = this._getCombinedGlobalRules();
+		// Get combined global rules with the provided aiInstructions as the base.
+		// Note: FIM (tab-autocomplete) is latency-sensitive and intentionally does NOT
+		// read .ainative/steering/ (an async directory read) — steering context is scoped
+		// to the main chat loop (prepareLLMChatMessages) for now.
+		const combinedInstructions = this._getGlobalRulesAndSettingsInstructions();
 
 		let prefix = `\
 ${!combinedInstructions ? '' : `\
