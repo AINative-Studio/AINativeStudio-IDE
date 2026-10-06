@@ -15,6 +15,7 @@ import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { ISkillsRegistry } from '../../common/skills/skillRegistryTypes.js';
 import { Skill, SkillMetadata } from '../../common/skills/skillTypes.js';
 import { ISkillParser } from '../../common/skills/skillParserTypes.js';
+import { SkillParser } from '../../common/skills/skillParser.js';
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
 
 // Import the actual SkillsRegistry class
@@ -446,6 +447,152 @@ suite('SkillsRegistry Tests', () => {
 			assert.ok(entry.installedAt);
 			assert.ok(entry.path);
 			assert.ok(entry.source);
+		});
+	});
+
+	suite('Refresh (Sync)', () => {
+		// refresh() relies on the parser actually reading SKILL.md content
+		// (to detect version bumps and reject malformed skills), so this
+		// suite wires SkillsRegistry to the REAL SkillParser instead of the
+		// name-only MockSkillParser used by the other suites above.
+		let realParserRegistry: ISkillsRegistry;
+		let realParser: SkillParser;
+
+		setup(async () => {
+			realParser = disposables.add(new SkillParser(fileService));
+			const mockEnvService: INativeEnvironmentService = {
+				userHome: testHomeDir,
+			} as any;
+			const { SkillsRegistry } = await import('../../common/skills/skillsRegistry.js');
+			realParserRegistry = new SkillsRegistry(fileService, realParser, mockEnvService) as ISkillsRegistry;
+		});
+
+		/**
+		 * Builds a real source directory on disk containing copies of fixture
+		 * skills, so refresh() can be exercised against the actual
+		 * ISkillParser + IFileService stack rather than a mocked shape.
+		 */
+		async function buildSourceDir(skillNames: string[]): Promise<URI> {
+			const sourceDir = URI.file(path.join(tmpdir(), 'ainative-refresh-source-' + Date.now() + '-' + Math.random().toString(36).slice(2)));
+			await fileService.createFolder(sourceDir);
+
+			for (const name of skillNames) {
+				const srcSkillDir = URI.file(path.join(fixturesPath, name));
+				const destSkillDir = URI.joinPath(sourceDir, name);
+				await fileService.copy(srcSkillDir, destSkillDir, true);
+			}
+
+			return sourceDir;
+		}
+
+		test('should register skills found in the source directory as new', async () => {
+			const sourceDir = await buildSourceDir(['minimal-skill', 'comprehensive-skill']);
+
+			const result = await realParserRegistry.refresh(sourceDir.fsPath);
+
+			assert.strictEqual(result.new.length, 2);
+			const newNames = result.new.map(c => c.name);
+			assert.ok(newNames.includes('minimal-skill'));
+			assert.ok(newNames.includes('comprehensive-skill'));
+			assert.strictEqual(result.updated.length, 0);
+			assert.strictEqual(result.removed.length, 0);
+			assert.strictEqual(result.total, 2);
+
+			assert.strictEqual(await realParserRegistry.isInstalled('minimal-skill'), true);
+			assert.strictEqual(await realParserRegistry.isInstalled('comprehensive-skill'), true);
+
+			await fileService.del(sourceDir, { recursive: true });
+		});
+
+		test('should mark a skill unchanged when its version did not change', async () => {
+			const sourceDir = await buildSourceDir(['minimal-skill']);
+
+			await realParserRegistry.refresh(sourceDir.fsPath);
+			const result = await realParserRegistry.refresh(sourceDir.fsPath);
+
+			assert.strictEqual(result.unchanged.length, 1);
+			assert.strictEqual(result.unchanged[0], 'minimal-skill');
+			assert.strictEqual(result.new.length, 0);
+			assert.strictEqual(result.updated.length, 0);
+
+			await fileService.del(sourceDir, { recursive: true });
+		});
+
+		test('should mark a skill updated when its SKILL.md version changes on disk', async () => {
+			const sourceDir = await buildSourceDir(['minimal-skill']);
+			await realParserRegistry.refresh(sourceDir.fsPath);
+
+			// Bump the version in the source SKILL.md between refreshes
+			const skillMdUri = URI.joinPath(sourceDir, 'minimal-skill', 'SKILL.md');
+			const original = (await fileService.readFile(skillMdUri)).value.toString();
+			const bumped = original.includes('version:')
+				? original.replace(/version:\s*[^\n]+/, 'version: 9.9.9')
+				: original.replace('---\n', '---\nversion: 9.9.9\n');
+			const bufferModule = await import('../../../../../base/common/buffer.js');
+			await fileService.writeFile(skillMdUri, bufferModule.VSBuffer.fromString(bumped));
+
+			const result = await realParserRegistry.refresh(sourceDir.fsPath);
+
+			assert.strictEqual(result.updated.length, 1);
+			assert.strictEqual(result.updated[0].name, 'minimal-skill');
+			assert.strictEqual(result.updated[0].newVersion, '9.9.9');
+
+			await fileService.del(sourceDir, { recursive: true });
+		});
+
+		test('should mark a skill removed when it disappears from the source directory', async () => {
+			const sourceDir = await buildSourceDir(['minimal-skill', 'comprehensive-skill']);
+			await realParserRegistry.refresh(sourceDir.fsPath);
+
+			// Remove one skill from the source directory
+			await fileService.del(URI.joinPath(sourceDir, 'comprehensive-skill'), { recursive: true });
+
+			const result = await realParserRegistry.refresh(sourceDir.fsPath);
+
+			assert.strictEqual(result.removed.length, 1);
+			assert.strictEqual(result.removed[0].name, 'comprehensive-skill');
+			assert.strictEqual(await realParserRegistry.isInstalled('comprehensive-skill'), false);
+			assert.strictEqual(await realParserRegistry.isInstalled('minimal-skill'), true);
+
+			await fileService.del(sourceDir, { recursive: true });
+		});
+
+		test('should skip unparseable skill directories rather than failing the whole refresh', async () => {
+			const sourceDir = await buildSourceDir(['minimal-skill', 'invalid-no-frontmatter']);
+
+			const result = await realParserRegistry.refresh(sourceDir.fsPath);
+
+			assert.strictEqual(result.total, 1);
+			assert.strictEqual(await realParserRegistry.isInstalled('minimal-skill'), true);
+			assert.strictEqual(await realParserRegistry.isInstalled('invalid-no-frontmatter'), false);
+
+			await fileService.del(sourceDir, { recursive: true });
+		});
+
+		test('should throw when the source directory does not exist', async () => {
+			const missingDir = path.join(tmpdir(), 'ainative-refresh-missing-' + Date.now());
+
+			await assert.rejects(
+				() => realParserRegistry.refresh(missingDir),
+				(error: Error) => {
+					assert.ok(error.message.includes('Failed to refresh skills'));
+					return true;
+				}
+			);
+		});
+
+		test('should persist the refreshed registry to registry.json', async () => {
+			const sourceDir = await buildSourceDir(['minimal-skill']);
+
+			await realParserRegistry.refresh(sourceDir.fsPath);
+
+			const registryFile = URI.joinPath(testHomeDir, '.ainative', 'skills', 'registry.json');
+			const content = await fileService.readFile(registryFile);
+			const data = JSON.parse(content.value.toString());
+
+			assert.ok(data['minimal-skill']);
+
+			await fileService.del(sourceDir, { recursive: true });
 		});
 	});
 
