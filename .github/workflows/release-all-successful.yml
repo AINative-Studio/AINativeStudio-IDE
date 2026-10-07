@@ -110,6 +110,7 @@ jobs:
                       artifact: artifactName,
                       runId: run.id,
                       sha: run.head_sha.substring(0, 7),
+                      fullSha: run.head_sha,
                       date: run.created_at
                     });
                   }
@@ -341,3 +342,177 @@ jobs:
             ./release-files/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute SHA256 for release files
+        id: sha256
+        run: |
+          echo "=== Computing SHA256 checksums for staged release files ==="
+          if [ -d "./release-files" ]; then
+            cd ./release-files
+            for f in *; do
+              [ -f "$f" ] || continue
+              sha256sum "$f" > "$f.sha256"
+              echo "$f -> $(cat "$f.sha256")"
+            done
+            cd -
+          fi
+
+      - name: Build updated versions-repo manifests
+        id: build-manifests
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const crypto = require('crypto');
+
+            const versionTag = '${{ inputs.version_tag }}';
+            const productVersion = versionTag.replace(/^v/, '');
+            const releaseFilesDir = './release-files';
+            const outDir = './versions-manifests';
+            const repoSlug = `${context.repo.owner}/${context.repo.repo}`;
+            const runs = JSON.parse('${{ steps.find-builds.outputs.runs }}');
+
+            // Map each release-files filename pattern (with {V} standing in for the
+            // version tag) to the path it corresponds to in the AINative-Studio/versions
+            // repo, and to the artifact name from find-builds whose workflow run's
+            // commit SHA should populate "version" (IUpdate.version, compared directly
+            // against the running build's baked-in product.json "commit" field on
+            // Windows/Linux, so it MUST be the full 40-char commit SHA of the exact
+            // commit that artifact was built from).
+            //
+            // Deliberately excludes: .deb/.rpm/.AppImage (no latest.json slot exists
+            // for these package types) and .dmg (macOS updater convention + existing
+            // versions-repo layout uses the .zip as the update payload per darwin
+            // arch), and the loong64/ppc64le/riscv64/msi slots that have never had a
+            // real AINative asset to point at.
+            const MAPPINGS = [
+              { file: `AINativeStudio-${versionTag}-Linux-x64.tar.gz`, dest: 'stable/linux/x64/latest.json', artifact: 'ainative-studio-linux-x64-tar' },
+              { file: `AINativeStudio-${versionTag}-Linux-arm64.tar.gz`, dest: 'stable/linux/arm64/latest.json', artifact: 'ainative-studio-linux-arm64-tar' },
+              { file: `AINativeStudio-${versionTag}-Linux-armhf.tar.gz`, dest: 'stable/linux/armhf/latest.json', artifact: 'ainative-studio-linux-armhf-tar' },
+              { file: `AINativeStudio-${versionTag}-Windows-x64.zip`, dest: 'stable/win32/x64/archive/latest.json', artifact: 'ainative-studio-win32-x64-icon-fix' },
+              { file: `AINativeStudio-${versionTag}-Windows-x64-UserSetup.exe`, dest: 'stable/win32/x64/user/latest.json', artifact: 'ainative-studio-win32-x64-user-setup-icon-fix' },
+              { file: `AINativeStudio-${versionTag}-Windows-x64-SystemSetup.exe`, dest: 'stable/win32/x64/system/latest.json', artifact: 'ainative-studio-win32-x64-system-setup-icon-fix' },
+              { file: `AINativeStudio-${versionTag}-Windows-arm64.zip`, dest: 'stable/win32/arm64/archive/latest.json', artifact: 'ainative-studio-win32-arm64-icon-fix' },
+              { file: `AINativeStudio-${versionTag}-Windows-arm64-UserSetup.exe`, dest: 'stable/win32/arm64/user/latest.json', artifact: 'ainative-studio-win32-arm64-user-setup-icon-fix' },
+              { file: `AINativeStudio-${versionTag}-Windows-arm64-SystemSetup.exe`, dest: 'stable/win32/arm64/system/latest.json', artifact: 'ainative-studio-win32-arm64-system-setup-icon-fix' },
+              { file: `AINativeStudio-${versionTag}-macOS-x64.zip`, dest: 'stable/darwin/x64/latest.json', artifact: 'ainative-studio-darwin-x64-signed-zip' },
+              { file: `AINativeStudio-${versionTag}-macOS-arm64.zip`, dest: 'stable/darwin/arm64/latest.json', artifact: 'ainative-studio-darwin-arm64-signed-checked-zip' },
+            ];
+
+            if (!fs.existsSync(releaseFilesDir)) {
+              core.warning('No ./release-files directory found; skipping manifest generation.');
+              core.setOutput('manifest_count', '0');
+              return;
+            }
+
+            fs.mkdirSync(outDir, { recursive: true });
+
+            const produced = [];
+
+            for (const mapping of MAPPINGS) {
+              const filePath = path.join(releaseFilesDir, mapping.file);
+              const sha256Path = `${filePath}.sha256`;
+
+              if (!fs.existsSync(filePath)) {
+                console.log(`Skip (no asset produced this release): ${mapping.file}`);
+                continue;
+              }
+              if (!fs.existsSync(sha256Path)) {
+                core.warning(`Asset ${mapping.file} exists but has no .sha256 sidecar; skipping manifest for it.`);
+                continue;
+              }
+
+              // sha256sum output format: "<hash>  <filename>"
+              const sha256 = fs.readFileSync(sha256Path, 'utf8').trim().split(/\s+/)[0];
+              if (!/^[a-f0-9]{64}$/i.test(sha256)) {
+                core.setFailed(`Computed sha256 for ${mapping.file} does not look like a valid 64-char hex digest: "${sha256}"`);
+                continue;
+              }
+
+              const runInfo = runs.find(r => r.artifact === mapping.artifact);
+              const fullSha = runInfo ? runInfo.fullSha : null;
+              if (!fullSha || !/^[a-f0-9]{40}$/i.test(fullSha)) {
+                core.setFailed(`Could not resolve a valid full commit SHA for ${mapping.file} (artifact ${mapping.artifact}); refusing to write a latest.json with a bad "version" field.`);
+                continue;
+              }
+
+              const manifest = {
+                url: `https://github.com/${repoSlug}/releases/download/${encodeURIComponent(versionTag)}/${encodeURIComponent(mapping.file)}`,
+                name: productVersion,
+                version: fullSha,
+                productVersion: productVersion,
+                timestamp: Date.now(),
+                sha256hash: sha256,
+              };
+
+              const outPath = path.join(outDir, mapping.dest);
+              fs.mkdirSync(path.dirname(outPath), { recursive: true });
+              fs.writeFileSync(outPath, JSON.stringify(manifest, null, 2) + '\n');
+
+              console.log(`Built manifest for ${mapping.dest}:`);
+              console.log(JSON.stringify(manifest, null, 2));
+
+              produced.push(mapping.dest);
+            }
+
+            core.setOutput('manifest_count', String(produced.length));
+            console.log(`\nProduced ${produced.length} manifest(s): ${produced.join(', ')}`);
+
+      # Publishes the updated latest.json files to the separate AINative-Studio/versions
+      # repo, which is what api.ainative.studio's update backend is believed to read
+      # from (same layout Void/VS Code itself uses for its own update manifests).
+      #
+      # NOTE: secrets.GITHUB_TOKEN here is scoped to THIS repo only and cannot push to
+      # a different repo in the same org. This step requires a separate secret,
+      # VERSIONS_REPO_TOKEN, which must be a fine-grained PAT (or deploy key exchanged
+      # for a token) scoped to "Contents: Read and write" on AINative-Studio/versions
+      # specifically. As of this change, that secret has NOT been added to this repo -
+      # this step will fail (clone/push auth error) until a repo admin adds it under
+      # Settings -> Secrets and variables -> Actions -> New repository secret.
+      - name: Push updated manifests to AINative-Studio/versions
+        if: steps.build-manifests.outputs.manifest_count != '0'
+        env:
+          VERSIONS_REPO_TOKEN: ${{ secrets.VERSIONS_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${VERSIONS_REPO_TOKEN:-}" ]; then
+            echo "::error::VERSIONS_REPO_TOKEN secret is not set. This secret must be a fine-grained PAT with 'Contents: Read and write' permission scoped to the AINative-Studio/versions repo. Add it under this repo's Settings -> Secrets and variables -> Actions, then re-run this workflow (or re-run just this job) to actually push the updated latest.json files."
+            exit 1
+          fi
+
+          if [ ! -d "./versions-manifests" ] || [ -z "$(find ./versions-manifests -name latest.json)" ]; then
+            echo "No manifest files were generated; nothing to push."
+            exit 0
+          fi
+
+          git clone --depth 1 "https://x-access-token:${VERSIONS_REPO_TOKEN}@github.com/AINative-Studio/versions.git" ./versions-repo-checkout
+
+          # Copy only the generated manifest files into the checkout, preserving the
+          # repo's existing directory structure. This never touches any file outside
+          # the destination paths we explicitly generated above (loong64/ppc64le/
+          # riscv64/msi slots and anything else in the repo are left untouched).
+          cp -rv ./versions-manifests/stable ./versions-repo-checkout/
+
+          cd ./versions-repo-checkout
+          git config user.name "ainative-release-bot"
+          git config user.email "release-bot@ainative.studio"
+
+          git add stable
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit (manifests already up to date)."
+            exit 0
+          fi
+
+          git commit -m "Update latest.json for ${{ inputs.version_tag }}
+
+          Automated update from AINativeStudio-IDE release workflow (release-all-successful.yml)
+          for release ${{ inputs.version_tag }}, run ${{ github.run_id }}."
+
+          # --depth 1 clones already check out the remote's default branch (that's
+          # what a shallow clone's single commit is), so push back to that same
+          # branch rather than making another network round-trip to look it up.
+          DEFAULT_BRANCH=$(git symbolic-ref --short HEAD)
+          git push origin "HEAD:${DEFAULT_BRANCH}"
