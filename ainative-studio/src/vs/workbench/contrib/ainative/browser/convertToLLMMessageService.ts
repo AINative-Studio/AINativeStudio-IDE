@@ -19,6 +19,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { EndOfLinePreference } from '../../../../editor/common/model.js';
 import { ToolName } from '../common/toolsServiceTypes.js';
 import { IMCPService } from '../common/mcpService.js';
+import { formatSteeringFileSections } from '../common/steeringDocs.js';
 
 export const EMPTY_MESSAGE = '(empty message)'
 
@@ -579,7 +580,7 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 	private async _getSteeringFileContents(): Promise<string> {
 		try {
 			const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
-			const sections: string[] = [];
+			const folderSections: string[] = [];
 			for (const folder of workspaceFolders) {
 				const steeringDirUri = URI.joinPath(folder.uri, '.ainative', 'steering');
 				let children
@@ -593,21 +594,22 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 				if (!children) continue
 				const mdFiles = children
 					.filter(c => !c.isDirectory && c.name.toLowerCase().endsWith('.md'))
-					.sort((a, b) => a.name.localeCompare(b.name))
+				const readFiles: { name: string; content: string }[] = [];
 				for (const file of mdFiles) {
 					try {
 						const { model } = await this.ainativeModelService.getModelSafe(file.resource);
 						if (!model) continue
-						const content = model.getValue(EndOfLinePreference.LF).trim();
-						if (!content) continue
-						sections.push(`### ${file.name}\n${content}`);
+						const content = model.getValue(EndOfLinePreference.LF);
+						readFiles.push({ name: file.name, content });
 					}
 					catch (e) {
 						continue // skip unreadable steering file, don't fail the whole load
 					}
 				}
+				const folderSection = formatSteeringFileSections(readFiles);
+				if (folderSection) folderSections.push(folderSection);
 			}
-			return sections.join('\n\n').trim();
+			return folderSections.join('\n\n').trim();
 		}
 		catch (e) {
 			return ''
