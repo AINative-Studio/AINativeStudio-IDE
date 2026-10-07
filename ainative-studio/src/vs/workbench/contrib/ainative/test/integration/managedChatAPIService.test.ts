@@ -581,6 +581,13 @@ suite('ManagedChatAPIService - Integration Tests', () => {
 				return {
 					ok: true,
 					status: 200,
+					// sendStreamingChatCompletion() checks response.headers.get('content-type')
+					// before reading the body (confirmed by reading managedChatAPIService.ts) -
+					// a mock Response missing `headers` entirely throws
+					// "Cannot read properties of undefined (reading 'get')" inside the
+					// fire-and-forget streaming loop, which silently swallows the error and
+					// never calls onEvent, instead of the SSE parsing actually being exercised.
+					headers: new Headers({ 'content-type': 'text/event-stream' }),
 					body: stream as any
 				} as Response;
 			};
@@ -594,6 +601,15 @@ suite('ManagedChatAPIService - Integration Tests', () => {
 			await chatAPIService.sendStreamingChatCompletion(request, (event) => {
 				events.push(event);
 			});
+
+			// sendStreamingChatCompletion() is fire-and-forget by design (it returns
+			// {abort} immediately so callers can cancel an in-flight stream; confirmed by
+			// reading managedChatAPIService.ts) - the actual SSE reading/parsing happens
+			// in a detached background IIFE that the returned promise does not wait on.
+			// Poll briefly for the events to arrive instead of asserting immediately.
+			for (let i = 0; i < 50 && events.length < 2; i++) {
+				await new Promise(resolve => setTimeout(resolve, 10));
+			}
 
 			assert.strictEqual(events.length, 2);
 			assert.strictEqual(events[0].delta.content, 'Hello');
