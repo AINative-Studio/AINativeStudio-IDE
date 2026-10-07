@@ -545,13 +545,14 @@ export class ManagedChatAPIService extends Disposable implements IManagedChatAPI
 		if (trimmedLine.startsWith('data: ')) {
 			const data = trimmedLine.slice(6).trim();
 
-			// Handle [DONE] marker
+			// [DONE] is purely a stream terminator (same convention as the OpenAI/Anthropic-style
+			// SSE protocol this mirrors) - it must not fire its own 'done' event. The backend
+			// always sends a real {"type":"done",...} JSON event (carrying finish_reason, usage,
+			// credits) before [DONE] whenever completion actually matters; firing a second,
+			// data-less 'done' here produced a duplicate event every caller had to filter out
+			// (confirmed: every test fixture in this file's test already includes an explicit
+			// done event ahead of [DONE] - none actually need [DONE] itself to carry meaning).
 			if (data === '[DONE]') {
-				onEvent({
-					type: 'done',
-					timestamp: Date.now(),
-					finish_reason: 'stop'
-				});
 				return;
 			}
 

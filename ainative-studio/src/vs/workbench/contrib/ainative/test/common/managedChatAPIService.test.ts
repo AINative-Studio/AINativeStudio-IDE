@@ -324,10 +324,17 @@ suite('ManagedChatAPIService', () => {
 				finish_reason: 'stop'
 			};
 
-			// First call returns 401, second succeeds
+			// First call returns 401, second succeeds. Reassigns global.fetch directly (matching
+			// every other test in this file that overrides fetch behavior) rather than
+			// reassigning fetchMock.fetch - setup() already did `global.fetch =
+			// fetchMock.fetch.bind(fetchMock)`, binding to fetchMock's *original* method at that
+			// point in time; reassigning fetchMock.fetch afterward has no effect on what the
+			// already-bound global.fetch calls, so the 401 branch below was never actually
+			// reachable.
 			let callCount = 0;
 			const originalFetch = fetchMock.fetch.bind(fetchMock);
-			fetchMock.fetch = async (url: string, options?: RequestInit) => {
+			global.fetch = async (input: RequestInfo | URL, options?: RequestInit) => {
+				const url = typeof input === 'string' ? input : input.toString();
 				callCount++;
 				if (callCount === 1) {
 					return {
