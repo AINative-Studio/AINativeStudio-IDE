@@ -691,11 +691,26 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 
 			const approvalType = isBuiltInTool ? approvalTypeOfBuiltinToolName[toolName] : 'MCP tools'
 			if (approvalType) {
-				const autoApprove = this._settingsService.state.globalSettings.autoApprove[approvalType]
-				// add a tool_request because we use it for UI if a tool is loading (this should be improved in the future)
-				this._addMessageToThread(threadId, { role: 'tool', type: 'tool_request', content: '(Awaiting user permission...)', result: null, name: toolName, params: toolParams, id: toolId, rawParams: opts.unvalidatedToolParams, mcpServerName })
-				if (!autoApprove) {
-					return { awaitingUserApproval: true }
+				// #159 phase 1: when shadow mode is active for this thread, an 'edits'-type tool
+				// call writes into the thread's shadow copy, not the real file (toolsService.ts's
+				// resolveTargetUri/resolveFolderUri) - it is invisible/inert until the end-of-turn
+				// promotion step (design doc §3.2/§3.4), so gating it here behind the same
+				// per-call approval prompt used for real writes would ask the user to approve a
+				// change they can't see yet and that doesn't touch their files. Approval instead
+				// moves to a single promote/discard action over the aggregate shadow diff once the
+				// turn ends. This only ever short-circuits 'edits' (not 'terminal' or 'MCP tools'),
+				// and only when shadowModeEnabled is explicitly true for the thread, so it is a
+				// no-op for every thread that hasn't opted in - identical to today's behavior.
+				const shadowModeEnabled = !!this.state.allThreads[threadId]?.state.shadowModeEnabled
+				const skipApprovalForShadowEdit = shadowModeEnabled && approvalType === 'edits'
+
+				if (!skipApprovalForShadowEdit) {
+					const autoApprove = this._settingsService.state.globalSettings.autoApprove[approvalType]
+					// add a tool_request because we use it for UI if a tool is loading (this should be improved in the future)
+					this._addMessageToThread(threadId, { role: 'tool', type: 'tool_request', content: '(Awaiting user permission...)', result: null, name: toolName, params: toolParams, id: toolId, rawParams: opts.unvalidatedToolParams, mcpServerName })
+					if (!autoApprove) {
+						return { awaitingUserApproval: true }
+					}
 				}
 			}
 		}
