@@ -195,6 +195,32 @@ export class ToolsService implements IToolsService {
 			return this.shadowWorkspaceService.shadowUriFor(ctx.threadId, workspaceFolder.uri, uri)
 		}
 
+		// #159 phase 1, design doc §3.2: "Terminal tools (run_command) gain an implicit cwd override
+		// when shadow mode is active for a thread and no explicit cwd was given by the agent -
+		// commands default to running inside the shadow tree so tsc/pytest/npm run build naturally
+		// validate the staged state." Only applies when the agent didn't pass its own cwd (an
+		// explicit cwd is the agent deliberately asking to run somewhere specific - e.g. a
+		// subdirectory, or deliberately against the real tree - and overriding that would be
+		// surprising and wrong). Mirrors the first workspace folder, matching
+		// terminalToolService.ts's own _createTerminal default of
+		// workspaceContextService.getWorkspace().folders[0] when no cwd is given. Falls back to the
+		// real/no-op cwd (null, same as today) if there is no open workspace folder at all - there is
+		// nothing meaningful to mirror a shadow tree against in that case.
+		const resolveShadowCwd = async (cwd: string | null, ctx: ToolCallContext | undefined): Promise<string | null> => {
+			if (cwd !== null) return cwd
+			if (!ctx?.shadowModeEnabled) return cwd
+			const workspaceFolder = workspaceContextService.getWorkspace().folders[0]
+			if (!workspaceFolder) return cwd
+			const shadowDirUri = this.shadowWorkspaceService.shadowUriFor(ctx.threadId, workspaceFolder.uri, workspaceFolder.uri)
+			// the shadow tree only ever gets subdirectories created lazily as individual files are
+			// synced into it (ShadowWorkspaceService.syncFileIntoShadow), so the mirrored workspace
+			// folder itself may not exist on disk yet the first time a thread runs a command before
+			// touching any file - ensure it exists so the terminal has somewhere real to start in.
+			// createFolder is a safe no-op (mkdirp-style) if the directory already exists.
+			await fileService.createFolder(shadowDirUri)
+			return shadowDirUri.fsPath
+		}
+
 		this.validateParams = {
 			read_file: (params: RawToolParamsObj) => {
 				const { uri: uriStr, start_line: startLineUnknown, end_line: endLineUnknown, page_number: pageNumberUnknown } = params
@@ -519,8 +545,9 @@ export class ToolsService implements IToolsService {
 				return { result: lintErrorsPromise }
 			},
 			// ---
-			run_command: async ({ command, cwd, terminalId }) => {
-				const { resPromise, interrupt } = await this.terminalToolService.runCommand(command, { type: 'temporary', cwd, terminalId })
+			run_command: async ({ command, cwd, terminalId }, ctx) => {
+				const resolvedCwd = await resolveShadowCwd(cwd, ctx)
+				const { resPromise, interrupt } = await this.terminalToolService.runCommand(command, { type: 'temporary', cwd: resolvedCwd, terminalId })
 				return { result: resPromise, interruptTool: interrupt }
 			},
 			run_persistent_command: async ({ command, persistentTerminalId }) => {
