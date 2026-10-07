@@ -98,7 +98,7 @@ jobs:
         if: success()
         working-directory: ainative-studio
         run: |
-          npm run test-node -- --run src/vs/workbench/contrib/ainative/test/common/skills/
+          npm run test-node -- --runGlob "vs/workbench/contrib/ainative/test/common/skills/**/*.test.js"
         env:
           NODE_OPTIONS: --max-old-space-size=8192
 
