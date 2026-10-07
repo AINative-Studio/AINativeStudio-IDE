@@ -13,6 +13,14 @@ import { Event } from '../../../../../base/common/event.js';
 suite('SkillUninstallCommand', () => {
 	let instantiationService: TestInstantiationService;
 	let uninstallService: SkillUninstallService;
+	// Hoisted to suite scope (not local to setup()) so individual tests can mutate the exact
+	// mock objects already injected into `uninstallService`, rather than calling
+	// instantiationService.stub(...) again mid-test: that creates a brand-new, never-injected
+	// object - SkillUninstallService's constructor already captured a reference to *these*
+	// objects when createInstance() ran in setup(), and DI only happens once at construction.
+	// This was the exact bug behind nearly every failing test in this file.
+	let mockRegistry: any;
+	let mockDialogService: Partial<IDialogService>;
 
 	const mockSkill: RegistryEntry = {
 		name: 'test-skill',
@@ -41,7 +49,7 @@ suite('SkillUninstallCommand', () => {
 		instantiationService = new TestInstantiationService();
 
 		// Mock registry
-		const mockRegistry = {
+		mockRegistry = {
 			get: async (skillName: string) => {
 				if (skillName === 'test-skill') {
 					return mockSkill;
@@ -52,8 +60,10 @@ suite('SkillUninstallCommand', () => {
 			list: async () => []
 		} as any;
 
+		mockDialogService = createMockDialogService();
+
 		instantiationService.stub(ISkillsRegistry, mockRegistry);
-		instantiationService.stub(IDialogService, createMockDialogService());
+		instantiationService.stub(IDialogService, mockDialogService);
 
 		uninstallService = instantiationService.createInstance(SkillUninstallService);
 	});
@@ -69,7 +79,6 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should show confirmation dialog by default', async () => {
-			const mockDialogService = instantiationService.stub(IDialogService, createMockDialogService());
 			let confirmCalled = false;
 			mockDialogService.confirm = async (options: any) => {
 				confirmCalled = true;
@@ -86,7 +95,6 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should skip confirmation when skipConfirmation is true', async () => {
-			const mockDialogService = instantiationService.stub(IDialogService, createMockDialogService());
 			let confirmCalled = false;
 			mockDialogService.confirm = async () => {
 				confirmCalled = true;
@@ -102,7 +110,6 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should throw error when user cancels confirmation', async () => {
-			const mockDialogService = instantiationService.stub(IDialogService, createMockDialogService({ confirmed: false }));
 			mockDialogService.confirm = async () => ({ confirmed: false });
 
 			await assert.rejects(
@@ -119,8 +126,6 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should call registry.uninstall', async () => {
-			instantiationService.stub(IDialogService, createMockDialogService());
-			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			let uninstallCalled = false;
 			let uninstalledSkillName = '';
 
@@ -139,8 +144,6 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should handle registry errors', async () => {
-			instantiationService.stub(IDialogService, createMockDialogService());
-			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.uninstall = async () => {
 				throw new Error('Permission denied');
 			};
@@ -157,8 +160,6 @@ suite('SkillUninstallCommand', () => {
 
 	suite('uninstallMultiple', () => {
 		test('should uninstall multiple skills', async () => {
-			instantiationService.stub(IDialogService, createMockDialogService());
-			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.get = async (skillName: string) => {
 				if (skillName === 'skill1' || skillName === 'skill2') {
 					return { ...mockSkill, name: skillName };
@@ -177,8 +178,6 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should continue on individual failures', async () => {
-			instantiationService.stub(IDialogService, createMockDialogService());
-			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.get = async (skillName: string) => {
 				if (skillName === 'skill1') {
 					return { ...mockSkill, name: skillName };
@@ -197,14 +196,12 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should respect skipConfirmation flag', async () => {
-			const mockDialogService = instantiationService.stub(IDialogService, createMockDialogService());
 			let confirmCallCount = 0;
 			mockDialogService.confirm = async () => {
 				confirmCallCount++;
 				return { confirmed: true };
 			};
 
-			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.get = async (skillName: string) => {
 				return { ...mockSkill, name: skillName };
 			};
@@ -225,7 +222,6 @@ suite('SkillUninstallCommand', () => {
 
 	suite('confirmation dialog details', () => {
 		test('should include all skill details in confirmation', async () => {
-			const mockDialogService = instantiationService.stub(IDialogService, createMockDialogService());
 			let capturedOptions: any;
 
 			mockDialogService.confirm = async (options: any) => {
@@ -247,7 +243,6 @@ suite('SkillUninstallCommand', () => {
 		});
 
 		test('should use warning severity for confirmation', async () => {
-			const mockDialogService = instantiationService.stub(IDialogService, createMockDialogService());
 			let capturedOptions: any;
 
 			mockDialogService.confirm = async (options: any) => {
