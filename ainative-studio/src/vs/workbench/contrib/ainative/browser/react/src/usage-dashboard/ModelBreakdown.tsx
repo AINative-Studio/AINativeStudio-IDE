@@ -6,6 +6,7 @@
 import React, { useMemo } from 'react';
 import { PieChart, Layers } from 'lucide-react';
 import { ModelUsageData } from './types.js';
+import { EmptyState } from '../primitives/EmptyState.js';
 
 interface ModelBreakdownProps {
 	data: ModelUsageData[];
@@ -81,29 +82,31 @@ export const ModelBreakdown: React.FC<ModelBreakdownProps> = ({ data, loading })
 
 	if (loading) {
 		return (
-			<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md animate-pulse">
-				<div className="h-6 bg-ainative-bg-2 rounded w-1/3 mb-4"></div>
-				<div className="h-64 bg-ainative-bg-2 rounded"></div>
+			<div className="p-6 bg-ainative-bg-2 border border-ainative-border-1 rounded-xl animate-pulse">
+				<div className="h-6 bg-ainative-bg-3 rounded w-1/3 mb-4"></div>
+				<div className="h-64 bg-ainative-bg-3 rounded"></div>
 			</div>
 		);
 	}
 
 	if (data.length === 0) {
 		return (
-			<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
+			<div className="p-6 bg-ainative-bg-2 border border-ainative-border-1 rounded-xl">
 				<div className="flex items-center gap-2 mb-4">
 					<PieChart size={20} className="text-ainative-accent-fg" />
 					<h3 className="text-lg font-medium text-ainative-fg-1">Model Distribution</h3>
 				</div>
-				<div className="h-64 flex items-center justify-center text-ainative-fg-3">
-					No model usage data available
-				</div>
+				<EmptyState
+					mascot='blob'
+					title='No model usage yet'
+					body='Once you chat with a model, its share of usage shows up here.'
+				/>
 			</div>
 		);
 	}
 
 	return (
-		<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
+		<div className="p-6 bg-ainative-bg-2 border border-ainative-border-1 rounded-xl">
 			{/* Header */}
 			<div className="flex items-center gap-2 mb-6">
 				<PieChart size={20} className="text-ainative-accent-fg" />
@@ -120,7 +123,7 @@ export const ModelBreakdown: React.FC<ModelBreakdownProps> = ({ data, loading })
 							cy="110"
 							r="80"
 							fill="currentColor"
-							className="text-ainative-bg-2"
+							className="text-ainative-bg-3"
 							opacity="0.2"
 						/>
 
@@ -140,13 +143,14 @@ export const ModelBreakdown: React.FC<ModelBreakdownProps> = ({ data, loading })
 							</g>
 						))}
 
-						{/* Center circle (donut hole) */}
+						{/* Center circle (donut hole) - matches the card's own background so it
+							reads as a hole, not the page background behind it. */}
 						<circle
 							cx="110"
 							cy="110"
 							r="50"
 							fill="currentColor"
-							className="text-ainative-bg-1"
+							className="text-ainative-bg-2"
 						/>
 
 						{/* Center text */}
@@ -203,7 +207,7 @@ export const ModelBreakdown: React.FC<ModelBreakdownProps> = ({ data, loading })
 			</div>
 
 			{/* Summary Stats */}
-			<div className="mt-6 pt-6 border-t border-ainative-border-2">
+			<div className="mt-6 pt-6 border-t border-ainative-border-1">
 				<div className="flex items-center gap-2 mb-3">
 					<Layers size={16} className="text-ainative-fg-3" />
 					<span className="text-xs text-ainative-fg-3 uppercase">Summary</span>

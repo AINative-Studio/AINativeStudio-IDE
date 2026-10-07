@@ -6,6 +6,7 @@
 import React, { useMemo } from 'react';
 import { TrendingUp, Calendar } from 'lucide-react';
 import { ChartDataPoint, PeriodFilter } from './types.js';
+import { EmptyState } from '../primitives/EmptyState.js';
 
 interface UsageChartProps {
 	data: ChartDataPoint[];
@@ -85,29 +86,31 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data, period, loading })
 
 	if (loading) {
 		return (
-			<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md animate-pulse">
-				<div className="h-6 bg-ainative-bg-2 rounded w-1/3 mb-4"></div>
-				<div className="h-48 bg-ainative-bg-2 rounded"></div>
+			<div className="p-6 bg-ainative-bg-2 border border-ainative-border-1 rounded-xl animate-pulse">
+				<div className="h-6 bg-ainative-bg-3 rounded w-1/3 mb-4"></div>
+				<div className="h-48 bg-ainative-bg-3 rounded"></div>
 			</div>
 		);
 	}
 
 	if (data.length === 0) {
 		return (
-			<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
+			<div className="p-6 bg-ainative-bg-2 border border-ainative-border-1 rounded-xl">
 				<div className="flex items-center gap-2 mb-4">
 					<TrendingUp size={20} className="text-ainative-accent-fg" />
 					<h3 className="text-lg font-medium text-ainative-fg-1">Usage Over Time</h3>
 				</div>
-				<div className="h-48 flex items-center justify-center text-ainative-fg-3">
-					No usage data available for this period
-				</div>
+				<EmptyState
+					mascot='blob'
+					title='No usage yet'
+					body='Usage shows up here once you start chatting or running agent tasks.'
+				/>
 			</div>
 		);
 	}
 
 	return (
-		<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
+		<div className="p-6 bg-ainative-bg-2 border border-ainative-border-1 rounded-xl">
 			{/* Header */}
 			<div className="flex items-center justify-between mb-4">
 				<div className="flex items-center gap-2">
@@ -123,7 +126,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data, period, loading })
 							{stats.avg.toFixed(1)} credits
 						</div>
 					</div>
-					<div className={`text-right ${stats.trend >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+					<div className={`text-right ${stats.trend >= 0 ? 'text-ainative-error' : 'text-ainative-ok'}`}>
 						<div className="text-xs">Trend</div>
 						<div className="text-sm font-medium">
 							{stats.trend >= 0 ? '+' : ''}{stats.trend.toFixed(1)}%

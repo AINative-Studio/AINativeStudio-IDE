@@ -26,34 +26,36 @@ interface CreditsDisplayProps {
 export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, loading }) => {
 	if (loading || !creditsStatus) {
 		return (
-			<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md animate-pulse">
-				<div className="h-6 bg-ainative-bg-2 rounded w-1/3 mb-4"></div>
-				<div className="h-8 bg-ainative-bg-2 rounded w-1/2 mb-2"></div>
-				<div className="h-2 bg-ainative-bg-2 rounded w-full"></div>
+			<div className="p-6 bg-ainative-bg-2 border border-ainative-border-1 rounded-xl animate-pulse">
+				<div className="h-6 bg-ainative-bg-3 rounded w-1/3 mb-4"></div>
+				<div className="h-8 bg-ainative-bg-3 rounded w-1/2 mb-2"></div>
+				<div className="h-2 bg-ainative-bg-3 rounded w-full"></div>
 			</div>
 		);
 	}
 
 	const { used, remaining, total, percentUsed, isLow, planTier, resetDate } = creditsStatus;
 
-	// Determine status color based on usage
+	// Determine status color based on usage, using the redesign's shared ok/warning/error
+	// tokens (docs/design/handoff README "Design Tokens") instead of ad-hoc Tailwind colors,
+	// so this reads as the same system as StatusDot/Card elsewhere rather than a separate one.
 	const getStatusColor = () => {
-		if (percentUsed >= 90) return 'red';
-		if (percentUsed >= 75) return 'yellow';
-		return 'blue';
+		if (percentUsed >= 90) return 'error';
+		if (percentUsed >= 75) return 'warning';
+		return 'accent';
 	};
 
 	const statusColor = getStatusColor();
 	const barColor = {
-		red: 'bg-red-500',
-		yellow: 'bg-yellow-500',
-		blue: 'bg-ainative-accent-solid'
+		error: 'bg-ainative-error',
+		warning: 'bg-ainative-warning',
+		accent: 'bg-ainative-accent-solid'
 	}[statusColor];
 
 	const trend = percentUsed >= 80 ? 'high' : percentUsed <= 20 ? 'low' : 'normal';
 
 	return (
-		<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
+		<div className="p-6 bg-ainative-bg-2 border border-ainative-border-1 rounded-xl">
 			{/* Header */}
 			<div className="flex items-center justify-between mb-4">
 				<div className="flex items-center gap-2">
@@ -63,7 +65,7 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 
 				{/* Plan Badge + Buy Refill */}
 				<div className="flex items-center gap-2">
-					<div className="px-3 py-1 bg-ainative-bg-2 rounded-full text-xs font-medium text-ainative-fg-1 capitalize">
+					<div className="px-3 py-1 bg-ainative-bg-3 rounded-full text-xs font-medium text-ainative-fg-1 capitalize">
 						{planTier} Plan
 					</div>
 					<button
@@ -79,16 +81,16 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 
 			{/* Warning Banner */}
 			{isLow && (
-				<div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md flex items-start gap-3">
-					<AlertTriangle size={18} className="text-yellow-500 mt-0.5 flex-shrink-0" />
+				<div className="mb-4 p-3 bg-ainative-warning/10 border border-ainative-warning/20 rounded-md flex items-start gap-3">
+					<AlertTriangle size={18} className="text-ainative-warning mt-0.5 flex-shrink-0" />
 					<div className="flex-1">
-						<h4 className="text-sm font-medium text-yellow-500 mb-1">Credits Running Low</h4>
+						<h4 className="text-sm font-medium text-ainative-warning mb-1">Credits Running Low</h4>
 						<p className="text-xs text-ainative-fg-3 mb-2">
 							You have used {percentUsed.toFixed(0)}% of your credits.
 						</p>
 						<button
 							type="button"
-							className="flex items-center gap-1 text-xs font-medium text-yellow-500 hover:text-yellow-400 underline underline-offset-2"
+							className="flex items-center gap-1 text-xs font-medium text-ainative-warning hover:brightness-110 underline underline-offset-2"
 							onClick={() => window.open(REFILLS_URL, '_blank')}
 						>
 							Buy a credit refill
@@ -112,7 +114,7 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 				<div>
 					<div className="text-xs text-ainative-fg-3 mb-1 flex items-center gap-1">
 						Used
-						{trend === 'high' && <TrendingUp size={12} className="text-red-500" />}
+						{trend === 'high' && <TrendingUp size={12} className="text-ainative-error" />}
 					</div>
 					<div className="text-2xl font-medium text-ainative-fg-1">
 						{used.toLocaleString()}
@@ -123,8 +125,8 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 				<div>
 					<div className="text-xs text-ainative-fg-3 mb-1 flex items-center gap-1">
 						Remaining
-						{trend === 'low' && <TrendingDown size={12} className="text-yellow-500" />}
-						{trend === 'normal' && <CheckCircle2 size={12} className="text-green-500" />}
+						{trend === 'low' && <TrendingDown size={12} className="text-ainative-warning" />}
+						{trend === 'normal' && <CheckCircle2 size={12} className="text-ainative-ok" />}
 					</div>
 					<div className="text-2xl font-medium text-ainative-fg-1">
 						{remaining.toLocaleString()}
@@ -139,15 +141,15 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 						{used.toLocaleString()} / {total.toLocaleString()} credits
 					</span>
 					<span className={`font-medium ${
-						statusColor === 'red' ? 'text-red-500' :
-						statusColor === 'yellow' ? 'text-yellow-500' :
+						statusColor === 'error' ? 'text-ainative-error' :
+						statusColor === 'warning' ? 'text-ainative-warning' :
 						'text-ainative-accent-fg'
 					}`}>
 						{percentUsed.toFixed(1)}%
 					</span>
 				</div>
 
-				<div className="w-full h-3 bg-ainative-bg-2 rounded-full overflow-hidden">
+				<div className="w-full h-3 bg-ainative-bg-3 rounded-full overflow-hidden">
 					<div
 						className={`h-full transition-all duration-500 ${barColor}`}
 						style={{ width: `${Math.min(percentUsed, 100)}%` }}

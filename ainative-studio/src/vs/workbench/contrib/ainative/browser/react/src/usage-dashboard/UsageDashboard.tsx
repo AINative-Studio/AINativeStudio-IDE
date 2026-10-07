@@ -275,7 +275,7 @@ export const UsageDashboard: React.FC = () => {
 						>
 							<Download size={18} className="text-ainative-fg-3" />
 						</button>
-						<div className="hidden group-hover:block absolute right-0 mt-2 w-32 bg-ainative-bg-1 border border-ainative-border-2 rounded-md shadow-lg overflow-hidden z-10">
+						<div className="hidden group-hover:block absolute right-0 mt-2 w-32 bg-ainative-bg-1 border border-ainative-border-2 rounded-xl shadow-sm overflow-hidden z-10">
 							<button
 								onClick={() => handleExport('csv')}
 								className="w-full px-4 py-2 text-left text-sm text-ainative-fg-1 hover:bg-ainative-bg-2-hover transition-colors"
@@ -314,7 +314,7 @@ export const UsageDashboard: React.FC = () => {
 			) : error ? (
 				<div className="flex items-center justify-center py-24">
 					<div className="text-center p-8 max-w-md">
-						<AlertTriangle className="mx-auto mb-4 text-red-500" size={48} />
+						<AlertTriangle className="mx-auto mb-4 text-ainative-error" size={48} />
 						<h3 className="text-lg font-medium text-ainative-fg-1 mb-2">Error Loading Dashboard</h3>
 						<p className="text-ainative-fg-3 mb-4">{error}</p>
 						<button
