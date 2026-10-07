@@ -12,8 +12,6 @@ import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 suite('GitHubOAuthService', () => {
 	const disposables = new DisposableStore();
 
-	ensureNoDisposablesAreLeakedInTestSuite();
-
 	let storageService: IStorageService;
 	let service: GitHubOAuthService;
 
@@ -88,6 +86,17 @@ class MockStorageService implements IStorageService {
 		disposables.clear();
 	});
 
+	// Must be called after this suite's own setup()/teardown() above (both already registered,
+	// in that order) - mocha runs same-level hooks in registration order, and this helper's own
+	// teardown (which does the leak check) needs to run *after* disposables.clear() has already
+	// disposed this suite's services, not before. Calling it earlier in the file - e.g. right
+	// after `const disposables = new DisposableStore()` - checks for leaks before this suite's
+	// own teardown ran, so it would see this suite's live service as "leaked" even though it was
+	// correctly registered for disposal and about to be cleared one hook later. Confirmed by
+	// comparing against ainativeAuthService.test.ts, where this call already comes after that
+	// file's own setup()/teardown() for the same reason.
+	ensureNoDisposablesAreLeakedInTestSuite();
+
 	suite('initiateOAuthFlow', () => {
 		test('should generate auth URL with correct parameters', async () => {
 			const result = await service.initiateOAuthFlow();
@@ -122,10 +131,10 @@ class MockStorageService implements IStorageService {
 			let eventFired = false;
 			let eventState: OAuthState | undefined;
 
-			service.onDidInitiateOAuth(state => {
+			disposables.add(service.onDidInitiateOAuth(state => {
 				eventFired = true;
 				eventState = state;
-			});
+			}));
 
 			const result = await service.initiateOAuthFlow();
 
@@ -136,18 +145,22 @@ class MockStorageService implements IStorageService {
 
 	suite('handleCallback', () => {
 		test('should validate state token', async () => {
-   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-   // @ts-expect-error - Unused variable
-			const { state } = await service.initiateOAuthFlow();
+			// initiateOAuthFlow's own state isn't used here - this test deliberately passes a
+			// different, invalid state to handleCallback below - but still needs to call it
+			// first so a state/timestamp actually exists in storage for handleCallback to
+			// compare against (an empty storedState would also fail the check, just for the
+			// wrong reason - "no state was ever initiated" rather than "state didn't match").
+			await service.initiateOAuthFlow();
 
-			await assert.rejects(
-				() => service.handleCallback('valid_code', 'invalid_state'),
-				/Invalid state token/,
-				'Should reject with invalid state'
-			);
+			// handleCallback resolves with { success: false, error } for an invalid state
+			// rather than rejecting/throwing (same pattern as 'should handle backend errors' /
+			// 'should handle network errors' above, both of which already correctly assert on
+			// the resolved result rather than expecting a rejection) - assert.rejects() can
+			// never pass against a promise that always resolves.
+			const result = await service.handleCallback('valid_code', 'invalid_state');
+
+			assert.strictEqual(result.success, false, 'Should return failure result');
+			assert.ok(result.error?.includes('Invalid state token'), 'Should include invalid state error message');
 		});
 
 		test('should accept valid state token', async () => {
@@ -212,10 +225,10 @@ class MockStorageService implements IStorageService {
 			let eventFired = false;
 			let eventResult: any;
 
-			service.onDidCompleteAuth(result => {
+			disposables.add(service.onDidCompleteAuth(result => {
 				eventFired = true;
 				eventResult = result;
-			});
+			}));
 
 			await service.handleCallback('valid_code', state);
 
@@ -267,9 +280,9 @@ class MockStorageService implements IStorageService {
 
 			let eventFired = false;
 
-			service.onDidCancelOAuth(() => {
+			disposables.add(service.onDidCancelOAuth(() => {
 				eventFired = true;
-			});
+			}));
 
 			service.cancelOAuthFlow();
 
