@@ -247,8 +247,11 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 				throw new Error('No tarball URL found for package');
 			}
 
-			// Download tarball
-			return this.downloadAndExtractTarball(tarballUrl, tempDir, token);
+			// Download tarball. Must await - see the identical fix and explanation in
+			// downloadGithubToTemp below; without it, a tarball-download failure specifically
+			// (as opposed to a metadata-fetch failure) would bypass this catch block entirely
+			// and propagate unwrapped instead of getting the package-name context below.
+			return await this.downloadAndExtractTarball(tarballUrl, tempDir, token);
 		} catch (error) {
 			throw new Error(`Failed to download NPM package '${packageName}': ${error instanceof Error ? error.message : String(error)}`);
 		}
@@ -270,12 +273,17 @@ export class SkillInstallService extends Disposable implements ISkillInstallServ
 		const archiveUrl = `https://github.com/${owner}/${repoName}/archive/refs/heads/main.zip`;
 
 		try {
-			return this.downloadAndExtractZip(archiveUrl, tempDir, token);
+			// Must await here - `return this.downloadAndExtractZip(...)` without await returns
+			// the pending promise directly, so a rejection from it would propagate straight
+			// through this try/catch uncaught (the surrounding try block "succeeds"
+			// synchronously since the async call itself didn't throw), silently skipping the
+			// master-branch fallback below for every single main-branch failure.
+			return await this.downloadAndExtractZip(archiveUrl, tempDir, token);
 		} catch (error) {
 			// Try 'master' branch if 'main' fails
 			const masterUrl = `https://github.com/${owner}/${repoName}/archive/refs/heads/master.zip`;
 			try {
-				return this.downloadAndExtractZip(masterUrl, tempDir, token);
+				return await this.downloadAndExtractZip(masterUrl, tempDir, token);
 			} catch (masterError) {
 				throw new Error(`Failed to download GitHub repository '${repo}': Neither main nor master branch found`);
 			}

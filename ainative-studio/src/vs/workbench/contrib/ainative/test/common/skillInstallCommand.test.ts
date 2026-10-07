@@ -18,12 +18,21 @@ import { ISkillInstallService } from '../../common/skills/cli/cliTypes.js';
 suite('SkillInstallCommand', () => {
 	let instantiationService: TestInstantiationService;
 	let installService: ISkillInstallService;
+	// Hoisted to suite scope (not local to setup()) so individual tests can mutate the exact
+	// mock objects already injected into `installService`, rather than calling
+	// instantiationService.stub(...) again mid-test: that creates a brand-new, never-injected
+	// object - SkillInstallService's constructor already captured a reference to *these*
+	// objects when createInstance() ran in setup(), and DI only happens once at construction.
+	// Mutating a freshly re-stubbed object has no effect on the already-constructed service.
+	let mockRegistry: any;
+	let mockParser: any;
+	let mockFileService: any;
 
 	setup(() => {
 		instantiationService = new TestInstantiationService();
 
 		// Mock services
-		const mockFileService = {
+		mockFileService = {
 			resolve: async (uri: URI) => ({ isFile: true, isDirectory: true }),
 			copy: async () => { },
 			createFolder: async () => { },
@@ -31,13 +40,13 @@ suite('SkillInstallCommand', () => {
 			del: async () => { }
 		} as any;
 
-		const mockRegistry = {
+		mockRegistry = {
 			isInstalled: async () => false,
 			install: async () => { },
 			uninstall: async () => { }
 		} as any;
 
-		const mockParser = {
+		mockParser = {
 			parseSkillFile: async () => ({
 				metadata: {
 					name: 'test-skill',
@@ -51,7 +60,16 @@ suite('SkillInstallCommand', () => {
 			validateSkillFormat: async () => true
 		} as any;
 
-		const mockRequestService = {} as any;
+		const mockRequestService = {
+			// installCommand.ts's downloadNpmToTemp/downloadGithubToTemp/downloadUrlToTemp all
+			// genuinely call requestService.request() for a real download - these are not
+			// "not yet implemented" stubs (confirmed by reading the implementation directly;
+			// this test file's "not yet implemented" expectations predate that real
+			// implementation and were never updated). Reject by default so NPM/GitHub/URL
+			// install tests exercise a real (if simulated) network failure path instead of
+			// crashing on a missing mock method.
+			request: async () => { throw new Error('Mock network request failed (no real network access in this test)'); }
+		} as any;
 
 		const mockProgressService = {
 			withProgress: async (options: any, task: any) => {
@@ -117,7 +135,10 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should reject if skill already installed without force flag', async () => {
-			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
+			// Mutate the exact mock object already injected in setup() (hoisted to suite scope)
+			// rather than calling instantiationService.stub(...) again here - re-stubbing after
+			// createInstance() has already run creates a disconnected object that
+			// installService never sees.
 			mockRegistry.isInstalled = async () => true;
 
 			await assert.rejects(
@@ -127,7 +148,6 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should reinstall if force flag is set', async () => {
-			const mockRegistry = instantiationService.stub(ISkillsRegistry, {} as any);
 			mockRegistry.isInstalled = async () => true;
 			mockRegistry.uninstall = async () => { };
 
@@ -140,7 +160,6 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should reject invalid skill format', async () => {
-			const mockParser = instantiationService.stub(ISkillParser, {});
 			mockParser.validateSkillFormat = async () => false;
 
 			await assert.rejects(
@@ -150,7 +169,6 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should skip validation if skipValidation flag is set', async () => {
-			const mockParser = instantiationService.stub(ISkillParser, {});
 			let validateCalled = false;
 			mockParser.validateSkillFormat = async () => {
 				validateCalled = true;
@@ -172,10 +190,14 @@ suite('SkillInstallCommand', () => {
 			assert.strictEqual(installService.detectSourceType('skill-name'), 'npm');
 		});
 
-		test('should reject NPM install with not implemented error', async () => {
+		test('should reject NPM install on network failure', async () => {
+			// downloadNpmToTemp genuinely implements a real NPM registry fetch (confirmed by
+			// reading installCommand.ts directly) - this was never a "not yet implemented"
+			// stub, that was this test's own stale assumption. The mock requestService rejects
+			// by default, so this exercises the real wrap-and-rethrow error path instead.
 			await assert.rejects(
 				async () => installService.install({ source: '@ainative/test-skill' }),
-				/not yet implemented/
+				/Failed to download NPM package/
 			);
 		});
 	});
@@ -186,10 +208,12 @@ suite('SkillInstallCommand', () => {
 			assert.strictEqual(installService.detectSourceType('github:owner/repo'), 'github');
 		});
 
-		test('should reject GitHub install with not implemented error', async () => {
+		test('should reject GitHub install on network failure', async () => {
+			// downloadGithubToTemp genuinely implements a real GitHub archive fetch, trying
+			// main then master before giving up - never a "not yet implemented" stub.
 			await assert.rejects(
 				async () => installService.install({ source: 'owner/repo' }),
-				/not yet implemented/
+				/Failed to download GitHub repository/
 			);
 		});
 	});
@@ -200,10 +224,14 @@ suite('SkillInstallCommand', () => {
 			assert.strictEqual(installService.detectSourceType('http://example.com/skill.tar.gz'), 'url');
 		});
 
-		test('should reject URL install with not implemented error', async () => {
+		test('should reject URL install on network failure', async () => {
+			// downloadUrlToTemp -> downloadAndExtractZip genuinely calls requestService.request()
+			// directly (no try/catch wrapper around it, unlike the NPM/GitHub download paths),
+			// so the mock's rejection message propagates up unwrapped - never a "not yet
+			// implemented" stub.
 			await assert.rejects(
 				async () => installService.install({ source: 'https://example.com/skill.zip' }),
-				/not yet implemented/
+				/Mock network request failed/
 			);
 		});
 
@@ -217,7 +245,6 @@ suite('SkillInstallCommand', () => {
 
 	suite('error handling', () => {
 		test('should handle file service errors gracefully', async () => {
-			const mockFileService = instantiationService.stub(IFileService, {} as any);
 			mockFileService.resolve = async () => {
 				throw new Error('File not found');
 			};
@@ -229,13 +256,23 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should clean up temp directory on failure', async () => {
-			const mockFileService = instantiationService.stub(IFileService, {} as any);
+			// install() calls fileService.copy() twice: once in copyLocalToTemp() (source ->
+			// temp dir, BEFORE the try/finally that does cleanup even starts) and once later
+			// copying temp -> the final install location (INSIDE that try/finally). Failing
+			// every copy() call unconditionally fails the first one too, so the try/finally
+			// block - and its cleanup - is never even entered, which is not what this test
+			// means to exercise ("cleanup still runs when the real installation step fails").
+			// Let the first (source -> temp) copy succeed, and only fail the second.
 			let deleteCalled = false;
+			let copyCallCount = 0;
 			mockFileService.del = async () => {
 				deleteCalled = true;
 			};
 			mockFileService.copy = async () => {
-				throw new Error('Copy failed');
+				copyCallCount++;
+				if (copyCallCount > 1) {
+					throw new Error('Copy failed');
+				}
 			};
 
 			try {
@@ -248,7 +285,6 @@ suite('SkillInstallCommand', () => {
 		});
 
 		test('should handle parser errors', async () => {
-			const mockParser = instantiationService.stub(ISkillParser, {});
 			mockParser.parseSkillFile = async () => {
 				throw new Error('Parse error');
 			};
