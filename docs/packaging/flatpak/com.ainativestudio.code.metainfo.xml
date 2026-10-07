@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.ainativestudio.code</id>
+  <name>AINative Studio</name>
+  <summary>AI-native code editor</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>
+      AINative Studio is an AI-powered development environment forked from
+      VS Code, with an integrated chat sidebar, agentic tool-call loop,
+      tab autocomplete, and support for Anthropic, OpenAI, Google, Mistral,
+      Groq and local (Ollama) model providers.
+    </p>
+  </description>
+  <launchable type="desktop-id">com.ainativestudio.code.desktop</launchable>
+  <url type="homepage">https://ainative.studio</url>
+  <url type="bugtracker">https://github.com/AINative-Studio/AINativeStudio-IDE/issues</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <!-- Populate from GitHub releases once a Linux asset is published;
+         see README.md in this directory for the current blocker. -->
+  </releases>
+</component>

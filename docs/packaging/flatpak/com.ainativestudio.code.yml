@@ -1,0 +1,62 @@
+app-id: com.ainativestudio.code
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: ainative-studio
+
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --share=network
+  - --filesystem=host
+  - --device=dri
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.freedesktop.Notifications
+  - --system-talk-name=org.freedesktop.UDisks2
+  # Electron apps shipping their own Chromium sandbox need this unless the
+  # bundled chrome-sandbox helper is re-exec'd through bwrap; VSCodium's own
+  # manifest (flathub/com.vscodium.codium) carries the same two permissions
+  # for the same reason - keep in sync with their approach rather than
+  # reinventing the sandboxing story for an Electron app under Flatpak.
+  - --allow=devel
+  - --env=TMPDIR=/var/tmp
+
+modules:
+  - name: ainative-studio
+    buildsystem: simple
+    build-commands:
+      # Flatpak modules can only unpack what the build-commands below
+      # extract from `sources` - it does not build AINative Studio from
+      # source. This mirrors how flathub/com.vscodium.codium packages
+      # VSCodium: a real Flatpak manifest downloads one versioned
+      # tarball release asset and repackages it; it does not compile
+      # the IDE from source inside the Flatpak build sandbox. We are
+      # NOT doing that here (compiling this repo takes >20 minutes with
+      # an 8GB heap limit per CLAUDE.md, has no place in a Flatpak build
+      # sandbox, and duplicates work the project's own CI already does).
+      - mkdir -p /app/ainative-studio
+      - cp -r ainative-studio/* /app/ainative-studio/
+      - install -Dm755 /app/ainative-studio/ainative-studio /app/bin/ainative-studio
+      - install -Dm644 ainative-studio.desktop /app/share/applications/com.ainativestudio.code.desktop
+      - install -Dm644 com.ainativestudio.code.metainfo.xml /app/share/metainfo/com.ainativestudio.code.metainfo.xml
+      - install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/com.ainativestudio.code.png
+    sources:
+      # BLOCKED (see README.md in this directory): no Linux release asset
+      # exists yet to point this at. Replace url/sha256 once one does -
+      # `gh release view <tag> --json assets` against this repo will list
+      # the exact filename once `release-all-successful.yml` includes a
+      # Linux Linux-x64.tar.gz artifact (the `linux_x64.yml` CI workflow
+      # that produces it already passes - it has just never been included
+      # in a tagged release, confirmed 2026-10-06).
+      - type: archive
+        url: REPLACE_ME # e.g. https://github.com/AINative-Studio/AINativeStudio-IDE/releases/download/vX.Y.Z/AINativeStudio-vX.Y.Z-Linux-x64.tar.gz
+        sha256: REPLACE_ME # from the matching .sha256 asset once one is published
+        dest: ainative-studio
+      - type: file
+        path: ainative-studio.desktop
+      - type: file
+        path: com.ainativestudio.code.metainfo.xml
+      - type: file
+        path: icon.png
