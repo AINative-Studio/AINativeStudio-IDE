@@ -374,6 +374,14 @@ export class WebFetchService extends Disposable implements IWebFetchService {
 	validateDomain(url: string): boolean {
 		try {
 			const parsed = new URL(url);
+			// A whitelisted hostname alone isn't enough - 'ftp://docs.python.org' parses to the
+			// same whitelisted hostname as 'https://docs.python.org', so without this check
+			// validateDomain() would wrongly approve a non-HTTP(S) URL that happens to share a
+			// trusted domain name. fetchDocumentation() has its own separate protocol check run
+			// before it calls this method, so this was not reachable as a live vulnerability
+			// through the one caller that exists today - but validateDomain is a public method
+			// on IWebFetchService, and its name implies "safe to fetch" on its own.
+			if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
 			return this._isDomainWhitelisted(parsed.hostname);
 		} catch {
 			return false;
