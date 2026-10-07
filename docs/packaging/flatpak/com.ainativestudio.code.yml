@@ -36,27 +36,36 @@ modules:
       # NOT doing that here (compiling this repo takes >20 minutes with
       # an 8GB heap limit per CLAUDE.md, has no place in a Flatpak build
       # sandbox, and duplicates work the project's own CI already does).
+      #
+      # The real v1.1.0 Linux x64 tarball extracts flat (archive root is
+      # `./`, no wrapper directory) and its own binary is still named
+      # `void` internally - this release predates the full void->ainative
+      # rebrand reaching the compiled output, even though its own
+      # product.json already reports nameShort/nameLong "AINative Studio".
+      # Confirmed directly: `tar -tzf AINativeStudio-v1.1.0-Linux-x64.tar.gz`
+      # lists `./void` as the executable and
+      # `./resources/app/resources/linux/code.png` as the only bundled
+      # icon (itself still VS Code's stock icon, not a custom one).
+      # Re-check this when pointing at a newer release - a future tarball
+      # may ship a renamed binary/icon and this module needs updating to
+      # match.
       - mkdir -p /app/ainative-studio
-      - cp -r ainative-studio/* /app/ainative-studio/
-      - install -Dm755 /app/ainative-studio/ainative-studio /app/bin/ainative-studio
+      - cp -r app/* /app/ainative-studio/
+      - install -Dm755 /app/ainative-studio/void /app/bin/ainative-studio
       - install -Dm644 ainative-studio.desktop /app/share/applications/com.ainativestudio.code.desktop
       - install -Dm644 com.ainativestudio.code.metainfo.xml /app/share/metainfo/com.ainativestudio.code.metainfo.xml
-      - install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/com.ainativestudio.code.png
+      - install -Dm644 /app/ainative-studio/resources/app/resources/linux/code.png /app/share/icons/hicolor/512x512/apps/com.ainativestudio.code.png
     sources:
-      # BLOCKED (see README.md in this directory): no Linux release asset
-      # exists yet to point this at. Replace url/sha256 once one does -
-      # `gh release view <tag> --json assets` against this repo will list
-      # the exact filename once `release-all-successful.yml` includes a
-      # Linux Linux-x64.tar.gz artifact (the `linux_x64.yml` CI workflow
-      # that produces it already passes - it has just never been included
-      # in a tagged release, confirmed 2026-10-06).
       - type: archive
-        url: REPLACE_ME # e.g. https://github.com/AINative-Studio/AINativeStudio-IDE/releases/download/vX.Y.Z/AINativeStudio-vX.Y.Z-Linux-x64.tar.gz
-        sha256: REPLACE_ME # from the matching .sha256 asset once one is published
-        dest: ainative-studio
+        url: https://github.com/AINative-Studio/AINativeStudio-IDE/releases/download/v1.1.0/AINativeStudio-v1.1.0-Linux-x64.tar.gz
+        sha256: a6f6920998e9fabd97454240fbef4eaf8eb8f16b656e119ebc35692d033e70e0
+        dest: app
+        # No .sha256 asset was published alongside this release (checked
+        # `gh release view v1.1.0 --json assets` - none of the Linux
+        # assets have a matching .sha256 file, unlike v2.0.0's macOS/
+        # Windows assets which do). Computed directly: downloaded the
+        # real asset and ran `shasum -a 256` on it myself, 2026-10-06.
       - type: file
         path: ainative-studio.desktop
       - type: file
         path: com.ainativestudio.code.metainfo.xml
-      - type: file
-        path: icon.png

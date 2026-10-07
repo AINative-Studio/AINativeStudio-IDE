@@ -5,42 +5,54 @@ Scaffold for a Flathub submission, following the same pattern as
 a separate manifest repo that downloads one pre-built, versioned release
 tarball and repackages it — it does not compile AINative Studio from source.
 
-## Current blocker
+## Status: unblocked, pointed at a real release
 
-**No Linux release asset has ever been published.** Checked `v2.0.0` (the
-latest tagged release) directly: it has macOS (`.dmg`/`.zip`) and Windows
-(`.exe`/`.zip`) assets only, no Linux `.tar.gz`/`.AppImage`/`.deb`/`.rpm`.
+Earlier research on this wrongly concluded no Linux release asset had ever
+been published — that check only looked at `v2.0.0` (the latest tag), which
+genuinely has no Linux assets (macOS/Windows only). **`v1.1.0` has a
+complete set of Linux assets** (`.tar.gz`, `.AppImage`, `.deb`, `.rpm` for
+x64, plus arm64 and armhf), confirmed via `gh release view v1.1.0 --json
+assets`. The manifest now points at the real
+`AINativeStudio-v1.1.0-Linux-x64.tar.gz` asset, with a `sha256` computed
+directly (downloaded the asset and ran `shasum -a 256` on it — no
+`.sha256` asset was published alongside the Linux ones for this release,
+unlike some of `v2.0.0`'s macOS/Windows assets).
 
-This isn't a CI problem — `linux_x64.yml` passes reliably (last confirmed
-green run: 2026-01-11). The gap is that `release-all-successful.yml` (the
-workflow that assembles a GitHub Release from each platform's latest
-successful CI artifacts) has apparently never been run with Linux included,
-or Linux artifacts expired before it was run. `release-all-successful.yml`
-already has the exact logic to pull `ainative-studio-linux-x64-tar` and
-rename it to `AINativeStudio-{VERSION}-Linux-x64.tar.gz` — nothing needs to
-change there.
+**One real quirk, already accounted for in the manifest:** this v1.1.0
+build predates the full void→ainative rebrand reaching compiled output.
+Confirmed by extracting and inspecting the real tarball: the executable
+inside is still named `void` (not `ainative-studio`), and its
+`product.json` still has `applicationName: "void"` and
+`win32AppUserModelId: "Void.Editor"` — even though `nameShort`/`nameLong`
+already say "AINative Studio" (so the running app displays correctly; only
+the binary name and window class are the old values). The manifest's
+`build-commands` install the real `void` binary at `/app/bin/ainative-studio`,
+and the `.desktop` file's `StartupWMClass` is set to `void` to match the
+actual runtime window class (getting this wrong breaks taskbar/dock icon
+grouping — it must match what the running app reports, not the desktop
+file's own `Exec` name).
 
-**To unblock:** run `release-all-successful.yml` (via `workflow_dispatch`)
-for the next version tag while Linux CI artifacts are fresh (artifacts
-expire after a retention window), or add a Linux platform-build job as an
-explicit dependency before the release step so it's guaranteed fresh.
+The bundled icon is `resources/app/resources/linux/code.png` from inside
+the tarball — which is itself still VS Code's stock icon, not a custom
+AINative one. **Recommend pointing a future revision of this manifest at a
+newer release once one exists with Linux assets** (none has shipped since
+v1.1.0, released 2025-09-30) so the binary name and icon are current. The
+`build-commands` and `.desktop` file have a comment flagging this to
+re-check each time the `url`/`sha256` are updated.
 
-## Once a Linux asset exists
+## Remaining steps to actually submit
 
-1. Edit `com.ainativestudio.code.yml`'s `sources[0].url` to point at the
-   real `AINativeStudio-vX.Y.Z-Linux-x64.tar.gz` asset URL, and set `sha256`
-   from the matching `.sha256` asset (confirmed this convention already
-   exists for other platforms in `release-all-successful.yml`).
-2. Add a real 512x512 PNG icon at `icon.png` in this directory (derive from
-   the existing app icon under `ainative-studio/resources/linux/`).
-3. Test locally: `flatpak-builder --force-clean build-dir com.ainativestudio.code.yml`,
-   then `flatpak-builder --run build-dir com.ainativestudio.code.yml ainative-studio`.
-4. Submit as a new repo under the `flathub` GitHub org, following
+1. Test locally: `flatpak-builder --force-clean build-dir com.ainativestudio.code.yml`,
+   then `flatpak-builder --run build-dir com.ainativestudio.code.yml ainative-studio`
+   — not run in this pass (no `flatpak-builder` available in this environment;
+   needs a real Linux machine or CI runner with it installed).
+2. Submit as a new repo under the `flathub` GitHub org, following
    [Flathub's submission guide](https://docs.flathub.org/docs/for-app-authors/submission)
    — Flathub manifests are NOT hosted inside the app's own source repo.
-5. Decide on an update cadence / whether to automate a PR to the Flathub
+3. Decide on an update cadence / whether to automate a PR to the Flathub
    repo on each new AINative Studio release (VSCodium does this with a bot;
-   out of scope for the first submission).
+   out of scope for the first submission). Ideally paired with cutting a
+   fresh release that has current Linux assets with the rebrand complete.
 
 ## Why `--allow=devel` and `--filesystem=host`
 
