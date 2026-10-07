@@ -20,7 +20,7 @@ suite('AI Model Configuration Tests', () => {
 	let configManager: ModelConfigManager;
 
 	setup(() => {
-		storageService = new TestStorageService();
+		storageService = disposables.add(new TestStorageService());
 		configManager = disposables.add(new ModelConfigManager(storageService));
 	});
 
@@ -76,11 +76,11 @@ suite('AI Model Configuration Tests', () => {
 			const projectId = 'test-project';
 			const modelId = 'claude-3-5-sonnet';
 
-			configManager.onDidChangeModelSelection((config) => {
+			disposables.add(configManager.onDidChangeModelSelection((config) => {
 				assert.strictEqual(config.projectId, projectId);
 				assert.strictEqual(config.modelId, modelId);
 				done();
-			});
+			}));
 
 			configManager.setSelectedModel(projectId, modelId);
 		});
