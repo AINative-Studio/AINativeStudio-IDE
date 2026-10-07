@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { SyncCommand } from '../../common/skills/cli/syncCommand.js';
+import { SyncCommand, SyncCommandDependencies } from '../../common/skills/cli/syncCommand.js';
 import { ISkillsRegistry, SkillRefreshResult } from '../../common/skills/skillRegistryTypes.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
 import { URI } from '../../../../../base/common/uri.js';
-import * as symlinkUtils from '../../node/skills/symlinkUtils.js';
-import * as gitOperations from '../../node/skills/gitOperations.js';
+import { getSymlinkSetupInstructions } from '../../node/skills/symlinkUtils.js';
+import { formatGitPullOutput } from '../../node/skills/gitOperations.js';
 
 /**
  * Mock SkillsRegistry for testing
@@ -72,49 +72,47 @@ suite('SyncCommand', () => {
 	let mockRegistry: MockSkillsRegistry;
 	let mockEnvService: MockNativeEnvironmentService;
 	let logService: ILogService;
-
-	// Store original functions
-	let originalCheckSymlink: typeof symlinkUtils.checkSymlink;
-	let originalIsGitRepo: typeof gitOperations.isGitRepo;
-	let originalGetGitStatus: typeof gitOperations.getGitStatus;
-	let originalGetCurrentBranch: typeof gitOperations.getCurrentBranch;
-	let originalGitPull: typeof gitOperations.gitPull;
+	// Hoisted to suite scope so individual tests can mutate these functions directly.
+	// SyncCommand takes its git/filesystem operations as an injected `deps` object
+	// (SyncCommandDependencies) specifically because real ES module namespace imports
+	// are read-only live bindings - `(symlinkUtils as any).checkSymlink = fn` throws
+	// "Cannot assign to read only property" at runtime, so the only way to fake these
+	// out is to inject fakes through the constructor instead of monkey-patching modules.
+	let deps: SyncCommandDependencies;
 
 	setup(() => {
 		mockRegistry = new MockSkillsRegistry();
 		mockEnvService = new MockNativeEnvironmentService();
 		logService = new NullLogService();
 
-		// Store originals
-		originalCheckSymlink = symlinkUtils.checkSymlink;
-		originalIsGitRepo = gitOperations.isGitRepo;
-		originalGetGitStatus = gitOperations.getGitStatus;
-		originalGetCurrentBranch = gitOperations.getCurrentBranch;
-		originalGitPull = gitOperations.gitPull;
+		deps = {
+			checkSymlink: async () => ({ isSymlink: false, target: null, resolvedTarget: null }),
+			getSymlinkSetupInstructions,
+			isGitRepo: async () => false,
+			getGitStatus: async () => ({ hasUncommittedChanges: false, modifiedFiles: 0, untrackedFiles: 0, statusOutput: '' }),
+			getCurrentBranch: async () => 'main',
+			gitPull: async () => ({ success: true, stdout: '', stderr: '' }),
+			formatGitPullOutput
+		};
 	});
 
-	teardown(() => {
-		// Restore originals
-		(symlinkUtils as any).checkSymlink = originalCheckSymlink;
-		(gitOperations as any).isGitRepo = originalIsGitRepo;
-		(gitOperations as any).getGitStatus = originalGetGitStatus;
-		(gitOperations as any).getCurrentBranch = originalGetCurrentBranch;
-		(gitOperations as any).gitPull = originalGitPull;
-	});
+	function createSyncCommand(): SyncCommand {
+		return new SyncCommand(
+			mockRegistry as any,
+			mockEnvService as any,
+			logService,
+			deps
+		);
+	}
 
 	test('should show setup instructions when .claude is not symlinked', async () => {
-		// Mock symlink check to return false
-		(symlinkUtils as any).checkSymlink = async () => ({
+		deps.checkSymlink = async () => ({
 			isSymlink: false,
 			target: null,
 			resolvedTarget: null
 		});
 
-		syncCommand = new SyncCommand(
-			mockRegistry as any,
-			mockEnvService as any,
-			logService
-		);
+		syncCommand = createSyncCommand();
 
 		const result = await syncCommand.execute();
 
@@ -125,21 +123,15 @@ suite('SyncCommand', () => {
 	});
 
 	test('should fail when target is not a git repository', async () => {
-		// Mock symlink check to return true
-		(symlinkUtils as any).checkSymlink = async () => ({
+		deps.checkSymlink = async () => ({
 			isSymlink: true,
 			target: '/path/to/core/.claude',
 			resolvedTarget: '/path/to/core/.claude'
 		});
 
-		// Mock git repo check to return false
-		(gitOperations as any).isGitRepo = async () => false;
+		deps.isGitRepo = async () => false;
 
-		syncCommand = new SyncCommand(
-			mockRegistry as any,
-			mockEnvService as any,
-			logService
-		);
+		syncCommand = createSyncCommand();
 
 		const result = await syncCommand.execute();
 
@@ -149,31 +141,24 @@ suite('SyncCommand', () => {
 	});
 
 	test('should warn when there are uncommitted changes', async () => {
-		// Mock symlink check to return true
-		(symlinkUtils as any).checkSymlink = async () => ({
+		deps.checkSymlink = async () => ({
 			isSymlink: true,
 			target: '/path/to/core/.claude',
 			resolvedTarget: '/path/to/core/.claude'
 		});
 
-		// Mock git repo check to return true
-		(gitOperations as any).isGitRepo = async () => true;
+		deps.isGitRepo = async () => true;
 
-		// Mock git status to show uncommitted changes
-		(gitOperations as any).getGitStatus = async () => ({
+		deps.getGitStatus = async () => ({
 			hasUncommittedChanges: true,
 			modifiedFiles: 3,
 			untrackedFiles: 2,
 			statusOutput: 'M file1.ts\nM file2.ts\n?? file3.ts'
 		});
 
-		(gitOperations as any).getCurrentBranch = async () => 'main';
+		deps.getCurrentBranch = async () => 'main';
 
-		syncCommand = new SyncCommand(
-			mockRegistry as any,
-			mockEnvService as any,
-			logService
-		);
+		syncCommand = createSyncCommand();
 
 		const result = await syncCommand.execute();
 
@@ -185,37 +170,31 @@ suite('SyncCommand', () => {
 	});
 
 	test('should handle git pull failure', async () => {
-		// Mock successful setup
-		(symlinkUtils as any).checkSymlink = async () => ({
+		deps.checkSymlink = async () => ({
 			isSymlink: true,
 			target: '/path/to/core/.claude',
 			resolvedTarget: '/path/to/core/.claude'
 		});
 
-		(gitOperations as any).isGitRepo = async () => true;
+		deps.isGitRepo = async () => true;
 
-		(gitOperations as any).getGitStatus = async () => ({
+		deps.getGitStatus = async () => ({
 			hasUncommittedChanges: false,
 			modifiedFiles: 0,
 			untrackedFiles: 0,
 			statusOutput: ''
 		});
 
-		(gitOperations as any).getCurrentBranch = async () => 'main';
+		deps.getCurrentBranch = async () => 'main';
 
-		// Mock git pull to fail
-		(gitOperations as any).gitPull = async () => ({
+		deps.gitPull = async () => ({
 			success: false,
 			stdout: '',
 			stderr: 'Network error',
 			errorMessage: 'Network error. Please check your internet connection and try again.'
 		});
 
-		syncCommand = new SyncCommand(
-			mockRegistry as any,
-			mockEnvService as any,
-			logService
-		);
+		syncCommand = createSyncCommand();
 
 		const result = await syncCommand.execute();
 
@@ -225,31 +204,29 @@ suite('SyncCommand', () => {
 	});
 
 	test('should successfully sync when everything works', async () => {
-		// Mock successful setup
-		(symlinkUtils as any).checkSymlink = async () => ({
+		deps.checkSymlink = async () => ({
 			isSymlink: true,
 			target: '/path/to/core/.claude',
 			resolvedTarget: '/path/to/core/.claude'
 		});
 
-		(gitOperations as any).isGitRepo = async () => true;
+		deps.isGitRepo = async () => true;
 
-		(gitOperations as any).getGitStatus = async () => ({
+		deps.getGitStatus = async () => ({
 			hasUncommittedChanges: false,
 			modifiedFiles: 0,
 			untrackedFiles: 0,
 			statusOutput: ''
 		});
 
-		(gitOperations as any).getCurrentBranch = async () => 'main';
+		deps.getCurrentBranch = async () => 'main';
 
-		(gitOperations as any).gitPull = async () => ({
+		deps.gitPull = async () => ({
 			success: true,
 			stdout: 'Fast-forward\n 1 file changed',
 			stderr: ''
 		});
 
-		// Mock refresh result
 		mockRegistry.setRefreshResult({
 			updated: [
 				{ name: 'git-workflow', oldVersion: '1.0.0', newVersion: '1.1.0' },
@@ -263,11 +240,7 @@ suite('SyncCommand', () => {
 			total: 6
 		});
 
-		syncCommand = new SyncCommand(
-			mockRegistry as any,
-			mockEnvService as any,
-			logService
-		);
+		syncCommand = createSyncCommand();
 
 		const result = await syncCommand.execute();
 
@@ -284,32 +257,29 @@ suite('SyncCommand', () => {
 	});
 
 	test('should handle no changes scenario', async () => {
-		// Mock successful setup
-		(symlinkUtils as any).checkSymlink = async () => ({
+		deps.checkSymlink = async () => ({
 			isSymlink: true,
 			target: '/path/to/core/.claude',
 			resolvedTarget: '/path/to/core/.claude'
 		});
 
-		(gitOperations as any).isGitRepo = async () => true;
+		deps.isGitRepo = async () => true;
 
-		(gitOperations as any).getGitStatus = async () => ({
+		deps.getGitStatus = async () => ({
 			hasUncommittedChanges: false,
 			modifiedFiles: 0,
 			untrackedFiles: 0,
 			statusOutput: ''
 		});
 
-		(gitOperations as any).getCurrentBranch = async () => 'main';
+		deps.getCurrentBranch = async () => 'main';
 
-		// Mock git pull with "already up to date"
-		(gitOperations as any).gitPull = async () => ({
+		deps.gitPull = async () => ({
 			success: true,
 			stdout: 'Already up to date.',
 			stderr: ''
 		});
 
-		// Mock refresh result with no changes
 		mockRegistry.setRefreshResult({
 			updated: [],
 			new: [],
@@ -318,11 +288,7 @@ suite('SyncCommand', () => {
 			total: 3
 		});
 
-		syncCommand = new SyncCommand(
-			mockRegistry as any,
-			mockEnvService as any,
-			logService
-		);
+		syncCommand = createSyncCommand();
 
 		const result = await syncCommand.execute();
 
@@ -333,37 +299,31 @@ suite('SyncCommand', () => {
 	});
 
 	test('should handle merge conflicts', async () => {
-		// Mock successful setup
-		(symlinkUtils as any).checkSymlink = async () => ({
+		deps.checkSymlink = async () => ({
 			isSymlink: true,
 			target: '/path/to/core/.claude',
 			resolvedTarget: '/path/to/core/.claude'
 		});
 
-		(gitOperations as any).isGitRepo = async () => true;
+		deps.isGitRepo = async () => true;
 
-		(gitOperations as any).getGitStatus = async () => ({
+		deps.getGitStatus = async () => ({
 			hasUncommittedChanges: false,
 			modifiedFiles: 0,
 			untrackedFiles: 0,
 			statusOutput: ''
 		});
 
-		(gitOperations as any).getCurrentBranch = async () => 'main';
+		deps.getCurrentBranch = async () => 'main';
 
-		// Mock git pull with conflict
-		(gitOperations as any).gitPull = async () => ({
+		deps.gitPull = async () => ({
 			success: false,
 			stdout: '',
 			stderr: 'CONFLICT: Merge conflict in file.ts',
 			errorMessage: 'Merge conflict detected. Please resolve conflicts manually.'
 		});
 
-		syncCommand = new SyncCommand(
-			mockRegistry as any,
-			mockEnvService as any,
-			logService
-		);
+		syncCommand = createSyncCommand();
 
 		const result = await syncCommand.execute();
 
@@ -374,31 +334,29 @@ suite('SyncCommand', () => {
 	});
 
 	test('should handle removed skills', async () => {
-		// Mock successful setup
-		(symlinkUtils as any).checkSymlink = async () => ({
+		deps.checkSymlink = async () => ({
 			isSymlink: true,
 			target: '/path/to/core/.claude',
 			resolvedTarget: '/path/to/core/.claude'
 		});
 
-		(gitOperations as any).isGitRepo = async () => true;
+		deps.isGitRepo = async () => true;
 
-		(gitOperations as any).getGitStatus = async () => ({
+		deps.getGitStatus = async () => ({
 			hasUncommittedChanges: false,
 			modifiedFiles: 0,
 			untrackedFiles: 0,
 			statusOutput: ''
 		});
 
-		(gitOperations as any).getCurrentBranch = async () => 'main';
+		deps.getCurrentBranch = async () => 'main';
 
-		(gitOperations as any).gitPull = async () => ({
+		deps.gitPull = async () => ({
 			success: true,
 			stdout: 'Fast-forward',
 			stderr: ''
 		});
 
-		// Mock refresh result with removed skills
 		mockRegistry.setRefreshResult({
 			updated: [],
 			new: [],
@@ -409,11 +367,7 @@ suite('SyncCommand', () => {
 			total: 2
 		});
 
-		syncCommand = new SyncCommand(
-			mockRegistry as any,
-			mockEnvService as any,
-			logService
-		);
+		syncCommand = createSyncCommand();
 
 		const result = await syncCommand.execute();
 

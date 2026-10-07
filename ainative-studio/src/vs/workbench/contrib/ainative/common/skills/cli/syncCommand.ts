@@ -6,16 +6,42 @@
 import { ISkillsRegistry, SkillRefreshResult } from '../skillRegistryTypes.js';
 import { ILogService } from '../../../../../../platform/log/common/log.js';
 import { INativeEnvironmentService } from '../../../../../../platform/environment/common/environment.js';
-import { checkSymlink, getSymlinkSetupInstructions } from '../../../node/skills/symlinkUtils.js';
+import { checkSymlink, getSymlinkSetupInstructions, SymlinkInfo } from '../../../node/skills/symlinkUtils.js';
 import {
 	isGitRepo,
 	getGitStatus,
 	getCurrentBranch,
 	gitPull,
 	formatGitPullOutput,
-	GitOperationResult
+	GitOperationResult,
+	GitStatus
 } from '../../../node/skills/gitOperations.js';
 import { join } from 'path';
+
+/**
+ * The git/filesystem operations SyncCommand depends on, as an injectable seam.
+ * Real ES module namespace exports are read-only live bindings and cannot be
+ * monkey-patched from outside the module, so tests inject fakes here instead.
+ */
+export interface SyncCommandDependencies {
+	checkSymlink(path: string): Promise<SymlinkInfo>;
+	getSymlinkSetupInstructions(path: string): string;
+	isGitRepo(path: string): Promise<boolean>;
+	getGitStatus(path: string): Promise<GitStatus>;
+	getCurrentBranch(path: string): Promise<string>;
+	gitPull(path: string, remote: string, branch: string): Promise<GitOperationResult>;
+	formatGitPullOutput(result: GitOperationResult): string;
+}
+
+const defaultDependencies: SyncCommandDependencies = {
+	checkSymlink,
+	getSymlinkSetupInstructions,
+	isGitRepo,
+	getGitStatus,
+	getCurrentBranch,
+	gitPull,
+	formatGitPullOutput
+};
 
 /**
  * Result of sync command execution
@@ -44,11 +70,11 @@ export class SyncCommand {
 		private readonly skillsRegistry: ISkillsRegistry,
 		// @ts-expect-error envService is passed but not used yet - keeping for future use
 		private readonly envService: INativeEnvironmentService,
-		private readonly logService: ILogService
+		private readonly logService: ILogService,
+		private readonly deps: SyncCommandDependencies = defaultDependencies,
+		workspaceRoot: string = process.cwd()
 	) {
-		// Assuming .claude is in the workspace root or project root
-		// This should be configurable based on actual workspace location
-		this.claudeDir = join(process.cwd(), '.claude');
+		this.claudeDir = join(workspaceRoot, '.claude');
 		this.skillsDir = join(this.claudeDir, 'skills');
 	}
 
@@ -60,11 +86,11 @@ export class SyncCommand {
 
 		try {
 			// Step 1: Check if .claude is a symlink
-			const symlinkInfo = await checkSymlink(this.claudeDir);
+			const symlinkInfo = await this.deps.checkSymlink(this.claudeDir);
 
 			if (!symlinkInfo.isSymlink) {
 				// Not symlinked - show setup instructions
-				const output = getSymlinkSetupInstructions(this.claudeDir);
+				const output = this.deps.getSymlinkSetupInstructions(this.claudeDir);
 				this.logService.info('[SyncCommand] .claude is not symlinked');
 				return {
 					success: false,
@@ -81,7 +107,7 @@ export class SyncCommand {
 			const targetDir = symlinkInfo.resolvedTarget!;
 
 			// Step 2: Check if target is a git repository
-			const isRepo = await isGitRepo(targetDir);
+			const isRepo = await this.deps.isGitRepo(targetDir);
 			if (!isRepo) {
 				const output = this.formatNotGitRepoError(targetDir);
 				this.logService.error('[SyncCommand] Target is not a git repository');
@@ -93,8 +119,8 @@ export class SyncCommand {
 			}
 
 			// Step 3: Get git status
-			const gitStatus = await getGitStatus(targetDir);
-			const currentBranch = await getCurrentBranch(targetDir);
+			const gitStatus = await this.deps.getGitStatus(targetDir);
+			const currentBranch = await this.deps.getCurrentBranch(targetDir);
 
 			// Warn if there are uncommitted changes
 			if (gitStatus.hasUncommittedChanges) {
@@ -109,7 +135,7 @@ export class SyncCommand {
 
 			// Step 4: Pull latest changes
 			this.logService.info('[SyncCommand] Pulling latest changes from origin/main');
-			const pullResult = await gitPull(targetDir, 'origin', 'main');
+			const pullResult = await this.deps.gitPull(targetDir, 'origin', 'main');
 
 			if (!pullResult.success) {
 				const output = this.formatGitPullError(pullResult);
@@ -168,7 +194,7 @@ export class SyncCommand {
 		lines.push('Pulling latest changes from core repository...\n');
 
 		// Git pull status
-		lines.push(formatGitPullOutput(pullResult));
+		lines.push(this.deps.formatGitPullOutput(pullResult));
 		lines.push('');
 
 		lines.push('Refreshing skills cache...\n');

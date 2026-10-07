@@ -30,6 +30,7 @@ suite('SkillSyncCommand Tests', () => {
 	let testHomeDir: URI;
 	let testProjectDir: string;
 	let coreRepoDir: string;
+	let bareOriginDir: string;
 	let skillsRegistry: ISkillsRegistry;
 	let syncCommand: SyncCommand;
 	let mockSkillParser: ISkillParser;
@@ -84,6 +85,7 @@ suite('SkillSyncCommand Tests', () => {
 		testHomeDir = URI.file(path.join(tmpdir(), 'ainative-sync-test-home-' + testId));
 		testProjectDir = path.join(tmpdir(), 'ainative-sync-test-project-' + testId);
 		coreRepoDir = path.join(tmpdir(), 'ainative-sync-test-core-' + testId);
+		bareOriginDir = path.join(tmpdir(), 'ainative-sync-test-origin-' + testId);
 
 		// Create directories
 		fs.mkdirSync(testProjectDir, { recursive: true });
@@ -101,8 +103,12 @@ suite('SkillSyncCommand Tests', () => {
 		const { SkillsRegistry } = await import('../../common/skills/skillsRegistry.js');
 		skillsRegistry = new SkillsRegistry(fileService, mockSkillParser, mockEnvService);
 
-		// Instantiate SyncCommand
-		syncCommand = new SyncCommand(skillsRegistry, mockEnvService, new NullLogService());
+		// Instantiate SyncCommand, rooted at testProjectDir (where the .claude symlink is
+		// created below) rather than the real process.cwd() - SyncCommand previously
+		// hardcoded process.cwd()/.claude, which meant every test in this file was
+		// actually checking this repo's real .claude directory and ignoring the fake
+		// testProjectDir/coreRepoDir setup entirely.
+		syncCommand = new SyncCommand(skillsRegistry, mockEnvService, new NullLogService(), undefined, testProjectDir);
 	});
 
 	teardown(async () => {
@@ -119,8 +125,33 @@ suite('SkillSyncCommand Tests', () => {
 			fs.rmSync(coreRepoDir, { recursive: true, force: true });
 		} catch { }
 
+		try {
+			fs.rmSync(bareOriginDir, { recursive: true, force: true });
+		} catch { }
+
 		disposables.dispose();
 	});
+
+	/**
+	 * SyncCommand's gitPull always runs `git pull origin main`, so a repo with no
+	 * "origin" remote configured fails with "Could not read from remote repository"
+	 * (confirmed by reproducing it directly) - every test that expects a successful
+	 * sync needs coreRepoDir to be a real clone of a bare "origin" repo, not just a
+	 * bare `git init`.
+	 */
+	async function initCoreRepoWithOrigin(): Promise<void> {
+		await execAsync(`git init --bare "${bareOriginDir}"`);
+		fs.rmSync(coreRepoDir, { recursive: true, force: true });
+		await execAsync(`git clone "${bareOriginDir}" "${coreRepoDir}"`);
+		await execAsync('git config user.email "test@test.com"', { cwd: coreRepoDir });
+		await execAsync('git config user.name "Test User"', { cwd: coreRepoDir });
+	}
+
+	async function commitAndPushCoreRepo(message: string): Promise<void> {
+		await execAsync('git add .', { cwd: coreRepoDir });
+		await execAsync(`git commit -m "${message}"`, { cwd: coreRepoDir });
+		await execAsync('git push origin HEAD:main', { cwd: coreRepoDir });
+	}
 
 	suite('Symlink Detection', () => {
 		test('should detect when .claude is not a symlink', async () => {
@@ -238,14 +269,11 @@ suite('SkillSyncCommand Tests', () => {
 			// This test requires actual git operations which can be slow
 			this.timeout(10000);
 
-			// Setup git repo
+			// Setup git repo, cloned from a bare "origin" so gitPull has something to pull from
+			await initCoreRepoWithOrigin();
 			const coreClaudeDir = path.join(coreRepoDir, '.claude');
 			const skillsDir = path.join(coreClaudeDir, 'skills');
 			fs.mkdirSync(skillsDir, { recursive: true });
-
-			await execAsync('git init', { cwd: coreRepoDir });
-			await execAsync('git config user.email "test@test.com"', { cwd: coreRepoDir });
-			await execAsync('git config user.name "Test User"', { cwd: coreRepoDir });
 
 			// Create initial skill
 			const skill1Dir = path.join(skillsDir, 'skill1');
@@ -253,8 +281,7 @@ suite('SkillSyncCommand Tests', () => {
 			fs.writeFileSync(path.join(skill1Dir, 'SKILL.md'), '# Skill 1');
 			fs.writeFileSync(path.join(skill1Dir, 'version.txt'), '1.0.0');
 
-			await execAsync('git add .', { cwd: coreRepoDir });
-			await execAsync('git commit -m "Initial commit"', { cwd: coreRepoDir });
+			await commitAndPushCoreRepo('Initial commit');
 
 			// Create symlink
 			const claudeLink = path.join(testProjectDir, '.claude');
@@ -272,20 +299,16 @@ suite('SkillSyncCommand Tests', () => {
 			this.timeout(10000);
 
 			// Setup initial repo with one skill
+			await initCoreRepoWithOrigin();
 			const coreClaudeDir = path.join(coreRepoDir, '.claude');
 			const skillsDir = path.join(coreClaudeDir, 'skills');
 			fs.mkdirSync(skillsDir, { recursive: true });
-
-			await execAsync('git init', { cwd: coreRepoDir });
-			await execAsync('git config user.email "test@test.com"', { cwd: coreRepoDir });
-			await execAsync('git config user.name "Test User"', { cwd: coreRepoDir });
 
 			const skill1Dir = path.join(skillsDir, 'skill1');
 			fs.mkdirSync(skill1Dir);
 			fs.writeFileSync(path.join(skill1Dir, 'SKILL.md'), '# Skill 1');
 
-			await execAsync('git add .', { cwd: coreRepoDir });
-			await execAsync('git commit -m "Add skill1"', { cwd: coreRepoDir });
+			await commitAndPushCoreRepo('Add skill1');
 
 			// Create symlink and sync
 			const claudeLink = path.join(testProjectDir, '.claude');
@@ -301,8 +324,7 @@ suite('SkillSyncCommand Tests', () => {
 			fs.mkdirSync(skill2Dir);
 			fs.writeFileSync(path.join(skill2Dir, 'SKILL.md'), '# Skill 2');
 
-			await execAsync('git add .', { cwd: coreRepoDir });
-			await execAsync('git commit -m "Add skill2"', { cwd: coreRepoDir });
+			await commitAndPushCoreRepo('Add skill2');
 
 			// Sync again
 			const result2 = await syncCommand.execute();
@@ -317,21 +339,17 @@ suite('SkillSyncCommand Tests', () => {
 			this.timeout(10000);
 
 			// Setup initial repo
+			await initCoreRepoWithOrigin();
 			const coreClaudeDir = path.join(coreRepoDir, '.claude');
 			const skillsDir = path.join(coreClaudeDir, 'skills');
 			fs.mkdirSync(skillsDir, { recursive: true });
-
-			await execAsync('git init', { cwd: coreRepoDir });
-			await execAsync('git config user.email "test@test.com"', { cwd: coreRepoDir });
-			await execAsync('git config user.name "Test User"', { cwd: coreRepoDir });
 
 			const skillDir = path.join(skillsDir, 'test-skill');
 			fs.mkdirSync(skillDir);
 			fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '# Test Skill');
 			fs.writeFileSync(path.join(skillDir, 'version.txt'), '1.0.0');
 
-			await execAsync('git add .', { cwd: coreRepoDir });
-			await execAsync('git commit -m "Add skill v1.0.0"', { cwd: coreRepoDir });
+			await commitAndPushCoreRepo('Add skill v1.0.0');
 
 			// Create symlink and sync
 			const claudeLink = path.join(testProjectDir, '.claude');
@@ -342,8 +360,7 @@ suite('SkillSyncCommand Tests', () => {
 
 			// Update version and commit
 			fs.writeFileSync(path.join(skillDir, 'version.txt'), '1.1.0');
-			await execAsync('git add .', { cwd: coreRepoDir });
-			await execAsync('git commit -m "Update to v1.1.0"', { cwd: coreRepoDir });
+			await commitAndPushCoreRepo('Update to v1.1.0');
 
 			// Sync again
 			const result2 = await syncCommand.execute();
@@ -394,13 +411,10 @@ suite('SkillSyncCommand Tests', () => {
 			this.timeout(10000);
 
 			// Setup repo with multiple skills
+			await initCoreRepoWithOrigin();
 			const coreClaudeDir = path.join(coreRepoDir, '.claude');
 			const skillsDir = path.join(coreClaudeDir, 'skills');
 			fs.mkdirSync(skillsDir, { recursive: true });
-
-			await execAsync('git init', { cwd: coreRepoDir });
-			await execAsync('git config user.email "test@test.com"', { cwd: coreRepoDir });
-			await execAsync('git config user.name "Test User"', { cwd: coreRepoDir });
 
 			// Create multiple skills
 			for (const name of ['skill1', 'skill2', 'skill3']) {
@@ -409,8 +423,7 @@ suite('SkillSyncCommand Tests', () => {
 				fs.writeFileSync(path.join(skillDir, 'SKILL.md'), `# ${name}`);
 			}
 
-			await execAsync('git add .', { cwd: coreRepoDir });
-			await execAsync('git commit -m "Add skills"', { cwd: coreRepoDir });
+			await commitAndPushCoreRepo('Add skills');
 
 			// Create symlink
 			const claudeLink = path.join(testProjectDir, '.claude');
