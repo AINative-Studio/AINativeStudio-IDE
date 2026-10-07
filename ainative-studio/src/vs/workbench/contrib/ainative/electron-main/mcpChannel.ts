@@ -10,7 +10,7 @@
 import { IServerChannel } from '../../../../base/parts/ipc/common/ipc.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { MCPConfigFileJSON, MCPConfigFileEntryJSON, MCPServer, RawMCPToolCall, MCPToolErrorResponse, MCPServerEventResponse, MCPToolCallParams, removeMCPToolNamePrefix, MCPConnectionLogEntry, MCPConnectionLogLevel } from '../common/mcpServiceTypes.js';
@@ -220,13 +220,21 @@ export class MCPChannel implements IServerChannel {
 				}
 			}
 		} else if (server.command) {
-			// console.log('ENV DATA: ', server.env)
+			// SECURITY: do not spread the full process.env here. This previously passed the
+			// IDE's entire host environment - every secret/token/API key present in whatever
+			// shell launched the IDE - to every stdio MCP server process, including
+			// third-party servers a user just installed. getDefaultEnvironment() is the MCP
+			// SDK's own documented safe default (HOME/PATH/SHELL/etc. on POSIX, the Windows
+			// equivalent on win32 - "inspired by the default env inheritance of sudo") and is
+			// what StdioClientTransport already falls back to on its own if no `env` override
+			// is passed at all; calling it explicitly here keeps that same safe baseline while
+			// still layering the user's own server.env config on top.
 			transport = new StdioClientTransport({
 				command: server.command,
 				args: server.args,
 				env: {
+					...getDefaultEnvironment(),
 					...server.env,
-					...process.env
 				} as Record<string, string>,
 			});
 
