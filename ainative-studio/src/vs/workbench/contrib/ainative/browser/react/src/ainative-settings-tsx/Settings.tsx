@@ -22,7 +22,8 @@ import { ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsSer
 import Severity from '../../../../../../../base/common/severity.js'
 import { getModelCapabilities, modelOverrideKeys, ModelOverrides } from '../../../../common/modelCapabilities.js';
 import { TransferEditorType, TransferFilesInfo } from '../../../extensionTransferTypes.js';
-import { MCPServer, MCPConnectionLogEntry } from '../../../../common/mcpServiceTypes.js';
+import { MCPServer, MCPConnectionLogEntry, MCPRegistryEntry, getMCPRegistry } from '../../../../common/mcpServiceTypes.js';
+import { Card } from '../primitives/Card.js';
 import { Button } from '../primitives/Button.js'
 import { useMCPServiceState } from '../util/services.js';
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js';
@@ -38,6 +39,101 @@ type Tab =
 	| 'general'
 	| 'all';
 
+
+// MCP server registry install flow (#176). installFromRegistry() has existed and been tested
+// since commit 849e3b4e, but had no UI consumer - a user could still only add a server by
+// hand-editing mcp.json. This is a small modal: pick a server from the curated built-in
+// registry, fill in any env vars it needs (#176's "approved-environment-variable tracking" -
+// since the user types the exact value for the exact key a server declares it needs here, and
+// that's the only way any env var reaches a server process after tonight's getDefaultEnvironment()
+// fix, this collection step IS the approval - there is no separate "approved" state to track
+// beyond what the user explicitly typed into this form), then install.
+const MCPRegistryPickerModal = ({ onClose }: { onClose: () => void }) => {
+	const accessor = useAccessor()
+	const mcpService = accessor.get('IMCPService')
+
+	const [selectedEntry, setSelectedEntry] = useState<MCPRegistryEntry | null>(null)
+	const [envValues, setEnvValues] = useState<Record<string, string>>({})
+	const [isInstalling, setIsInstalling] = useState(false)
+	const [installError, setInstallError] = useState<string | null>(null)
+
+	const registry = useMemo(() => getMCPRegistry(), [])
+
+	const handleInstall = useCallback(async () => {
+		if (!selectedEntry) return
+		setIsInstalling(true)
+		setInstallError(null)
+		try {
+			const entryWithEnv: MCPRegistryEntry = (selectedEntry.requiredEnvVars?.length ?? 0) > 0
+				? { ...selectedEntry, config: { ...selectedEntry.config, env: { ...selectedEntry.config.env, ...envValues } } }
+				: selectedEntry
+			const result = await mcpService.installFromRegistry(entryWithEnv)
+			if (!result.ok) {
+				setInstallError(result.error)
+				return
+			}
+			onClose()
+		} finally {
+			setIsInstalling(false)
+		}
+	}, [selectedEntry, envValues, mcpService, onClose])
+
+	return (
+		<div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40' onClick={onClose}>
+			<div className='bg-ainative-bg-1 border border-ainative-border-2 rounded-xl p-5 w-[520px] max-h-[80vh] overflow-y-auto' onClick={e => e.stopPropagation()}>
+				<h2 className='text-xl font-medium text-ainative-fg-0 mb-3'>Install an MCP server</h2>
+
+				{!selectedEntry ? (
+					<div className='flex flex-col gap-2'>
+						{registry.map(entry => (
+							<Card key={entry.id} interactive onClick={() => setSelectedEntry(entry)} className='!p-3'>
+								<div className='flex items-center justify-between'>
+									<div>
+										<div className='text-root font-medium text-ainative-fg-0'>{entry.displayName}</div>
+										<div className='text-xs text-ainative-fg-3'>{entry.description}</div>
+									</div>
+									{(entry.requiredEnvVars?.length ?? 0) > 0 && (
+										<span className='text-xs text-ainative-warning whitespace-nowrap ml-3'>Needs {entry.requiredEnvVars!.length} key{entry.requiredEnvVars!.length > 1 ? 's' : ''}</span>
+									)}
+								</div>
+							</Card>
+						))}
+					</div>
+				) : (
+					<div className='flex flex-col gap-3'>
+						<div className='text-root text-ainative-fg-1'>{selectedEntry.description}</div>
+						{(selectedEntry.requiredEnvVars?.length ?? 0) > 0 && (
+							<div className='flex flex-col gap-2'>
+								{selectedEntry.requiredEnvVars!.map(envVar => (
+									<div key={envVar} className='flex flex-col gap-1'>
+										<label className='text-xs font-mono text-ainative-fg-2'>{envVar}</label>
+										<input
+											type='password'
+											value={envValues[envVar] ?? ''}
+											onChange={e => setEnvValues(prev => ({ ...prev, [envVar]: e.target.value }))}
+											className='px-3 py-1.5 rounded-lg border border-ainative-border-2 bg-ainative-bg-1 text-root font-mono text-ainative-fg-1'
+										/>
+									</div>
+								))}
+							</div>
+						)}
+						{installError && <div className='text-root text-ainative-error'>{installError}</div>}
+						<div className='flex items-center gap-2 justify-end'>
+							<Button variant='ghost' onClick={() => setSelectedEntry(null)}>Back</Button>
+							<Button
+								variant='primary'
+								onClick={handleInstall}
+								disabled={isInstalling || (selectedEntry.requiredEnvVars ?? []).some(v => !envValues[v]?.trim())}
+							>
+								{isInstalling ? 'Installing…' : 'Install'}
+							</Button>
+						</div>
+					</div>
+				)}
+			</div>
+		</div>
+	)
+}
 
 // Steering docs (#161): lets a user discover, create, and open .ainative/steering/*.md files
 // from Settings instead of needing to know they exist and hand-create them via a terminal or
@@ -1358,6 +1454,7 @@ export const Settings = () => {
 	const isDark = useIsDark()
 	const auth = useAINativeAuth()
 	const [showLoginModal, setShowLoginModal] = useState(false)
+	const [showRegistryPicker, setShowRegistryPicker] = useState(false)
 
 	// ─── sidebar nav ──────────────────────────
 	const [selectedSection, setSelectedSection] =
@@ -1937,11 +2034,15 @@ Alternatively, place a \`.ainativerules\` file in the root of your workspace.
 Use Model Context Protocol to provide Agent mode with more tools.
 							`} chatMessageLocation={undefined} />
 									</h4>
-									<div className='my-2 flex items-center justify-between'>
-										<AINativeButtonBgDarken className='px-4 py-1 w-full max-w-48' onClick={async () => { await mcpService.revealMCPConfigFile() }}>
-											Add MCP Server
+									<div className='my-2 flex items-center gap-2'>
+										<Button variant='primary' onClick={() => setShowRegistryPicker(true)}>
+											Install from registry
+										</Button>
+										<AINativeButtonBgDarken className='px-4 py-1' onClick={async () => { await mcpService.revealMCPConfigFile() }}>
+											Add MCP Server manually
 										</AINativeButtonBgDarken>
 									</div>
+									{showRegistryPicker && <MCPRegistryPickerModal onClose={() => setShowRegistryPicker(false)} />}
 
 									<ErrorBoundary>
 										<MCPServersList />
