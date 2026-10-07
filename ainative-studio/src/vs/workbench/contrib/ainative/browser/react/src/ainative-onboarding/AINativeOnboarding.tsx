@@ -653,6 +653,11 @@ const TwoLastThingsPage = ({ pageIndex, setPageIndex, mode }: { pageIndex: numbe
 					<PreviousButton onClick={() => { setPageIndex(pageIndex - 1) }} />
 					<PrimaryActionButton
 						onClick={() => {
+							// Seeds the real Vibe Coder Mode layout toggle (⌘⇧V,
+							// vibeCoderModeActions.ts) from this step's choice - this sets only
+							// the *initial* mode; the toggle is the ongoing source of truth
+							// afterward, same as the mode-choice step's own local `mode` state.
+							voidSettingsService.setGlobalSetting('isVibeCoderMode', mode === 'vibe');
 							voidSettingsService.setGlobalSetting('isOnboardingComplete', true);
 							voidMetricsService.capture('Completed Onboarding', { mode })
 						}}

@@ -527,6 +527,12 @@ export type GlobalSettings = {
 	/** Hooks (#162): when true, a notification suggesting a one-line summary
 	 * is shown after each git commit. First built-in hook; see HOOKS_DESIGN.md. */
 	enableCommitMessageHook: boolean;
+	/** Vibe Coder Mode, per the redesign (docs/design/handoff README "Vibe Coder Mode"):
+	 * hides the sidebar/panel/activity bar/editor-tab chrome via IWorkbenchLayoutService so
+	 * the chat surface runs near-full-screen. Persisted (not just onboarding's initial-mode
+	 * choice) since toggling is a core supported path, not a one-time decision - see
+	 * vibeCoderModeActions.ts for the ⌘⇧V toggle that flips this. */
+	isVibeCoderMode: boolean;
 }
 
 export const defaultManagedAPISettings: ManagedAPISettings = {
@@ -555,6 +561,7 @@ export const defaultGlobalSettings: GlobalSettings = {
 	autoAcceptLLMChanges: false,
 	managedAPI: defaultManagedAPISettings,
 	enableCommitMessageHook: false,
+	isVibeCoderMode: false,
 }
 
 export type GlobalSettingName = keyof GlobalSettings

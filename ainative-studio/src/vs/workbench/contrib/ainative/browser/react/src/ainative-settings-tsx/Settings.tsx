@@ -1692,6 +1692,26 @@ export const Settings = () => {
 
 							{/* General section */}
 							<div className={`${shouldShowTab('general') ? `` : 'hidden'} flex flex-col gap-12`}>
+								{/* Vibe Coder Mode section */}
+								<div>
+									<ErrorBoundary>
+										<h2 className='text-3xl mb-2'>Vibe Coder Mode</h2>
+										<h4 className='text-ainative-fg-3 mb-4'>{`A simplified, chat-first layout - hides the file tree, activity bar, and terminal panel so chat is the main surface. Toggle any time with `}<span className='font-mono'>{os === 'mac' ? '⌘⇧V' : 'Ctrl+Shift+V'}</span>{`.`}</h4>
+										<div className='flex items-center gap-x-2'>
+											<AINativeSwitch
+												size='xs'
+												value={!!settingsState.globalSettings.isVibeCoderMode}
+												onChange={(newValue) => {
+													voidSettingsService.setGlobalSetting('isVibeCoderMode', newValue);
+												}}
+											/>
+											<span className='text-ainative-fg-3 text-xs pointer-events-none'>
+												{'Enable Vibe Coder Mode'}
+											</span>
+										</div>
+									</ErrorBoundary>
+								</div>
+
 								{/* One-Click Switch section */}
 								<div>
 									<ErrorBoundary>

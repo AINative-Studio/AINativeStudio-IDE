@@ -34,6 +34,9 @@ import './media/ainative.css'
 // update (frontend part, also see platform/)
 import './ainativeUpdateActions.js'
 
+// Vibe Coder Mode (redesign phase 9): simplified, chat-first layout toggle
+import './vibeCoderModeActions.js'
+
 import './convertToLLMMessageWorkbenchContrib.js'
 
 // tools

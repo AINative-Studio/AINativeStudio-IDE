@@ -48,3 +48,7 @@ export const VOID_ACCEPT_ALL_DIFFS_ACTION_ID = AINATIVE_ACCEPT_ALL_DIFFS_ACTION_
 export const AINATIVE_REJECT_ALL_DIFFS_ACTION_ID = 'ainative.rejectAllDiffs'
 /** @deprecated Legacy alias for backward compatibility. Use AINATIVE_REJECT_ALL_DIFFS_ACTION_ID instead. */
 export const VOID_REJECT_ALL_DIFFS_ACTION_ID = AINATIVE_REJECT_ALL_DIFFS_ACTION_ID
+
+// Vibe Coder Mode (redesign phase 9) - toggles the simplified, chat-first layout.
+// See vibeCoderModeActions.ts.
+export const AINATIVE_TOGGLE_VIBE_CODER_MODE_ACTION_ID = 'ainative.toggleVibeCoderMode'
