@@ -235,6 +235,11 @@ export class AINativeAuthService extends Disposable implements IAINativeSessionA
 	private _isTokenExpired(token: string): boolean {
 		try {
 			const claims = this._decodeJWT(token);
+			// A token with no exp claim at all must be treated as expired, not as "never
+			// expires": `undefined < now` evaluates to false in JS (any comparison against
+			// undefined is false, via NaN coercion), so without this explicit check a malformed
+			// token missing exp would be accepted as permanently valid - fail closed instead.
+			if (typeof claims.exp !== 'number') return true;
 			const now = Math.floor(Date.now() / 1000);
 			return claims.exp < now;
 		} catch {

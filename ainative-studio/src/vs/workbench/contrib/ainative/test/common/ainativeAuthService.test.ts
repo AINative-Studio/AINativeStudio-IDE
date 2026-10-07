@@ -183,33 +183,42 @@ function createMockJWT(claims: Partial<JWTClaims>): string {
  */
 const originalFetch = global.fetch;
 
+/**
+ * Builds a successful /v1/auth/login-json response, or undefined if the URL doesn't match.
+ * Every test that needs both a login and a second operation (logout, refresh, etc.) calls
+ * mockLoginSuccess() followed by that operation's own mock() - each mock*() function fully
+ * replaces global.fetch, so without this shared helper, the second call's mock would only know
+ * how to handle its own URL and 404 on login-json, breaking the login() call the test makes
+ * first. Each combined mock below calls this before falling back to its own single-purpose check.
+ */
+function loginSuccessResponse(url: string): Response | undefined {
+	if (!url.includes('/v1/auth/login-json')) return undefined;
+
+	const accessToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 3600 });
+	const refreshToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 7200 });
+
+	return {
+		ok: true,
+		status: 200,
+		json: async () => ({
+			access_token: accessToken,
+			refresh_token: refreshToken,
+			user: {
+				id: 'user-123',
+				email: 'test@ainative.studio',
+				name: 'Test User',
+				role: 'user',
+				created_at: '2025-01-01T00:00:00Z',
+				updated_at: '2025-01-01T00:00:00Z'
+			}
+		})
+	} as Response;
+}
+
 function mockLoginSuccess(): void {
 	global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		const url = typeof input === 'string' ? input : input.toString();
-
-		if (url.includes('/v1/auth/login-json')) {
-			const accessToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 3600 });
-			const refreshToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 7200 });
-
-			return {
-				ok: true,
-				status: 200,
-				json: async () => ({
-					access_token: accessToken,
-					refresh_token: refreshToken,
-					user: {
-						id: 'user-123',
-						email: 'test@ainative.studio',
-						name: 'Test User',
-						role: 'user',
-						created_at: '2025-01-01T00:00:00Z',
-						updated_at: '2025-01-01T00:00:00Z'
-					}
-				})
-			} as Response;
-		}
-
-		return { ok: false, status: 404 } as Response;
+		return loginSuccessResponse(url) ?? ({ ok: false, status: 404 } as Response);
 	};
 }
 
@@ -239,6 +248,9 @@ function mockLogoutSuccess(): void {
 	global.fetch = async (input: RequestInfo | URL): Promise<Response> => {
 		const url = typeof input === 'string' ? input : input.toString();
 
+		const loginResponse = loginSuccessResponse(url);
+		if (loginResponse) return loginResponse;
+
 		if (url.includes('/v1/auth/logout')) {
 			return {
 				ok: true,
@@ -255,8 +267,16 @@ function mockRefreshTokenSuccess(): void {
 	global.fetch = async (input: RequestInfo | URL): Promise<Response> => {
 		const url = typeof input === 'string' ? input : input.toString();
 
+		const loginResponse = loginSuccessResponse(url);
+		if (loginResponse) return loginResponse;
+
 		if (url.includes('/v1/auth/refresh')) {
-			const newAccessToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 3600 });
+			// A different exp than mockLoginSuccess's access token (+3600) so the refreshed
+			// token is guaranteed to differ, not just different "most of the time" - the two
+			// calls can land in the same wall-clock second within one fast-running test, at
+			// which point every other claim (sub/email/role) is identical too, producing a
+			// byte-identical token purely by timing coincidence rather than real behavior.
+			const newAccessToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 7200 });
 
 			return {
 				ok: true,
