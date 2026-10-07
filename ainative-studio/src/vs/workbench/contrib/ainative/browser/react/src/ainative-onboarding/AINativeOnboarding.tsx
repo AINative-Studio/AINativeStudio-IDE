@@ -8,7 +8,7 @@ import { useAccessor, useAINativeAuth, useIsDark, useSettingsState } from '../ut
 import { Brain, Check, ChevronRight, DollarSign, ExternalLink, Lock, Terminal, X } from 'lucide-react';
 import { displayInfoOfProviderName, ProviderName, providerNames, localProviderNames, featureNames, FeatureName, isFeatureNameDisabled } from '../../../../common/ainativeSettingsTypes.js';
 import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js';
-import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, ModelDump } from '../ainative-settings-tsx/Settings.js';
+import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, ModelDump, AnimatedCheckmarkButton } from '../ainative-settings-tsx/Settings.js';
 import { AINativeLoginModal } from '../ainative-settings-tsx/AINativeLoginModal.js';
 import { AINativeButtonBgDarken } from '../util/inputs.js';
 import { ColorScheme } from '../../../../../../../platform/theme/common/theme.js';
@@ -498,58 +498,137 @@ const PrimaryActionButton = ({ children, className, ringSize, ...props }: { chil
 // so this step only needs to trigger it and let it report its own outcome.
 const INSTALL_SHELL_COMMAND_ID = 'workbench.action.installCommandLine'
 
-const ShellSetupPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPageIndex: (index: number) => void }) => {
+/**
+ * Step 3, "Two last things" per the redesign. Both rows are genuinely one-shot actions in
+ * this codebase today (IExtensionTransferService.transferExtensions and the shell-install
+ * command each run immediately on click, with their own in-progress/done states) - rather
+ * than fake a deferred Switch that doesn't actually defer anything, each row is a real
+ * action row with a status indicator, which is the honest equivalent of "default on" here:
+ * the row reads as done once the action completes, same end state the spec's toggle implies.
+ */
+const TwoLastThingsPage = ({ pageIndex, setPageIndex, mode }: { pageIndex: number, setPageIndex: (index: number) => void, mode: WorkMode }) => {
 	const accessor = useAccessor()
 	const commandService = accessor.get('ICommandService')
+	const voidSettingsService = accessor.get('IAINativeSettingsService')
+	const voidSettingsState = useSettingsState()
 	const voidMetricsService = accessor.get('IMetricsService')
 
-	const [isInstalling, setIsInstalling] = useState(false)
+	const [isInstallingShell, setIsInstallingShell] = useState(false)
+	const [shellInstalled, setShellInstalled] = useState(false)
 
-	const onInstall = async () => {
-		setIsInstalling(true)
+	const onInstallShell = async () => {
+		setIsInstallingShell(true)
 		try {
 			await commandService.executeCommand(INSTALL_SHELL_COMMAND_ID)
 			voidMetricsService.capture('Onboarding - Installed Shell Command', {})
+			setShellInstalled(true)
 		} catch (e) {
 			// InstallShellScriptAction already shows its own error dialog on failure
 			// (and silently no-ops on user cancellation), so there's nothing more to surface here.
 		} finally {
-			setIsInstalling(false)
+			setIsInstallingShell(false)
 		}
 	}
 
 	return <OnboardingPageShell
 		content={
-			<div className='flex flex-col items-center gap-8 text-center'>
-				<Terminal className='w-16 h-16 opacity-80' />
+			<div className='flex flex-col items-center gap-6 w-full max-w-md mx-auto'>
+				<div className="text-4xl font-medium text-center -tracking-[0.02em]">Two last things.</div>
 
-				<div className="text-5xl font-light text-center">Set up shell</div>
+				<div className='w-full flex flex-col gap-3'>
+					<div className='flex items-center justify-between gap-4 rounded-xl border border-ainative-border-1 bg-ainative-bg-2 p-4'>
+						<div className='flex items-center gap-3 min-w-0'>
+							<Terminal className='w-5 h-5 flex-shrink-0 opacity-80' />
+							<div className='text-root text-ainative-fg-1'>Install the ainative command</div>
+						</div>
+						<AINativeButtonBgDarken
+							className='flex-shrink-0 px-3 py-1.5 text-sm'
+							disabled={isInstallingShell || shellInstalled}
+							onClick={onInstallShell}
+						>
+							{shellInstalled ? <AnimatedCheckmarkButton text='Installed' className='bg-none' /> : isInstallingShell ? 'Installing…' : 'Install'}
+						</AINativeButtonBgDarken>
+					</div>
 
-				<div className="text-ainative-fg-3 max-w-md mx-auto">
-					This integrates AINative Studio with your shell and allows you to open files and projects from the terminal.
+					<div className='rounded-xl border border-ainative-border-1 bg-ainative-bg-2 p-4'>
+						<div className='flex items-center gap-3 min-w-0 mb-3'>
+							<div className='text-root text-ainative-fg-1'>Import VS Code settings</div>
+						</div>
+						<div className='flex flex-wrap gap-2'>
+							<OneClickSwitchButton className='w-auto px-3 py-1.5' fromEditor="VS Code" />
+							<OneClickSwitchButton className='w-auto px-3 py-1.5' fromEditor="Cursor" />
+							<OneClickSwitchButton className='w-auto px-3 py-1.5' fromEditor="Windsurf" />
+						</div>
+					</div>
 				</div>
-
-				<PrimaryActionButton
-					onClick={onInstall}
-					disabled={isInstalling}
-					className={isInstalling ? 'opacity-60 cursor-not-allowed' : ''}
-				>
-					{isInstalling ? 'Installing...' : `Install 'ainative' command`}
-				</PrimaryActionButton>
 			</div>
 		}
 		bottom={
 			<div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
 				<div className="flex items-center gap-2">
 					<PreviousButton onClick={() => { setPageIndex(pageIndex - 1) }} />
-					<SkipButton onClick={() => { setPageIndex(pageIndex + 1) }} />
+					<PrimaryActionButton
+						onClick={() => {
+							voidSettingsService.setGlobalSetting('isOnboardingComplete', true);
+							voidMetricsService.capture('Completed Onboarding', { mode })
+						}}
+						ringSize={voidSettingsState.globalSettings.isOnboardingComplete ? 'screen' : undefined}
+					>
+						{mode === 'vibe' ? 'Open in Vibe mode' : 'Open AINative'}
+					</PrimaryActionButton>
 				</div>
 			</div>
 		}
 	/>
 }
 
-type WantToUseOption = 'smart' | 'private' | 'cheap' | 'all'
+/**
+ * Step 1, "How do you want to work?" per the redesign (docs/design/handoff README
+ * "Onboarding"). Sets only the *initial* mode - a starting point, not a lock-in; the user
+ * can switch between the IDE and Vibe Coder Mode at any time afterward (⌘⇧V).
+ */
+type WorkMode = 'developer' | 'vibe'
+
+const ModeChoicePage = ({ pageIndex, setPageIndex, mode, setMode }: { pageIndex: number, setPageIndex: (index: number) => void, mode: WorkMode, setMode: (mode: WorkMode) => void }) => {
+	const options: { mode: WorkMode, title: string, body: string }[] = [
+		{ mode: 'developer', title: `I'm a developer`, body: `Full IDE: file tree, editor, terminal, and the chat side bar.` },
+		{ mode: 'vibe', title: `I just want to build something`, body: `A chat-first, natural-language surface. You can switch to the IDE any time.` },
+	]
+
+	return <OnboardingPageShell
+		content={
+			<div className='flex flex-col items-center gap-8 w-full max-w-2xl mx-auto'>
+				<div className="text-4xl font-medium text-center -tracking-[0.02em]">How do you want to work?</div>
+
+				<div className='grid grid-cols-1 md:grid-cols-2 gap-4 w-full'>
+					{options.map(opt => {
+						const selected = mode === opt.mode
+						return (
+							<button
+								key={opt.mode}
+								type='button'
+								onClick={() => setMode(opt.mode)}
+								className={`text-left rounded-xl border p-5 transition-colors
+									${selected ? 'border-ainative-accent bg-ainative-accent-bg' : 'border-ainative-border-1 bg-ainative-bg-2 hover:bg-ainative-bg-3'}`}
+							>
+								<div className='text-lg font-medium text-ainative-fg-0 mb-1'>{opt.title}</div>
+								<div className='text-root text-ainative-fg-2'>{opt.body}</div>
+							</button>
+						)
+					})}
+				</div>
+			</div>
+		}
+		bottom={
+			<div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
+				<div className="flex items-center gap-2">
+					<SkipButton onClick={() => { setPageIndex(pageIndex + 1) }}>Skip setup</SkipButton>
+					<PrimaryActionButton onClick={() => { setPageIndex(pageIndex + 1) }}>Continue</PrimaryActionButton>
+				</div>
+			</div>
+		}
+	/>
+}
 
 const AINativeOnboardingContent = () => {
 
@@ -564,111 +643,11 @@ const AINativeOnboardingContent = () => {
 
 	const [pageIndex, setPageIndex] = useState(0)
 
-
-	// page 1 state
-	const [wantToUseOption, setWantToUseOption] = useState<WantToUseOption>('smart')
-
-	// Replace the single selectedProviderName with four separate states
-	// page 2 state - each tab gets its own state
-	const [selectedIntelligentProvider, setSelectedIntelligentProvider] = useState<ProviderName>('anthropic');
-	const [selectedPrivateProvider, setSelectedPrivateProvider] = useState<ProviderName>('ollama');
-	const [selectedAffordableProvider, setSelectedAffordableProvider] = useState<ProviderName>('gemini');
-	const [selectedAllProvider, setSelectedAllProvider] = useState<ProviderName>('anthropic');
-
-	// Helper function to get the current selected provider based on active tab
-	const getSelectedProvider = (): ProviderName => {
-		switch (wantToUseOption) {
-			case 'smart': return selectedIntelligentProvider;
-			case 'private': return selectedPrivateProvider;
-			case 'cheap': return selectedAffordableProvider;
-			case 'all': return selectedAllProvider;
-		}
-	}
-
-	// Helper function to set the selected provider for the current tab
-	const setSelectedProvider = (provider: ProviderName) => {
-		switch (wantToUseOption) {
-			case 'smart': setSelectedIntelligentProvider(provider); break;
-			case 'private': setSelectedPrivateProvider(provider); break;
-			case 'cheap': setSelectedAffordableProvider(provider); break;
-			case 'all': setSelectedAllProvider(provider); break;
-		}
-	}
-
-	const providerNamesOfWantToUseOption: { [wantToUseOption in WantToUseOption]: ProviderName[] } = {
-		smart: ['anthropic', 'openAI', 'gemini', 'openRouter'],
-		private: ['ollama', 'vLLM', 'openAICompatible', 'lmStudio'],
-		cheap: ['gemini', 'deepseek', 'openRouter', 'ollama', 'vLLM'],
-		all: providerNames,
-	}
-
-
-	const selectedProviderName = getSelectedProvider();
-	const didFillInProviderSettings = selectedProviderName && voidSettingsState.settingsOfProvider[selectedProviderName]._didFillInProviderSettings
-	const isApiKeyLongEnoughIfApiKeyExists = selectedProviderName && voidSettingsState.settingsOfProvider[selectedProviderName].apiKey ? voidSettingsState.settingsOfProvider[selectedProviderName].apiKey.length > 15 : true
-	const isAtLeastOneModel = selectedProviderName && voidSettingsState.settingsOfProvider[selectedProviderName].models.length >= 1
-
-	const didFillInSelectedProviderSettings = !!(didFillInProviderSettings && isApiKeyLongEnoughIfApiKeyExists && isAtLeastOneModel)
-
-	const prevAndNextButtons = <div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
-		<div className="flex items-center gap-2">
-			<PreviousButton
-				onClick={() => { setPageIndex(pageIndex - 1) }}
-			/>
-			<NextButton
-				onClick={() => { setPageIndex(pageIndex + 1) }}
-			/>
-		</div>
-	</div>
-
-
-	const lastPagePrevAndNextButtons = <div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
-		<div className="flex items-center gap-2">
-			<PreviousButton
-				onClick={() => { setPageIndex(pageIndex - 1) }}
-			/>
-			<PrimaryActionButton
-				onClick={() => {
-					voidSettingsService.setGlobalSetting('isOnboardingComplete', true);
-					voidMetricsService.capture('Completed Onboarding', { selectedProviderName, wantToUseOption })
-				}}
-				ringSize={voidSettingsState.globalSettings.isOnboardingComplete ? 'screen' : undefined}
-			>Enter AINative Studio</PrimaryActionButton>
-		</div>
-	</div>
-
-
-	// cannot be md
-	const basicDescOfWantToUseOption: { [wantToUseOption in WantToUseOption]: string } = {
-		smart: "Models with the best performance on benchmarks.",
-		private: "Host on your computer or local network for full data privacy.",
-		cheap: "Free and affordable options.",
-		all: "",
-	}
-
-	// can be md
-	const detailedDescOfWantToUseOption: { [wantToUseOption in WantToUseOption]: string } = {
-		smart: "Most intelligent and best for agent mode.",
-		private: "Private-hosted so your data never leaves your computer or network. [Email us](mailto:founders@ainative.studio) for help setting up at your company.",
-		cheap: "Use great deals like Gemini 2.5 Pro, or self-host a model with Ollama or vLLM for free.",
-		all: "",
-	}
-
-	// Modified: initialize separate provider states on initial render instead of watching wantToUseOption changes
-	useEffect(() => {
-		if (selectedIntelligentProvider === undefined) {
-			setSelectedIntelligentProvider(providerNamesOfWantToUseOption['smart'][0]);
-		}
-		if (selectedPrivateProvider === undefined) {
-			setSelectedPrivateProvider(providerNamesOfWantToUseOption['private'][0]);
-		}
-		if (selectedAffordableProvider === undefined) {
-			setSelectedAffordableProvider(providerNamesOfWantToUseOption['cheap'][0]);
-		}
-		if (selectedAllProvider === undefined) {
-			setSelectedAllProvider(providerNamesOfWantToUseOption['all'][0]);
-		}
-	}, []);
+	// Step 1's mode choice (docs/design/handoff README "Onboarding"). Developer preselected,
+	// per spec. This sets only the *initial* mode - the user can switch to/from Vibe Coder
+	// Mode at any time afterward (⌘⇧V), so it's intentionally local state, not persisted
+	// settings, mirroring how the spec describes onboarding as "sets the initial mode only."
+	const [mode, setMode] = useState<WorkMode>('developer')
 
 	// reset the page to page 0 if the user redos onboarding
 	useEffect(() => {
@@ -717,7 +696,9 @@ const AINativeOnboardingContent = () => {
 			}
 		/>,
 
-		1: <OnboardingPageShell hasMaxWidth={false}
+		1: <ModeChoicePage pageIndex={pageIndex} setPageIndex={setPageIndex} mode={mode} setMode={setMode} />,
+
+		2: <OnboardingPageShell hasMaxWidth={false}
 			content={
 				<AddProvidersPage pageIndex={pageIndex} setPageIndex={setPageIndex} />
 			}
@@ -725,23 +706,7 @@ const AINativeOnboardingContent = () => {
 		// Shell integration is installable on macOS, Linux, and Windows
 		// (see installActions.ts / nativeHostMainService.ts), so this step
 		// is shown on all platforms.
-		2: <ShellSetupPage pageIndex={pageIndex} setPageIndex={setPageIndex} />,
-		3: <OnboardingPageShell
-
-			content={
-				<div>
-					<div className="text-5xl font-light text-center">Settings and Themes</div>
-
-					<div className="mt-8 text-center flex flex-col items-center gap-4 w-full max-w-md mx-auto">
-						<h4 className="text-ainative-fg-3 mb-4">Transfer your settings from an existing editor?</h4>
-						<OneClickSwitchButton className='w-full px-4 py-2' fromEditor="VS Code" />
-						<OneClickSwitchButton className='w-full px-4 py-2' fromEditor="Cursor" />
-						<OneClickSwitchButton className='w-full px-4 py-2' fromEditor="Windsurf" />
-					</div>
-				</div>
-			}
-			bottom={lastPagePrevAndNextButtons}
-		/>,
+		3: <TwoLastThingsPage pageIndex={pageIndex} setPageIndex={setPageIndex} mode={mode} />,
 	}
 
 
@@ -769,9 +734,11 @@ const AINativeOnboardingContent = () => {
 				onClose={() => { setShowLoginModal(false) }}
 				onSuccess={() => {
 					setShowLoginModal(false)
-					// Session auth doesn't provision a chat-completions API key on its own today -
-					// take the user straight to the provider step, where "Add AINative Cloud" is
-					// already listed, so they can paste the key from app.ainative.studio.
+					// Same as the unauthenticated "Skip" path below: continue to the mode-choice
+					// step rather than skip it, so the exit destination (Welcome vs. Vibe mode)
+					// still gets set. The provider step after it already lists "Add AINative
+					// Cloud" for pasting the key from app.ainative.studio - session auth doesn't
+					// provision a chat-completions API key on its own today.
 					setPageIndex(1)
 				}}
 			/>
