@@ -230,7 +230,7 @@ suite('AgentMemoryService', () => {
 		});
 
 		const events: MemoryEntry[] = [];
-		service.onDidStoreMemory(e => events.push(e));
+		disposables.add(service.onDidStoreMemory(e => events.push(e)));
 
 		await service.storeMemory('test', 'user', { tag: 'important' });
 
@@ -257,16 +257,22 @@ suite('AgentMemoryService', () => {
 	});
 
 	test('should use default limit for search', async () => {
-		let capturedUrl: string = '';
+		// searchMemory is a POST - limit travels in the JSON request body, not a URL query
+		// string (unlike getContext below, a GET that does use query params - the two methods
+		// use different HTTP verbs and correspondingly different parameter conventions, both
+		// internally consistent). Capture the real request body instead of checking the URL for
+		// a query param that was never going to be there.
+		let capturedBody: string = '';
 
-		global.fetch = (async (url: string) => {
-			capturedUrl = url;
+		global.fetch = (async (url: string, init?: RequestInit) => {
+			capturedBody = typeof init?.body === 'string' ? init.body : '';
 			return new Response(JSON.stringify({ results: [] }), { status: 200 });
 		}) as any;
 
 		await service.searchMemory('query');
 
-		ok(capturedUrl.includes('limit'), 'URL should include limit parameter');
+		const parsedBody = JSON.parse(capturedBody);
+		strictEqual(parsedBody.limit, 10, 'Request body should include the default limit');
 	});
 
 	test('should handle empty search results', async () => {
