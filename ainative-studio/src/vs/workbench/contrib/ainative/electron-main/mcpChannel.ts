@@ -13,7 +13,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { MCPConfigFileJSON, MCPConfigFileEntryJSON, MCPServer, RawMCPToolCall, MCPToolErrorResponse, MCPServerEventResponse, MCPToolCallParams, removeMCPToolNamePrefix } from '../common/mcpServiceTypes.js';
+import { MCPConfigFileJSON, MCPConfigFileEntryJSON, MCPServer, RawMCPToolCall, MCPToolErrorResponse, MCPServerEventResponse, MCPToolCallParams, removeMCPToolNamePrefix, MCPConnectionLogEntry, MCPConnectionLogLevel } from '../common/mcpServiceTypes.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { MCPUserStateOfName } from '../common/ainativeSettingsTypes.js';
@@ -45,10 +45,13 @@ type InfoOfClientId = {
 	[clientId: string]: ClientInfo
 }
 
+const MAX_CONNECTION_LOG_ENTRIES = 500;
+
 export class MCPChannel implements IServerChannel {
 
 	private readonly infoOfClientId: InfoOfClientId = {}
 	private readonly _refreshingServerNames: Set<string> = new Set()
+	private readonly _connectionLog: MCPConnectionLogEntry[] = []
 
 	// mcp emitters
 	private readonly mcpEmitters = {
@@ -56,17 +59,35 @@ export class MCPChannel implements IServerChannel {
 			onAdd: new Emitter<MCPServerEventResponse>(),
 			onUpdate: new Emitter<MCPServerEventResponse>(),
 			onDelete: new Emitter<MCPServerEventResponse>(),
-		}
+		},
+		onConnectionLog: new Emitter<MCPConnectionLogEntry>(),
 	} satisfies {
 		serverEvent: {
 			onAdd: Emitter<MCPServerEventResponse>,
 			onUpdate: Emitter<MCPServerEventResponse>,
 			onDelete: Emitter<MCPServerEventResponse>,
-		}
+		},
+		onConnectionLog: Emitter<MCPConnectionLogEntry>,
 	}
 
 	constructor(
 	) { }
+
+	/**
+	 * Records a connection/transport-level event (#176's connection log viewer) and keeps the
+	 * existing console output unchanged - this is additive, not a replacement for the console
+	 * log that's useful when debugging via a terminal attached to the main process directly.
+	 */
+	private _log(serverName: string, level: MCPConnectionLogLevel, message: string) {
+		if (level === 'error') console.error(message);
+		else if (level === 'warn') console.warn(message);
+		else console.log(message);
+
+		const entry: MCPConnectionLogEntry = { timestamp: Date.now(), serverName, level, message };
+		this._connectionLog.push(entry);
+		if (this._connectionLog.length > MAX_CONNECTION_LOG_ENTRIES) this._connectionLog.shift();
+		this.mcpEmitters.onConnectionLog.fire(entry);
+	}
 
 	// browser uses this to listen for changes
 	listen(_: unknown, event: string): Event<any> {
@@ -75,6 +96,7 @@ export class MCPChannel implements IServerChannel {
 		if (event === 'onAdd_server') return this.mcpEmitters.serverEvent.onAdd.event;
 		else if (event === 'onUpdate_server') return this.mcpEmitters.serverEvent.onUpdate.event;
 		else if (event === 'onDelete_server') return this.mcpEmitters.serverEvent.onDelete.event;
+		else if (event === 'onConnectionLog') return this.mcpEmitters.onConnectionLog.event;
 		// else if (event === 'onLoading_server') return this.mcpEmitters.serverEvent.onChangeLoading.event;
 
 		// tool call events
@@ -99,6 +121,9 @@ export class MCPChannel implements IServerChannel {
 				const p: MCPToolCallParams = params
 				const response = await this._safeCallTool(p.serverName, p.toolName, p.params)
 				return response
+			}
+			else if (command === 'getConnectionLogs') {
+				return this._connectionLog.slice()
 			}
 			else {
 				throw new Error(`Void sendLLM: command "${command}" not recognized.`)
@@ -173,7 +198,7 @@ export class MCPChannel implements IServerChannel {
 			try {
 				transport = new StreamableHTTPClientTransport(server.url);
 				await client.connect(transport);
-				console.log(`Connected via HTTP to ${serverName}`);
+				this._log(serverName, 'info', `Connected via HTTP to ${serverName}`);
 				const { tools } = await client.listTools()
 				const toolsWithUniqueName = tools.map(({ name, ...rest }) => ({ name: this._addUniquePrefix(name), ...rest }))
 				info = {
@@ -182,12 +207,12 @@ export class MCPChannel implements IServerChannel {
 					command: server.url.toString(),
 				}
 			} catch (httpErr) {
-				console.warn(`HTTP failed for ${serverName}, trying SSE…`, httpErr);
+				this._log(serverName, 'warn', `HTTP failed for ${serverName}, trying SSE… ${httpErr}`);
 				transport = new SSEClientTransport(server.url);
 				await client.connect(transport);
 				const { tools } = await client.listTools()
 				const toolsWithUniqueName = tools.map(({ name, ...rest }) => ({ name: this._addUniquePrefix(name), ...rest }))
-				console.log(`Connected via SSE to ${serverName}`);
+				this._log(serverName, 'info', `Connected via SSE to ${serverName}`);
 				info = {
 					status: isOn ? 'success' : 'offline',
 					tools: toolsWithUniqueName,
@@ -206,6 +231,7 @@ export class MCPChannel implements IServerChannel {
 			});
 
 			await client.connect(transport)
+			this._log(serverName, 'info', `Connected via stdio to ${serverName}`);
 
 			// Get the tools from the server
 			const { tools } = await client.listTools()
@@ -238,7 +264,7 @@ export class MCPChannel implements IServerChannel {
 			const c: ClientInfo = await this._createClientUnsafe(serverConfig, serverName, isOn)
 			return c
 		} catch (err) {
-			console.error(`❌ Failed to connect to server "${serverName}":`, err)
+			this._log(serverName, 'error', `❌ Failed to connect to server "${serverName}": ${err}`);
 			const fullCommand = !serverConfig.command ? '' : `${serverConfig.command} ${serverConfig.args?.join(' ') || ''}`
 			const c: MCPServerError = { status: 'error', error: err + '', command: fullCommand, }
 			return { mcpServerEntryJSON: serverConfig, mcpServer: c, }
@@ -260,7 +286,7 @@ export class MCPChannel implements IServerChannel {
 		if (client) {
 			await client.close()
 		}
-		console.log(`Closed MCP server ${serverName}`);
+		this._log(serverName, 'info', `Closed MCP server ${serverName}`);
 	}
 
 

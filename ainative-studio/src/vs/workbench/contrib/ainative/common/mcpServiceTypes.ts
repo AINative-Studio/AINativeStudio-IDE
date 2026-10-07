@@ -165,6 +165,23 @@ export interface MCPConfigFileParseErrorResponse {
 	}
 }
 
+// CONNECTION LOG TYPES (#176 - connection log viewer) ------------------------------------------
+//
+// MCP connection/transport events (connect, disconnect, connection failure) only went to
+// console.log/console.error in the main process before this - never surfaced to the user. This
+// is a ring-buffer log the renderer can query via the same IPC channel ('ainative-channel-mcp')
+// already used for everything else in this file, distinct from the Tool Logs panel (#150, which
+// is tool-CALL history, not connection/transport-level events).
+
+export type MCPConnectionLogLevel = 'info' | 'warn' | 'error';
+
+export interface MCPConnectionLogEntry {
+	readonly timestamp: number; // Date.now()
+	readonly serverName: string;
+	readonly level: MCPConnectionLogLevel;
+	readonly message: string;
+}
+
 
 // export type MCPServerResponse = MCPAddResponse | MCPUpdateResponse | MCPDeleteResponse | MCPLoadingResponse;
 

@@ -14,7 +14,7 @@ import { IProductService } from '../../../../platform/product/common/productServ
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { IChannel } from '../../../../base/parts/ipc/common/ipc.js';
 import { IMainProcessService } from '../../../../platform/ipc/common/mainProcessService.js';
-import { MCPServerOfName, MCPConfigFileJSON, MCPServer, MCPToolCallParams, RawMCPToolCall, MCPServerEventResponse, isMCPToolDisabled, MCPRegistryEntry, MCPInstallResult, mergeRegistryEntryIntoConfig } from './mcpServiceTypes.js';
+import { MCPServerOfName, MCPConfigFileJSON, MCPServer, MCPToolCallParams, RawMCPToolCall, MCPServerEventResponse, isMCPToolDisabled, MCPRegistryEntry, MCPInstallResult, mergeRegistryEntryIntoConfig, MCPConnectionLogEntry } from './mcpServiceTypes.js';
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { InternalToolInfo } from './prompt/prompts.js';
 import { IAINativeSettingsService } from './ainativeSettingsService.js';
@@ -31,6 +31,8 @@ export interface IMCPService {
 	revealMCPConfigFile(): Promise<void>;
 	toggleServerIsOn(serverName: string, isOn: boolean): Promise<void>;
 	installFromRegistry(entry: MCPRegistryEntry, installAsName?: string): Promise<MCPInstallResult>;
+	getConnectionLogs(): Promise<MCPConnectionLogEntry[]>;
+	onDidAddConnectionLog: Event<MCPConnectionLogEntry>;
 
 	readonly state: MCPServiceState; // NOT persisted
 	onDidChangeState: Event<void>;
@@ -73,6 +75,8 @@ class MCPService extends Disposable implements IMCPService {
 	private readonly _onDidChangeState = new Emitter<void>();
 	public readonly onDidChangeState = this._onDidChangeState.event;
 
+	public readonly onDidAddConnectionLog: Event<MCPConnectionLogEntry>;
+
 	// private readonly _onLoadingServersChange = new Emitter<MCPServerEventLoadingParam>();
 	// public readonly onLoadingServersChange = this._onLoadingServersChange.event;
 
@@ -95,6 +99,8 @@ class MCPService extends Disposable implements IMCPService {
 		this._register((this.channel.listen('onAdd_server') satisfies Event<MCPServerEventResponse>)(onEvent));
 		this._register((this.channel.listen('onUpdate_server') satisfies Event<MCPServerEventResponse>)(onEvent));
 		this._register((this.channel.listen('onDelete_server') satisfies Event<MCPServerEventResponse>)(onEvent));
+
+		this.onDidAddConnectionLog = this.channel.listen('onConnectionLog') satisfies Event<MCPConnectionLogEntry>;
 
 		this._initialize();
 	}
@@ -333,6 +339,10 @@ class MCPService extends Disposable implements IMCPService {
 		const buffer = VSBuffer.fromString(JSON.stringify(result.configFileJSON, null, 2));
 		await this.fileService.writeFile(mcpConfigUri, buffer);
 		return result;
+	}
+
+	public async getConnectionLogs(): Promise<MCPConnectionLogEntry[]> {
+		return this.channel.call<MCPConnectionLogEntry[]>('getConnectionLogs');
 	}
 
 	// toggle MCP server and update isOn in void settings
