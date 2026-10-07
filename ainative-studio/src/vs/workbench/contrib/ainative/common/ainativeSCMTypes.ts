@@ -31,6 +31,14 @@ export interface IAINativeSCMService {
 	 * @param path Path to the git repository
 	 */
 	gitLog(path: string): Promise<string>
+	/**
+	 * Get the "origin" remote's URL, or empty string if there is no "origin" remote
+	 * (e.g. a local-only repo with no remote configured yet). Used by the code context
+	 * engine (#160) to derive a stable per-workspace project id.
+	 *
+	 * @param path Path to the git repository
+	 */
+	gitRemoteUrl(path: string): Promise<string>
 }
 
 export const IAINativeSCMService = createDecorator<IAINativeSCMService>('ainativeSCMService')

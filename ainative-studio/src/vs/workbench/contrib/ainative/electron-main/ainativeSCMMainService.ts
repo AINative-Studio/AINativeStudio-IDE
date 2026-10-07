@@ -79,4 +79,12 @@ export class AINativeSCMService implements IAINativeSCMService {
 	gitLog(path: string): Promise<string> {
 		return git('git log --pretty=format:"%h|%s|%ad" --date=short --no-merges -n 5', path)
 	}
+
+	async gitRemoteUrl(path: string): Promise<string> {
+		try {
+			return await git('git remote get-url origin', path)
+		} catch {
+			return '' // no "origin" remote configured (e.g. a brand-new local-only repo)
+		}
+	}
 }
