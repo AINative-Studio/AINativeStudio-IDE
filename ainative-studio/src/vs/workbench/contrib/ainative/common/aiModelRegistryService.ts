@@ -777,6 +777,7 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 		maxRetries: number = 3
 	): Promise<Response> {
 		let lastError: Error | null = null;
+		let lastResponse: Response | null = null;
 
 		for (let attempt = 0; attempt < maxRetries; attempt++) {
 			try {
@@ -785,10 +786,13 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 
 				// Handle rate limiting with exponential backoff
 				if (response.status === 429) {
-					const retryAfter = parseInt(response.headers.get('Retry-After') ?? '1', 10);
-					const delay = Math.min(retryAfter * 1000, 10000); // Max 10 seconds
-					console.warn(`[AIModelRegistryService] Rate limited, retrying after ${delay}ms`);
-					await this._sleep(delay);
+					lastResponse = response;
+					if (attempt < maxRetries - 1) {
+						const retryAfter = parseInt(response.headers.get('Retry-After') ?? '1', 10);
+						const delay = Math.min(retryAfter * 1000, 10000); // Max 10 seconds
+						console.warn(`[AIModelRegistryService] Rate limited, retrying after ${delay}ms`);
+						await this._sleep(delay);
+					}
 					continue;
 				}
 
@@ -805,7 +809,16 @@ export class AIModelRegistryService extends Disposable implements IAIModelRegist
 			}
 		}
 
-		throw lastError ?? new Error('Request failed after retries');
+		// If every retry was exhausted while still rate-limited, return that 429 response
+		// rather than throwing a generic error - this lets the normal response-handling path
+		// (_handleApiError) classify it as RateLimitExceeded, the same way a non-retried 429
+		// already is, instead of callers seeing a misleading plain NetworkError for what is
+		// specifically still-rate-limited after retries. A thrown network error (the other
+		// retry path above) takes priority if both occurred across different attempts, since an
+		// actual transport failure is a more actionable signal than a repeated 429.
+		if (lastError) throw lastError;
+		if (lastResponse) return lastResponse;
+		throw new Error('Request failed after retries');
 	}
 
 	/**

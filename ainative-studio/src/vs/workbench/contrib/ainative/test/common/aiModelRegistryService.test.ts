@@ -453,6 +453,16 @@ describe('AIModelRegistryService', () => {
 		});
 
 		it('should handle rate limiting errors', async () => {
+			// The mock always returns 429 with Retry-After: 60, so _makeApiRequest's real
+			// backoff (min(retryAfter*1000, 10000) = 10s per attempt) would sleep a real 10s on
+			// every one of its 3 retry attempts - 30s of actual wall-clock time before this test
+			// could ever complete, since nothing in the mock ever stops the 429 response. Stub
+			// the private _sleep() method (an established sinon pattern for private methods,
+			// same idea as the fetchStub this file already uses) to resolve immediately instead
+			// of extending the test's own timeout to tens of seconds - this is a backoff-delay
+			// unit test, not an integration test that should actually wait in real time.
+			sinon.stub(service as any, '_sleep').resolves();
+
 			const mockResponse = {
 				ok: false,
 				status: 429,
