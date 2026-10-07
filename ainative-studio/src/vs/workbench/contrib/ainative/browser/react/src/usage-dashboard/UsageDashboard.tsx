@@ -80,10 +80,13 @@ export const UsageDashboard: React.FC = () => {
 				period === '7days' ? 'week' : 'month'
 			);
 
-			// Convert to model usage data
+			// Convert to model usage data. Rotates through the theme's own semantic tokens -
+			// not a dedicated per-series chart palette (the design brief defines none) - so a
+			// multi-model breakdown stays theme-correct in both light and dark rather than
+			// reintroducing the hardcoded hex values the brief explicitly prohibits.
 			const modelColors = [
-				'var(--ainative-accent)', '#4a90e2', '#7fba00', '#ffb900',
-				'#e74856', '#8764b8', '#00b7c3', '#ca5010'
+				'var(--ainative-accent)', 'var(--ainative-ok)', 'var(--ainative-warning)', 'var(--ainative-error)',
+				'var(--ainative-accent-fg)', 'var(--ainative-fg-2)',
 			];
 
 			const models: ModelUsageData[] = Object.entries(usage.byModel || {}).map(([modelId, stats], i) => ({
