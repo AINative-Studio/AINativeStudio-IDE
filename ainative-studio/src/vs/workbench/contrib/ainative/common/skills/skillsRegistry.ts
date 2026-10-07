@@ -5,6 +5,7 @@
 
 import { URI } from '../../../../../base/common/uri.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
+import { Sequencer } from '../../../../../base/common/async.js';
 import { registerSingleton, InstantiationType } from '../../../../../platform/instantiation/common/extensions.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { INativeEnvironmentService } from '../../../../../platform/environment/common/environment.js';
@@ -25,6 +26,11 @@ class SkillsRegistry extends Disposable implements ISkillsRegistry {
 	private readonly skillsDir: URI;
 	private readonly registryFile: URI;
 	private registryCache: Map<string, RegistryEntry> | null = null;
+	// install/uninstall/refresh each do load-registry -> mutate -> save-registry.
+	// Without serialization, concurrent calls race: two installs both load the same
+	// registry snapshot, add their own entry, and whichever save() wins clobbers the
+	// other's entry from both the persisted file and the in-memory cache.
+	private readonly registryMutationSequencer = new Sequencer();
 
 	constructor(
 		@IFileService private readonly fileService: IFileService,
@@ -43,69 +49,73 @@ class SkillsRegistry extends Disposable implements ISkillsRegistry {
 	 * Install a skill from a local path
 	 */
 	async install(skillPath: string): Promise<void> {
-		// 1. Parse skill to get metadata
-		const skillUri = URI.file(skillPath);
-		const skillFileUri = joinPath(skillUri, 'SKILL.md');
+		return this.registryMutationSequencer.queue(async () => {
+			// 1. Parse skill to get metadata
+			const skillUri = URI.file(skillPath);
+			const skillFileUri = joinPath(skillUri, 'SKILL.md');
 
-		const skill = await this.skillParser.parseSkillFile(skillFileUri.fsPath);
+			const skill = await this.skillParser.parseSkillFile(skillFileUri.fsPath);
 
-		// 2. Load registry and check for duplicates
-		const registry = await this.loadRegistry();
-		if (registry.has(skill.metadata.name)) {
-			throw new Error(`Skill '${skill.metadata.name}' is already installed. Uninstall it first to reinstall.`);
-		}
+			// 2. Load registry and check for duplicates
+			const registry = await this.loadRegistry();
+			if (registry.has(skill.metadata.name)) {
+				throw new Error(`Skill '${skill.metadata.name}' is already installed. Uninstall it first to reinstall.`);
+			}
 
-		// 3. Copy skill to ~/.ainative/skills/{skill-name}/
-		const targetDir = joinPath(this.skillsDir, skill.metadata.name);
+			// 3. Copy skill to ~/.ainative/skills/{skill-name}/
+			const targetDir = joinPath(this.skillsDir, skill.metadata.name);
 
-		// Ensure skills directory exists
-		await this.ensureDirectoryExists(this.skillsDir);
+			// Ensure skills directory exists
+			await this.ensureDirectoryExists(this.skillsDir);
 
-		// Copy the entire skill directory
-		await this.fileService.copy(skillUri, targetDir, true);
+			// Copy the entire skill directory
+			await this.fileService.copy(skillUri, targetDir, true);
 
-		// 4. Add entry to registry
-		const entry: RegistryEntry = {
-			name: skill.metadata.name,
-			version: skill.metadata.version || '1.0.0',
-			installedAt: Date.now(),
-			source: 'local',
-			path: targetDir.fsPath
-		};
+			// 4. Add entry to registry
+			const entry: RegistryEntry = {
+				name: skill.metadata.name,
+				version: skill.metadata.version || '1.0.0',
+				installedAt: Date.now(),
+				source: 'local',
+				path: targetDir.fsPath
+			};
 
-		registry.set(skill.metadata.name, entry);
+			registry.set(skill.metadata.name, entry);
 
-		// 5. Persist registry
-		await this.saveRegistry(registry);
+			// 5. Persist registry
+			await this.saveRegistry(registry);
 
-		// Update cache
-		this.registryCache = registry;
+			// Update cache
+			this.registryCache = registry;
+		});
 	}
 
 	/**
 	 * Uninstall a skill by name
 	 */
 	async uninstall(skillName: string): Promise<void> {
-		// 1. Load registry and check if installed
-		const registry = await this.loadRegistry();
-		const entry = registry.get(skillName);
+		return this.registryMutationSequencer.queue(async () => {
+			// 1. Load registry and check if installed
+			const registry = await this.loadRegistry();
+			const entry = registry.get(skillName);
 
-		if (!entry) {
-			throw new Error(`Skill '${skillName}' is not installed.`);
-		}
+			if (!entry) {
+				throw new Error(`Skill '${skillName}' is not installed.`);
+			}
 
-		// 2. Remove skill directory
-		const skillDir = URI.file(entry.path);
-		await this.fileService.del(skillDir, { recursive: true });
+			// 2. Remove skill directory
+			const skillDir = URI.file(entry.path);
+			await this.fileService.del(skillDir, { recursive: true });
 
-		// 3. Remove from registry
-		registry.delete(skillName);
+			// 3. Remove from registry
+			registry.delete(skillName);
 
-		// 4. Persist registry
-		await this.saveRegistry(registry);
+			// 4. Persist registry
+			await this.saveRegistry(registry);
 
-		// Update cache
-		this.registryCache = registry;
+			// Update cache
+			this.registryCache = registry;
+		});
 	}
 
 	/**
@@ -137,6 +147,10 @@ class SkillsRegistry extends Disposable implements ISkillsRegistry {
 	 * Scans the directory for skills and updates the registry
 	 */
 	async refresh(skillsSourceDir: string): Promise<SkillRefreshResult> {
+		return this.registryMutationSequencer.queue(() => this.doRefresh(skillsSourceDir));
+	}
+
+	private async doRefresh(skillsSourceDir: string): Promise<SkillRefreshResult> {
 		const sourceUri = URI.file(skillsSourceDir);
 
 		// Load current registry
