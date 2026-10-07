@@ -174,13 +174,21 @@ class MockSkillSearchService implements ISkillSearchService {
 		this.allSkills = allSkills;
 	}
 
-	async search(query: string, filters?: any): Promise<any[]> {
+	async search(query: string, filters?: { source?: MarketplaceSource | 'all'; category?: string }): Promise<any[]> {
 		const lowerQuery = query.toLowerCase();
 		return this.allSkills
 			.filter(s =>
 				s.name.toLowerCase().includes(lowerQuery) ||
-				s.description.toLowerCase().includes(lowerQuery)
+				s.description.toLowerCase().includes(lowerQuery) ||
+				// MarketplaceCommand.search() delegates matching entirely to this mock, so it
+				// must mirror browse()'s own real matching logic (marketplaceCommand.ts line
+				// ~185), which also checks keywords - without this, test fixtures like
+				// 'zerodb-workflows' (description "ZeroDB best practices", keyword "database")
+				// can never match a "database" query through this mock even though the real
+				// implementation's equivalent keyword-matching path would find it.
+				(s.keywords?.some(keyword => keyword.toLowerCase().includes(lowerQuery)) ?? false)
 			)
+			.filter(s => !filters?.source || filters.source === 'all' || s.source === filters.source)
 			.map(s => ({ ...s, relevanceScore: 1.0, matchedFields: ['name'] }));
 	}
 
