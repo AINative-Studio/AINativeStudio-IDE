@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAccessor, useAINativeAuth, useIsDark, useSettingsState } from '../util/services.js';
-import { Brain, Check, ChevronRight, DollarSign, ExternalLink, Lock, Terminal, X } from 'lucide-react';
+import { Brain, Check, ChevronDown, ChevronRight, DollarSign, ExternalLink, Lock, Terminal, X } from 'lucide-react';
 import { displayInfoOfProviderName, ProviderName, providerNames, localProviderNames, featureNames, FeatureName, isFeatureNameDisabled } from '../../../../common/ainativeSettingsTypes.js';
 import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js';
 import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, ModelDump, AnimatedCheckmarkButton } from '../ainative-settings-tsx/Settings.js';
@@ -14,6 +14,7 @@ import { AINativeButtonBgDarken } from '../util/inputs.js';
 import { ColorScheme } from '../../../../../../../platform/theme/common/theme.js';
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js';
 import { isLinux } from '../../../../../../../base/common/platform.js';
+import { Card } from '../primitives/Card.js';
 
 const OVERRIDE_VALUE = false
 
@@ -128,13 +129,37 @@ const featureNameMap: { display: string, featureName: FeatureName }[] = [
 	{ display: 'Source Control', featureName: 'SCM' },
 ];
 
+/**
+ * Recommended-path cards, per the redesign (docs/design/handoff README "Onboarding" - "2-3
+ * recommended cards up front, more options collapsed" rather than a flat tab bar for all 9
+ * providers at once). AINative Cloud first (the primary path per the redesign's AINative
+ * Cloud/BYOK hierarchy), then the two 100%-free providers already singled out elsewhere in
+ * this file (Gemini, OpenRouter). Clicking a card expands that provider's real settings form
+ * inline - no new provider-selection state duplicated beyond which card is expanded.
+ */
+const recommendedProviderNames: ProviderName[] = ['gemini', 'openRouter'];
+
 const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPageIndex: (index: number) => void }) => {
 	const auth = useAINativeAuth()
+	const [showLoginModal, setShowLoginModal] = useState(false)
 	// Default to the tab that has "Add AINative Cloud" when the user just signed in on the
 	// Welcome page, since they came here specifically to paste their API key, not to browse.
 	const [currentTab, setCurrentTab] = useState<TabName>(auth.isAuthenticated ? 'Paid' : 'Free');
 	const settingsState = useSettingsState();
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+	// Which recommended card (if any) is expanded to show its real settings form. 'cloud'
+	// expands nothing here - AINative Cloud's own key is entered in the Paid tab below, since
+	// session auth alone doesn't provision a chat-completions API key (same note as the
+	// Welcome page's login success handler).
+	const [expandedRecommended, setExpandedRecommended] = useState<ProviderName | null>(null)
+
+	// "More providers" starts open whenever the user already has a configured provider outside
+	// the recommended set, so an in-progress setup never looks collapsed-away.
+	const hasConfiguredOutsideRecommended = providerNames.some(pn =>
+		!(recommendedProviderNames as string[]).includes(pn) && isProviderNameDisabled(pn, settingsState) === false
+	)
+	const [showMoreProviders, setShowMoreProviders] = useState(hasConfiguredOutsideRecommended)
 
 	// Clear error message after 5 seconds
 	useEffect(() => {
@@ -157,27 +182,8 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 	return (<div className="flex flex-col md:flex-row w-full h-[80vh] gap-6 max-w-[900px] mx-auto relative">
 		{/* Left Column */}
 		<div className="md:w-1/4 w-full flex flex-col gap-6 p-6 border-none border-ainative-border-2 h-full overflow-y-auto">
-			{/* Tab Selector */}
-			<div className="flex md:flex-col gap-2">
-				{[...tabNames, 'Cloud/Other'].map(tab => (
-					<button
-						key={tab}
-						className={`py-2 px-4 rounded-md text-left ${currentTab === tab
-							? 'bg-ainative-accent-solid/80 text-white font-medium shadow-sm'
-							: 'bg-ainative-bg-2 hover:bg-ainative-bg-2/80 text-ainative-fg-1'
-							} transition-all duration-200`}
-						onClick={() => {
-							setCurrentTab(tab as TabName);
-							setErrorMessage(null); // Reset error message when changing tabs
-						}}
-					>
-						{tab}
-					</button>
-				))}
-			</div>
-
 			{/* Feature Checklist */}
-			<div className="flex flex-col gap-1 mt-4 text-sm opacity-80">
+			<div className="flex flex-col gap-1 text-sm opacity-80">
 				{featureNameMap.map(({ display, featureName }) => {
 					const hasModel = settingsState.modelSelectionOfFeature[featureName] !== null;
 					return (
@@ -194,18 +200,96 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 					);
 				})}
 			</div>
+
+			{showMoreProviders && (
+				<>
+					<div className="text-xs uppercase tracking-wide text-ainative-fg-3 mt-4">More providers</div>
+					<div className="flex md:flex-col gap-2">
+						{[...tabNames, 'Cloud/Other'].map(tab => (
+							<button
+								key={tab}
+								className={`py-2 px-4 rounded-md text-left ${currentTab === tab
+									? 'bg-ainative-accent-solid/80 text-white font-medium shadow-sm'
+									: 'bg-ainative-bg-2 hover:bg-ainative-bg-2/80 text-ainative-fg-1'
+									} transition-all duration-200`}
+								onClick={() => {
+									setCurrentTab(tab as TabName);
+									setErrorMessage(null); // Reset error message when changing tabs
+								}}
+							>
+								{tab}
+							</button>
+						))}
+					</div>
+				</>
+			)}
 		</div>
 
 		{/* Right Column */}
 		<div className="flex-1 flex flex-col items-center justify-start p-6 h-full overflow-y-auto">
 			<div className="text-5xl mb-2 text-center w-full">Add a Provider</div>
 
-			<div className="w-full max-w-xl mt-4 mb-10">
-				<div className="text-4xl font-light my-4 w-full">{currentTab}</div>
-				<div className="text-sm opacity-80 text-ainative-fg-3 my-4 w-full">{descriptionOfTab[currentTab]}</div>
+			{/* Recommended path: 2-3 cards, not a flat list of every provider's full form. */}
+			<div className="w-full max-w-xl mt-6 mb-8">
+				<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+					<Card
+						interactive
+						selected={auth.isAuthenticated}
+						onClick={() => { if (!auth.isAuthenticated) setShowLoginModal(true) }}
+					>
+						<div className='text-root font-medium text-ainative-fg-0 mb-1'>AINative Cloud</div>
+						<div className='text-sm text-ainative-fg-2'>
+							{auth.isAuthenticated ? `Signed in as ${auth.user?.name || auth.user?.email}` : 'Recommended - one sign-in, no key to manage.'}
+						</div>
+					</Card>
+					{recommendedProviderNames.map(providerName => {
+						const isConfigured = isProviderNameDisabled(providerName, settingsState) === false
+						const isExpanded = expandedRecommended === providerName
+						return (
+							<Card
+								key={providerName}
+								interactive
+								selected={isConfigured || isExpanded}
+								onClick={() => setExpandedRecommended(isExpanded ? null : providerName)}
+							>
+								<div className='text-root font-medium text-ainative-fg-0 mb-1'>{displayInfoOfProviderName(providerName).title}</div>
+								<div className='text-sm text-ainative-fg-2'>{isConfigured ? 'Configured' : 'Free tier available'}</div>
+							</Card>
+						)
+					})}
+				</div>
+
+				{expandedRecommended && (
+					<div className='mt-4 rounded-xl border border-ainative-border-1 bg-ainative-bg-2 p-4'>
+						<SettingsForProvider providerName={expandedRecommended} showProviderTitle={false} showProviderSuggestions={true} />
+					</div>
+				)}
+
+				{!showMoreProviders && (
+					<button
+						type='button'
+						className='flex items-center gap-1 mt-4 text-sm text-ainative-fg-3 hover:text-ainative-fg-1'
+						onClick={() => setShowMoreProviders(true)}
+					>
+						<ChevronDown className='w-3.5 h-3.5' />
+						More providers
+					</button>
+				)}
 			</div>
 
-			{providerNamesOfTab[currentTab].map((providerName) => (
+			{showLoginModal && (
+				<AINativeLoginModal
+					onClose={() => { setShowLoginModal(false) }}
+					onSuccess={() => { setShowLoginModal(false) }}
+				/>
+			)}
+
+			{showMoreProviders && <div className="w-full max-w-xl mt-2 mb-10 border-t border-ainative-border-1 pt-8">
+				<div className="text-4xl font-light my-4 w-full">{currentTab}</div>
+				<div className="text-sm opacity-80 text-ainative-fg-3 my-4 w-full">{descriptionOfTab[currentTab]}</div>
+			</div>}
+
+			{showMoreProviders && providerNamesOfTab[currentTab].map((providerName) => (
 				<div
 					key={providerName}
 					className={`w-full max-w-xl mb-10 ${providerName === 'ainativeCloud' && auth.isAuthenticated
@@ -245,7 +329,7 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 				</div>
 			))}
 
-			{(currentTab === 'Local' || currentTab === 'Cloud/Other') && (
+			{showMoreProviders && (currentTab === 'Local' || currentTab === 'Cloud/Other') && (
 				<div className="w-full max-w-xl mt-8 bg-ainative-bg-2/50 rounded-lg p-6 border border-ainative-border-4">
 					<div className="flex items-center gap-2 mb-4">
 						<div className="text-xl font-medium">Models</div>
