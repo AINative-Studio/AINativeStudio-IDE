@@ -14,8 +14,13 @@ on:
 
 jobs:
   build-windows-arm64:
-    # Using the new free Windows ARM64 runner for public repositories
-    runs-on: windows-11-arm
+    # windows-11-arm has no Visual Studio / C++ Build Tools installed, which breaks
+    # native module compilation (tree-sitter forced to build from source via
+    # build/.npmrc's build_from_source, with no VS Build Tools to do it - see #181).
+    # windows-11-vs2026-arm is the same free-tier runner family with Visual Studio
+    # Enterprise 2026 (C++ workload included) preinstalled, confirmed via GitHub's
+    # own runner-images announcement (actions/runner-images#14592).
+    runs-on: windows-11-vs2026-arm
     timeout-minutes: 60
     steps:
       - name: Checkout repository
