@@ -42,6 +42,15 @@ export {
 } from './usageTrackingTypes.js';
 
 /**
+ * Exported (not a private class static) specifically so tests can assert the real trim boundary
+ * instead of a hardcoded guess - a prior test asserted exactly 100 records remained after
+ * tracking 150, which was never correct against this value (confirmed unchanged at 10000
+ * throughout this file's git history) and happened to go unnoticed because nothing exercised it
+ * at the real scale.
+ */
+export const MAX_LOCAL_USAGE_RECORDS = 10000;
+
+/**
  * Wire format of `GET /api/v1/public/credits/balance`.
  *
  * CONFIRMED (issue #147) against the backend's live OpenAPI document at
@@ -111,7 +120,6 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 	private static readonly STORAGE_KEY_MANAGED_USAGE = 'ainative.usage.managedRecords';
 	private static readonly SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 	private static readonly QUOTA_WARNING_THRESHOLD = 0.8; // 80%
-	private static readonly MAX_LOCAL_RECORDS = 10000; // Limit local storage
 	private static readonly CREDITS_LOW_THRESHOLD = 0.2; // 20% remaining
 
 	/**
@@ -266,8 +274,8 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 			this._usageRecords.push(record);
 
 			// Trim if exceeding max records
-			if (this._usageRecords.length > UsageTrackingService.MAX_LOCAL_RECORDS) {
-				this._usageRecords = this._usageRecords.slice(-UsageTrackingService.MAX_LOCAL_RECORDS);
+			if (this._usageRecords.length > MAX_LOCAL_USAGE_RECORDS) {
+				this._usageRecords = this._usageRecords.slice(-MAX_LOCAL_USAGE_RECORDS);
 			}
 
 			// Save to storage
@@ -647,8 +655,8 @@ export class UsageTrackingService extends Disposable implements IUsageTrackingSe
 			this._managedUsageRecords.push(record);
 
 			// Trim if exceeding max records
-			if (this._managedUsageRecords.length > UsageTrackingService.MAX_LOCAL_RECORDS) {
-				this._managedUsageRecords = this._managedUsageRecords.slice(-UsageTrackingService.MAX_LOCAL_RECORDS);
+			if (this._managedUsageRecords.length > MAX_LOCAL_USAGE_RECORDS) {
+				this._managedUsageRecords = this._managedUsageRecords.slice(-MAX_LOCAL_USAGE_RECORDS);
 			}
 
 			// Save to storage

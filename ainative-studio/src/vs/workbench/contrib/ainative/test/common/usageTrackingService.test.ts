@@ -11,7 +11,8 @@ import {
 	UsageTrackingService,
 	IUsageTrackingService,
 	AggregatedUsage,
-	QuotaStatus
+	QuotaStatus,
+	MAX_LOCAL_USAGE_RECORDS
 } from '../../common/usageTrackingService.js';
 import { IAINativeCloudAuthService, CloudAuthState } from '../../common/ainativeCloudAuthTypes.js';
 import { IAIModelRegistryService } from '../../common/aiModelRegistryService.js';
@@ -604,16 +605,28 @@ suite('UsageTrackingService', () => {
 		strictEqual(usage.totalCalls, 0);
 	});
 
-	test('should limit local records to MAX_LOCAL_RECORDS', async () => {
-		// Track many usage records
-		for (let i = 0; i < 150; i++) {
+	test('should limit local records to MAX_LOCAL_USAGE_RECORDS', async function () {
+		// MAX_LOCAL_USAGE_RECORDS is now exported specifically so this assertion checks the
+		// real boundary instead of a hardcoded guess - the old version of this test asserted
+		// exactly 100 remained after tracking 150, which was never correct against the real
+		// value (confirmed unchanged at 10000 throughout this file's git history) and went
+		// unnoticed because nothing exercised it at the real scale.
+		//
+		// trackUsage() is O(n) per call (_saveToStorage() serializes the whole growing array
+		// each time), so exercising the real 10000-record boundary is a genuinely slow test by
+		// construction, not a test-infrastructure problem - raise this suite's default timeout
+		// for this one test rather than share a tight budget with the rest of the file's fast,
+		// mock-only tests.
+		this.timeout(30000);
+
+		const trackedCount = MAX_LOCAL_USAGE_RECORDS + 50;
+		for (let i = 0; i < trackedCount; i++) {
 			await usageTrackingService.trackUsage('claude-3-opus', 100, 50);
 		}
 
 		const usage = await usageTrackingService.getUsage();
 
-		// Should have trimmed to 100 records (MAX_LOCAL_RECORDS)
-		strictEqual(usage.totalCalls, 100);
+		strictEqual(usage.totalCalls, MAX_LOCAL_USAGE_RECORDS);
 	});
 
 	test('should handle multiple concurrent trackUsage calls', async () => {
