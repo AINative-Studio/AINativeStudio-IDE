@@ -209,7 +209,12 @@ function createMockJWT(claims: any): string {
 		email: claims.email || 'test@example.com',
 		role: claims.role || 'user',
 		exp: claims.exp || Math.floor(Date.now() / 1000) + 3600,
-		iat: claims.iat || Math.floor(Date.now() / 1000)
+		iat: claims.iat || Math.floor(Date.now() / 1000),
+		// Login and refresh within the same second produce identical claims (same
+		// default exp/iat), which made two separately-created mock tokens compare
+		// equal - a nonce guarantees every call produces a distinct token, which is
+		// what "new token should be different" after a refresh actually needs.
+		nonce: Math.random().toString(36).slice(2)
 	})).toString('base64');
 	return `${header}.${payload}.mock-signature`;
 }
@@ -226,6 +231,12 @@ function mockSuccessfulAuth(): void {
 		if (url.includes('/v1/auth/login-json')) {
 			const accessToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 3600 });
 			const refreshToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 7200 });
+			// login() sends { email, password } as the request body (confirmed in
+			// ainativeAuthService.ts) - echo the real email back instead of a
+			// hardcoded one, so logging in as a different user actually produces a
+			// different user, which "should handle user switching" depends on.
+			const requestBody = init?.body ? JSON.parse(init.body as string) : {};
+			const email = requestBody.email || 'test@ainative.studio';
 
 			return {
 				ok: true,
@@ -235,7 +246,7 @@ function mockSuccessfulAuth(): void {
 					refresh_token: refreshToken,
 					user: {
 						id: 'user-123',
-						email: 'test@ainative.studio',
+						email,
 						name: 'Test User',
 						role: 'user',
 						created_at: '2025-01-01T00:00:00Z',
@@ -264,7 +275,12 @@ function mockSuccessfulAuth(): void {
 			} as Response;
 		}
 
-		if (url.includes('/v1/ai/models')) {
+		// AIModelRegistryService's real endpoints (confirmed by reading
+		// aiModelRegistryService.ts directly) are '/v1/public/models/available' for
+		// listing and '/api/v1/models/invoke' for invocation - '/v1/ai/models' and
+		// '/v1/ai/invoke' never matched anything, so listModels()/invokeModel() always
+		// fell through to the real network or an empty result.
+		if (url.includes('/v1/public/models/available')) {
 			return {
 				ok: true,
 				status: 200,
@@ -290,7 +306,7 @@ function mockSuccessfulAuth(): void {
 			} as Response;
 		}
 
-		if (url.includes('/v1/ai/invoke')) {
+		if (url.includes('/api/v1/models/invoke')) {
 			return {
 				ok: true,
 				status: 200,
@@ -305,7 +321,7 @@ function mockSuccessfulAuth(): void {
 			} as Response;
 		}
 
-		if (url.includes('/v1/usage/stats')) {
+		if (url.includes('/api/v1/usage/stats')) {
 			return {
 				ok: true,
 				status: 200,
