@@ -39,6 +39,9 @@ import './vibeCoderModeActions.js'
 
 import './convertToLLMMessageWorkbenchContrib.js'
 
+// Codebase-wide semantic retrieval (#160): initial workspace index + debounced per-file reindex
+import './codeContextIndexContribution.js'
+
 // tools
 import './toolsService.js'
 import './terminalToolService.js'
