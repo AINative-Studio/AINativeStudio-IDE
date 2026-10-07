@@ -271,6 +271,12 @@ export const ToolLogsPanel: React.FC<ToolLogsPanelProps> = ({
 						onPaginationChange={handlePaginationChange}
 						onRowClick={handleLogSelect}
 						selectedLogId={selectedLog?.id}
+						// Only the user-facing filter fields count - threadId is how this panel
+						// was opened (e.g. from a chat thread), not a filter the user set, so a
+						// thread-scoped panel with zero logs is still the "no logs at all" empty
+						// state, not "no logs match your filter."
+						isFiltered={!!(filter.toolTypes?.length || filter.statuses?.length || filter.dateRange || filter.searchQuery || filter.minDuration !== undefined || filter.maxDuration !== undefined)}
+						onClearFilter={handleClearFilter}
 					/>
 				</div>
 

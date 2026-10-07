@@ -17,6 +17,7 @@ import {
 	PaginationOptions
 } from './types';
 import { formatDuration, formatTimestamp, getStatusIcon, getToolTypeIcon } from './utils';
+import { EmptyState } from '../primitives/EmptyState.js';
 
 interface ToolLogsTableProps {
 	data: PaginatedToolLogs | null;
@@ -27,6 +28,9 @@ interface ToolLogsTableProps {
 	onPaginationChange: (pagination: PaginationOptions) => void;
 	onRowClick: (log: ToolExecutionLog) => void;
 	selectedLogId?: string;
+	/** True when a user-set filter (not just threadId scoping) is active and produced zero rows. */
+	isFiltered?: boolean;
+	onClearFilter?: () => void;
 }
 
 export const ToolLogsTable: React.FC<ToolLogsTableProps> = ({
@@ -37,7 +41,9 @@ export const ToolLogsTable: React.FC<ToolLogsTableProps> = ({
 	onSortChange,
 	onPaginationChange,
 	onRowClick,
-	selectedLogId
+	selectedLogId,
+	isFiltered,
+	onClearFilter
 }) => {
 	/**
 	 * Handle column sort
@@ -83,11 +89,23 @@ export const ToolLogsTable: React.FC<ToolLogsTableProps> = ({
 	}
 
 	if (!data || data.logs.length === 0) {
-		return (
-			<div className="tool-logs-empty">
-				<span className="codicon codicon-info"></span>
-				<span>No tool execution logs found</span>
-			</div>
+		return isFiltered ? (
+			<EmptyState
+				mascot='cody'
+				title='No matching logs'
+				body='No tool execution logs match your current filters.'
+				action={onClearFilter && (
+					<button type='button' className='text-xs font-medium text-ainative-accent-fg hover:underline' onClick={onClearFilter}>
+						Clear filters
+					</button>
+				)}
+			/>
+		) : (
+			<EmptyState
+				mascot='cody'
+				title='No tool execution logs yet'
+				body="This fills in once the agent reads, edits, or runs something."
+			/>
 		);
 	}
 

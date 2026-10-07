@@ -17,6 +17,7 @@ import {
 } from '../../../../common/aiModelRegistryTypes.js';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js';
+import { EmptyState } from '../primitives/EmptyState.js';
 
 interface ModelBrowserProps {
 	/** Initial view mode */
@@ -226,7 +227,7 @@ export const ModelBrowser: React.FC<ModelBrowserProps> = ({
 								) : error ? (
 									<div className="flex items-center justify-center h-full">
 										<div className="text-center p-8 max-w-md">
-											<AlertTriangle className="mx-auto mb-4 text-red-500" size={48} />
+											<AlertTriangle className="mx-auto mb-4 text-ainative-error" size={48} />
 											<h3 className="text-lg font-medium text-ainative-fg-1 mb-2">Error Loading Models</h3>
 											<p className="text-ainative-fg-3 mb-4">{error}</p>
 											<button
@@ -238,17 +239,20 @@ export const ModelBrowser: React.FC<ModelBrowserProps> = ({
 										</div>
 									</div>
 								) : filteredModels.length === 0 ? (
-									<div className="flex items-center justify-center h-full">
-										<div className="text-center p-8">
-											<p className="text-ainative-fg-3 text-lg mb-4">No models found matching your filters.</p>
+									<EmptyState
+										mascot='blob'
+										title='No matching models'
+										body='No models match your current filters.'
+										action={
 											<button
+												type='button'
+												className='text-xs font-medium text-ainative-accent-fg hover:underline'
 												onClick={() => setFilters({ availableOnly: true })}
-												className="px-4 py-2 bg-ainative-bg-2 text-ainative-fg-1 rounded-md hover:bg-ainative-bg-2-hover"
 											>
-												Clear Filters
+												Clear filters
 											</button>
-										</div>
-									</div>
+										}
+									/>
 								) : (
 									<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 										{filteredModels.map((model) => (
