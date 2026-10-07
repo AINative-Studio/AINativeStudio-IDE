@@ -106,8 +106,14 @@ suite('CryptoService', () => {
 			const data = 'test-data';
 			const hash = await cryptoService.hash(data);
 
-			// Tamper with hash
-			const tamperedHash = 'a' + hash.substring(1);
+			// Tamper with hash - flip the first character to a different hex digit (not just
+			// prepend 'a': if the real hash already happens to start with 'a', 'a' + hash.substring(1)
+			// is a no-op, and the test would pass for a coincidental reason unrelated to the
+			// hash comparison logic actually being tested. SHA-256 hex digests are lowercase
+			// 0-9a-f, so flipping to the next digit in that range is guaranteed different.
+			const firstChar = hash[0];
+			const flippedChar = firstChar === 'f' ? '0' : String.fromCharCode(firstChar.charCodeAt(0) + 1);
+			const tamperedHash = flippedChar + hash.substring(1);
 
 			const isValid = await cryptoService.verifyHash(data, tamperedHash);
 			assert.strictEqual(isValid, false);
@@ -176,7 +182,12 @@ suite('JWTUtils', () => {
 
 		const headerB64 = Buffer.from(JSON.stringify(header)).toString('base64');
 		const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64');
-		const signature = 'test-signature';
+		// A real JWT signature is base64(url)-encoded bytes, never plain text with a literal
+		// hyphen like the old 'test-signature' placeholder - that string isn't valid base64,
+		// which is exactly what isValidStructure() now actually checks for (previously it never
+		// really validated base64 at all - see the fix in crypto.ts). Encode a placeholder
+		// signature the same way a real one would be, so this fixture matches real JWT shape.
+		const signature = Buffer.from('test-signature-bytes').toString('base64');
 
 		return `${headerB64}.${payloadB64}.${signature}`;
 	}
@@ -311,7 +322,13 @@ suite('JWTUtils', () => {
 		});
 
 		test('should reject token with invalid base64', () => {
-			const invalidToken = 'not-base64.also-not-base64.still-not-base64';
+			// '-' and '_' ARE valid base64url characters (RFC 7515 §2) - a string like
+			// 'not-base64' is structurally valid base64url even though it's semantically
+			// meaningless once decoded (that's decode()'s job to catch via JSON.parse, not
+			// isValidStructure's - see its own "basic validation only" doc comment). Use
+			// characters truly outside the base64url alphabet (@, !, spaces) to test what this
+			// method actually checks.
+			const invalidToken = 'not@valid!.also not valid.still#not$valid';
 
 			const isValid = JWTUtils.isValidStructure(invalidToken);
 			assert.strictEqual(isValid, false);

@@ -314,15 +314,19 @@ export class JWTUtils {
 			return false;
 		}
 
-		try {
-			// Try to decode each part
-			Buffer.from(parts[0], 'base64').toString('utf-8');
-			Buffer.from(parts[1], 'base64').toString('utf-8');
-			Buffer.from(parts[2], 'base64');
-			return true;
-		} catch {
-			return false;
-		}
+		// Node's Buffer.from(str, 'base64') never throws on invalid input - it silently decodes
+		// whatever valid base64 characters it finds and drops the rest, so a try/catch around it
+		// can never actually reject malformed base64 (confirmed: every one of this method's
+		// callers would get `true` back for a 3-part string of arbitrary garbage). Validate the
+		// character set directly instead.
+		//
+		// RFC 7515 §2 specifies JWTs use base64url (A-Z, a-z, 0-9, '-', '_', no padding), but
+		// this class's own decode() (and the doc-comment example in AUTH_TOKEN_SESSION_README.md)
+		// both encode/decode with plain 'base64' (A-Z, a-z, 0-9, '+', '/', '=' padding) - matching
+		// that actual convention rather than the RFC's, so a token this class's own encode side
+		// produces doesn't fail its own structure check.
+		const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
+		return parts.every(part => base64Pattern.test(part));
 	}
 }
 
