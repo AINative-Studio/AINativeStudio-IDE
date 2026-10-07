@@ -54,6 +54,9 @@ export interface ICodeContextIndexService {
 
 	/** Re-indexes one file: diffs its previous chunk ids against its current content's chunk ids, deletes stale vectors, embeds new ones. */
 	reindexFile(projectId: string, fileUri: URI): Promise<void>;
+
+	/** The project id from the most recent indexWorkspace() call, or undefined if indexing hasn't run (yet, or at all) this session. */
+	getCurrentProjectId(): string | undefined;
 }
 
 export const ICodeContextIndexService = createDecorator<ICodeContextIndexService>('codeContextIndexService');
@@ -63,6 +66,7 @@ class CodeContextIndexService extends Disposable implements ICodeContextIndexSer
 
 	// In-memory only for now (see class doc) - resets on restart.
 	private readonly _chunkIdsByFile = new Map<string, string[]>(); // key: fileUri.toString()
+	private _currentProjectId: string | undefined;
 
 	constructor(
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
@@ -90,6 +94,7 @@ class CodeContextIndexService extends Disposable implements ICodeContextIndexSer
 		// fallback for an edge case, not the common path).
 		const repoHash = await computeRepoHash(remoteUrl || `local:${folder.name}`);
 		const project = await this.codeContextEngineService.ensureProject(repoHash, folder.name);
+		this._currentProjectId = project.id;
 
 		const queryBuilder = this.instantiationService.createInstance(QueryBuilder);
 		const query = queryBuilder.file([folder.uri]);
@@ -135,6 +140,10 @@ class CodeContextIndexService extends Disposable implements ICodeContextIndexSer
 		}
 
 		this._chunkIdsByFile.set(fileUri.toString(), currentChunkIds);
+	}
+
+	getCurrentProjectId(): string | undefined {
+		return this._currentProjectId;
 	}
 }
 

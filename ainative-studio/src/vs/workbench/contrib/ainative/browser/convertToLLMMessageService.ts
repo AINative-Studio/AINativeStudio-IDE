@@ -20,6 +20,8 @@ import { EndOfLinePreference } from '../../../../editor/common/model.js';
 import { ToolName } from '../common/toolsServiceTypes.js';
 import { IMCPService } from '../common/mcpService.js';
 import { formatSteeringFileSections } from '../common/steeringDocs.js';
+import { ICodeContextIndexService } from './codeContextIndexService.js';
+import { ICodeContextEngineService } from '../common/codeContextEngineService.js';
 
 export const EMPTY_MESSAGE = '(empty message)'
 
@@ -544,6 +546,8 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		@IAINativeModelService private readonly ainativeModelService: IAINativeModelService,
 		@IMCPService private readonly mcpService: IMCPService,
 		@IFileService private readonly fileService: IFileService,
+		@ICodeContextIndexService private readonly codeContextIndexService: ICodeContextIndexService,
+		@ICodeContextEngineService private readonly codeContextEngineService: ICodeContextEngineService,
 	) {
 		super()
 	}
@@ -613,6 +617,31 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		}
 		catch (e) {
 			return ''
+		}
+	}
+
+	// Semantic code search (#160), additive to the existing open-file/selection context. Strictly
+	// best-effort: no project indexed yet (common - indexing only starts once signed in and runs
+	// in the background), the backend being slow, or any network error must never block or break
+	// the chat loop, so every failure path here falls back to an empty string rather than
+	// throwing. A short timeout is used for the same reason - a slow embeddings call must not
+	// become a slow chat turn.
+	private async _getSemanticSearchContext(userQuery: string): Promise<string> {
+		const projectId = this.codeContextIndexService.getCurrentProjectId();
+		if (!projectId || !userQuery.trim()) return '';
+
+		const SEMANTIC_SEARCH_TIMEOUT_MS = 3000;
+		try {
+			const result = await Promise.race([
+				this.codeContextEngineService.search(projectId, userQuery, { limit: 5 }),
+				new Promise<never>((_, reject) => setTimeout(() => reject(new Error('semantic search timed out')), SEMANTIC_SEARCH_TIMEOUT_MS)),
+			]);
+			if (result.results.length === 0) return '';
+			const sections = result.results.map(r => `### ${r.id} (similarity: ${r.similarity.toFixed(2)})\n${r.document}`);
+			return `## Relevant code from across the workspace (semantic search)\n\n${sections.join('\n\n')}`;
+		} catch (e) {
+			console.warn('[ConvertToLLMMessageService] Semantic search context failed, continuing without it:', e);
+			return '';
 		}
 	}
 
@@ -743,8 +772,15 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 
 		const modelSelectionOptions = this.ainativeSettingsService.state.optionsOfModelSelection['Chat'][modelSelection.providerName]?.[modelSelection.modelName]
 
-		// Get combined global rules
-		const aiInstructions = await this._getCombinedGlobalRules();
+		// Get combined global rules, plus semantic search over the rest of the workspace (#160) -
+		// scoped to chat modes where the agent is expected to reach beyond what's already open
+		// (same cutoff this file already uses for the directory listing above), since a simple
+		// one-off question shouldn't pay the extra latency/backend-load cost for no benefit.
+		const lastUserMessage = [...chatMessages].reverse().find(m => m.role === 'user')
+		const semanticSearchContext = (chatMode === 'agent' || chatMode === 'gather') && lastUserMessage
+			? await this._getSemanticSearchContext(lastUserMessage.content)
+			: ''
+		const aiInstructions = [await this._getCombinedGlobalRules(), semanticSearchContext].filter(Boolean).join('\n\n');
 		const isReasoningEnabled = getIsReasoningEnabledState('Chat', providerName, modelName, modelSelectionOptions, overridesOfModel)
 		const reservedOutputTokenSpace = getReservedOutputTokenSpace(providerName, modelName, { isReasoningEnabled, overridesOfModel })
 		const llmMessages = this._chatMessagesToSimpleMessages(chatMessages)
