@@ -267,7 +267,22 @@ suite('AINativeCloudAuthService', () => {
 		});
 
 		test('should validate new password length in changePassword', async () => {
-			const result = await authService.changePassword('oldpassword', 'short');
+			// changePassword checks authentication before password strength (correctly - it
+			// shouldn't reveal validation-rule details to an unauthenticated caller), so without
+			// a logged-in session this always short-circuits to InvalidCredentials regardless of
+			// the new password's length, never actually reaching the length check this test means
+			// to exercise. Pre-populate storage with a valid encrypted token the same way other
+			// tests in this suite simulate an already-logged-in session, then construct a fresh
+			// service instance so its constructor's _loadFromStorage() picks it up.
+			const validToken = createMockJWT({ sub: 'user-123', email: 'test@example.com', role: 'user' });
+			const encryptedToken = await encryptionService.encrypt(validToken);
+			await storageService.store('ainative.cloud.auth.accessToken', encryptedToken, StorageScope.APPLICATION, StorageTarget.MACHINE);
+			await storageService.store('ainative.cloud.auth.user', JSON.stringify({ id: 'user-123', email: 'test@example.com', role: 'user' }), StorageScope.APPLICATION, StorageTarget.MACHINE);
+
+			const authenticatedService = disposables.add(new AINativeCloudAuthService(encryptionService, storageService));
+			await new Promise(resolve => setTimeout(resolve, 100)); // let the async _loadFromStorage complete
+
+			const result = await authenticatedService.changePassword('oldpassword', 'short');
 
 			strictEqual(result.success, false);
 			ok(result.error);
