@@ -14,7 +14,7 @@ import { URI } from '../../../../../../../base/common/uri.js';
 import { IDisposable } from '../../../../../../../base/common/lifecycle.js';
 import { ErrorDisplay } from './ErrorDisplay.js';
 import { BlockCode, TextAreaFns, AINativeCustomDropdownBox, AINativeInputBox2, AINativeSlider, AINativeSwitch, AINativeDiffEditor } from '../util/inputs.js';
-import { ModelDropdown, } from '../ainative-settings-tsx/ModelDropdown.js';
+import { ModelSwitcher } from './ModelSwitcher.js';
 import { PastThreadsList } from './SidebarThreadSelector.js';
 import { VOID_CTRL_L_ACTION_ID } from '../../../actionIDs.js';
 import { AINATIVE_OPEN_SETTINGS_ACTION_ID } from '../../../ainativeSettingsPane.js';
@@ -35,6 +35,7 @@ import { ToolApprovalTypeSwitch } from '../ainative-settings-tsx/Settings.js';
 
 import { persistentTerminalNameOfId } from '../../../terminalToolService.js';
 import { removeMCPToolNamePrefix } from '../../../../common/mcpServiceTypes.js';
+import { StatusDot, StatusDotState } from '../primitives/StatusDot.js';
 
 
 
@@ -388,7 +389,7 @@ export const AINativeChatArea: React.FC<AINativeChatAreaProps> = ({
 
 						<div className='flex items-center flex-wrap gap-x-2 gap-y-1 text-nowrap '>
 							{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-ainative-fg-3 bg-ainative-bg-1 border border-ainative-border-2 rounded py-0.5 px-1' />}
-							<ModelDropdown featureName={featureName} className='text-xs text-ainative-fg-3 bg-ainative-bg-1 rounded' />
+							<ModelSwitcher featureName={featureName} />
 						</div>
 					</div>
 				)}
@@ -758,6 +759,21 @@ export const SelectedFiles = (
 }
 
 
+/**
+ * Tool-call family tag, per the redesign's row format (docs/design/handoff README
+ * "Chat tool-call language"): READ/EDIT/RUN/MCP, 10.5px/600/+0.04em, read=fg-2,
+ * edit/MCP=accent-fg, run=fg-1. Optional - not every ToolHeaderWrapper caller is a
+ * tool-call row (e.g. the Reasoning wrapper), so omitting it renders no tag.
+ */
+export type ToolCallFamily = 'read' | 'edit' | 'run' | 'mcp';
+
+const familyTagClasses: Record<ToolCallFamily, string> = {
+	read: 'text-ainative-fg-2',
+	edit: 'text-ainative-accent-fg',
+	run: 'text-ainative-fg-1',
+	mcp: 'text-ainative-accent-fg',
+};
+
 type ToolHeaderParams = {
 	icon?: React.ReactNode;
 	title: React.ReactNode;
@@ -776,6 +792,10 @@ type ToolHeaderParams = {
 	desc2OnClick?: () => void;
 	isOpen?: boolean;
 	className?: string;
+	/** Family tag shown before the title, per the redesign row format. Omit to render none. */
+	family?: ToolCallFamily;
+	/** True while the tool is actively running (maps to the pulsing accent state dot). */
+	isRunning?: boolean;
 }
 
 const ToolHeaderWrapper = ({
@@ -796,6 +816,8 @@ const ToolHeaderWrapper = ({
 	isOpen,
 	isRejected,
 	className, // applies to the main content
+	family,
+	isRunning,
 }: ToolHeaderParams) => {
 
 	const [isOpen_, setIsOpen] = useState(false);
@@ -806,8 +828,13 @@ const ToolHeaderWrapper = ({
 
 	const isDesc1Clickable = !!desc1OnClick
 
+	// Row state, per the redesign's state vocabulary (pending/running/done/waiting/failed/skipped).
+	// "waiting" (awaiting approval) is a sibling of this wrapper today (ToolRequestAcceptRejectButtons
+	// rendered by _ChatBubble), not inferable here, so it's intentionally not one of these cases.
+	const dotState: StatusDotState = isError ? 'failed' : isRejected ? 'skipped' : isRunning ? 'running' : 'done';
+
 	const desc1HTML = <span
-		className={`text-ainative-fg-4 text-xs italic truncate ml-2
+		className={`text-ainative-fg-2 text-xs italic truncate ml-2
 			${isDesc1Clickable ? 'cursor-pointer hover:brightness-125 transition-all duration-150' : ''}
 		`}
 		onClick={desc1OnClick}
@@ -820,14 +847,22 @@ const ToolHeaderWrapper = ({
 	>{desc1}</span>
 
 	return (<div className=''>
-		<div className={`w-full border border-ainative-border-3 rounded px-2 py-1 bg-ainative-bg-3 overflow-hidden ${className}`}>
+		<div className={`w-full border border-ainative-border-1 rounded-[10px] px-2 py-1.5 bg-ainative-bg-2 overflow-hidden ${isRunning ? 'bg-ainative-accent-bg' : ''} ${className}`}>
 			{/* header */}
 			<div className={`select-none flex items-center min-h-[24px]`}>
 				<div className={`flex items-center w-full gap-x-2 overflow-hidden justify-between ${isRejected ? 'line-through' : ''}`}>
 					{/* left */}
 					<div // container for if desc1 is clickable
-						className='ml-1 flex items-center overflow-hidden'
+						className='ml-1 flex items-center overflow-hidden gap-x-1.5'
 					>
+						<StatusDot state={dotState} />
+
+						{family && (
+							<span className={`text-[10.5px] font-semibold tracking-[0.04em] uppercase flex-shrink-0 ${familyTagClasses[family]}`}>
+								{family}
+							</span>
+						)}
+
 						{/* title eg "> Edited File" */}
 						<div className={`
 							flex items-center min-w-0 overflow-hidden grow
@@ -863,7 +898,7 @@ const ToolHeaderWrapper = ({
 						/>}
 
 						{isError && <AlertTriangle
-							className='text-ainative-warning opacity-90 flex-shrink-0'
+							className='text-ainative-error opacity-90 flex-shrink-0'
 							size={14}
 							data-tooltip-id='ainative-tooltip'
 							data-tooltip-content={'Error running tool'}
@@ -915,7 +950,8 @@ const EditTool = ({ toolMessage, threadId, messageIdx, content }: Parameters<Res
 
 	const { rawParams, params, name } = toolMessage
 	const desc1OnClick = () => voidOpenFileFn(params.uri, accessor)
-	const componentParams: ToolHeaderParams = { title, desc1, desc1OnClick, desc1Info, isError, icon, isRejected, }
+	const isRunning = toolMessage.type === 'running_now'
+	const componentParams: ToolHeaderParams = { title, desc1, desc1OnClick, desc1Info, isError, icon, isRejected, family: 'edit', isRunning, }
 
 
 	const editToolType = toolMessage.name === 'edit_file' ? 'diff' : 'rewrite'
@@ -1422,6 +1458,33 @@ const titleOfBuiltinToolName = {
 	'search_in_file': { done: 'Searched in file', proposed: 'Search in file', running: loadingTitleWrapper('Searching in file') },
 } as const satisfies Record<BuiltinToolName, { done: any, proposed: any, running: any }>
 
+/**
+ * Maps a builtin tool to its family tag (READ/EDIT/RUN), per the redesign row format. Pure -
+ * no component state - so it's covered by a real unit test (see SidebarChat.familyOf.test.ts)
+ * rather than requiring the full chat UI to render.
+ */
+export const familyOfBuiltinToolName = (toolName: BuiltinToolName): ToolCallFamily => {
+	switch (toolName) {
+		case 'read_file':
+		case 'ls_dir':
+		case 'get_dir_tree':
+		case 'search_pathnames_only':
+		case 'search_for_files':
+		case 'search_in_file':
+		case 'read_lint_errors':
+			return 'read';
+		case 'create_file_or_folder':
+		case 'delete_file_or_folder':
+		case 'edit_file':
+		case 'rewrite_file':
+			return 'edit';
+		case 'run_command':
+		case 'run_persistent_command':
+		case 'open_persistent_terminal':
+		case 'kill_persistent_terminal':
+			return 'run';
+	}
+}
 
 const getTitle = (toolMessage: Pick<ChatMessage & { role: 'tool' }, 'name' | 'type' | 'mcpServerName'>): React.ReactNode => {
 	const t = toolMessage
@@ -1736,7 +1799,8 @@ const InvalidTool = ({ toolName, message, mcpServerName }: { toolName: ToolName,
 	const desc1 = 'Invalid parameters'
 	const icon = null
 	const isError = true
-	const componentParams: ToolHeaderParams = { title, desc1, isError, icon }
+	const family = isABuiltinToolName(toolName) ? familyOfBuiltinToolName(toolName) : 'mcp'
+	const componentParams: ToolHeaderParams = { title, desc1, isError, icon, family }
 
 	componentParams.children = <ToolChildrenWrapper>
 		<CodeChildren className='bg-ainative-bg-3'>
@@ -1752,7 +1816,8 @@ const CanceledTool = ({ toolName, mcpServerName }: { toolName: ToolName, mcpServ
 	const desc1 = ''
 	const icon = null
 	const isRejected = true
-	const componentParams: ToolHeaderParams = { title, desc1, icon, isRejected }
+	const family = isABuiltinToolName(toolName) ? familyOfBuiltinToolName(toolName) : 'mcp'
+	const componentParams: ToolHeaderParams = { title, desc1, icon, isRejected, family }
 	return <ToolHeaderWrapper {...componentParams} />
 }
 
@@ -1779,7 +1844,8 @@ const CommandTool = ({ toolMessage, type, threadId }: { threadId: string } & ({
 
 	const isRejected = toolMessage.type === 'rejected'
 	const { rawParams, params } = toolMessage
-	const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+	const isRunning = toolMessage.type === 'running_now'
+	const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'run', isRunning, }
 
 
 	const effect = async () => {
@@ -1866,7 +1932,10 @@ const MCPToolWrapper = ({ toolMessage }: WrapperProps<string>) => {
 	const mcpService = accessor.get('IMCPService')
 
 	const title = getTitle(toolMessage)
-	const desc1 = removeMCPToolNamePrefix(toolMessage.name)
+	// Server-name prefix per the redesign row format (e.g. "github · search_issues").
+	const desc1 = toolMessage.mcpServerName
+		? `${toolMessage.mcpServerName} · ${removeMCPToolNamePrefix(toolMessage.name)}`
+		: removeMCPToolNamePrefix(toolMessage.name)
 	const icon = null
 
 
@@ -1875,7 +1944,7 @@ const MCPToolWrapper = ({ toolMessage }: WrapperProps<string>) => {
 	const isError = false
 	const isRejected = toolMessage.type === 'rejected'
 	const { rawParams, params } = toolMessage
-	const componentParams: ToolHeaderParams = { title, desc1, isError, icon, isRejected, }
+	const componentParams: ToolHeaderParams = { title, desc1, isError, icon, isRejected, family: 'mcp', }
 
 	const paramsStr = JSON.stringify(params, null, 2)
 	componentParams.desc2 = <CopyButton codeStr={paramsStr} toolTipName={`Copy inputs: ${paramsStr}`} />
@@ -1931,7 +2000,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			const isError = false
 			const isRejected = toolMessage.type === 'rejected'
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'read', }
 
 			let range: [number, number] | undefined = undefined
 			if (toolMessage.params.startLine !== null || toolMessage.params.endLine !== null) {
@@ -1978,7 +2047,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			const isError = false
 			const isRejected = toolMessage.type === 'rejected'
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'read', }
 
 			if (params.uri) {
 				const rel = getRelative(params.uri, accessor)
@@ -2026,7 +2095,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			const isError = false
 			const isRejected = toolMessage.type === 'rejected'
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'read', }
 
 			if (params.uri) {
 				const rel = getRelative(params.uri, accessor)
@@ -2079,7 +2148,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			if (toolMessage.type === 'running_now') return null // do not show running
 
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'read', }
 
 			if (params.includePattern) {
 				componentParams.info = `Only search in ${params.includePattern}`
@@ -2128,7 +2197,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			if (toolMessage.type === 'running_now') return null // do not show running
 
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'read', }
 
 			if (params.searchInFolder || params.isRegex) {
 				let info: string[] = []
@@ -2183,7 +2252,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			if (toolMessage.type === 'running_now') return null // do not show running
 
 			const { rawParams, params } = toolMessage;
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected };
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'read' };
 
 			const infoarr: string[] = []
 			const uriStr = getRelative(params.uri, accessor)
@@ -2233,7 +2302,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			const isError = false
 			const isRejected = toolMessage.type === 'rejected'
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'read', }
 
 			componentParams.info = getRelative(uri, accessor) // full path
 
@@ -2274,7 +2343,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 
 
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'edit', }
 
 			componentParams.info = getRelative(params.uri, accessor) // full path
 
@@ -2316,7 +2385,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			const icon = null
 
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'edit', }
 
 			componentParams.info = getRelative(params.uri, accessor) // full path
 
@@ -2387,7 +2456,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			const isError = false
 			const isRejected = toolMessage.type === 'rejected'
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'run', }
 
 			const relativePath = params.cwd ? getRelative(URI.file(params.cwd), accessor) : ''
 			componentParams.info = relativePath ? `Running in ${relativePath}` : undefined
@@ -2426,7 +2495,7 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			const isError = false
 			const isRejected = toolMessage.type === 'rejected'
 			const { rawParams, params } = toolMessage
-			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, }
+			const componentParams: ToolHeaderParams = { title, desc1, desc1Info, isError, icon, isRejected, family: 'run', }
 
 			if (toolMessage.type === 'success') {
 				const { persistentTerminalId } = params
@@ -2459,18 +2528,19 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
 		return !!Object.keys(streamState).find((threadId2) => streamState[threadId2]?.isRunning)
 	}, [isRunning, streamState])
 
+	// "CHECKPOINT · RESTORE" rule, per the redesign row format - a horizontal hairline with
+	// the label inline, rather than plain centered text.
 	return <div
-		className={`flex items-center justify-center px-2 `}
+		className={`flex items-center gap-2 px-2 py-1 ${isCheckpointGhost ? 'opacity-50' : 'opacity-100'}`}
 	>
+		<div className='flex-1 border-t border-ainative-border-1' />
 		<div
 			className={`
-                    text-xs
-                    text-ainative-fg-3
-                    select-none
-                    ${isCheckpointGhost ? 'opacity-50' : 'opacity-100'}
-					${isDisabled ? 'cursor-default' : 'cursor-pointer'}
+                    text-[10.5px] font-semibold tracking-[0.04em] uppercase
+                    text-ainative-fg-2
+                    select-none whitespace-nowrap
+					${isDisabled ? 'cursor-default' : 'cursor-pointer hover:text-ainative-fg-1'}
                 `}
-			style={{ position: 'relative', display: 'inline-block' }} // allow absolute icon
 			onClick={() => {
 				if (threadIsRunning) return
 				if (isDisabled) return
@@ -2486,8 +2556,9 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
 				'data-tooltip-place': 'top',
 			} : {}}
 		>
-			Checkpoint
+			Checkpoint · Restore
 		</div>
+		<div className='flex-1 border-t border-ainative-border-1' />
 	</div>
 }
 

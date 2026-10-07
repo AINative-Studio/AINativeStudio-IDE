@@ -8,7 +8,8 @@ import { useFloating, autoUpdate, offset, flip, shift, useClick, useDismiss, use
 
 interface PopoverProps {
 	trigger: (props: { ref: (node: HTMLElement | null) => void; onClick: () => void; 'aria-expanded': boolean }) => ReactNode;
-	children: ReactNode;
+	/** Either static content, or a render function given `close()` - e.g. to close on row selection. */
+	children: ReactNode | ((helpers: { close: () => void }) => ReactNode);
 	/** Fixed popover width per spec (e.g. model switcher is 320px, account menu is 316px). */
 	width?: number;
 	open?: boolean;
@@ -53,7 +54,7 @@ export const Popover: React.FC<PopoverProps> = ({ trigger, children, width = 320
 						{...getFloatingProps()}
 						className="z-50 rounded-xl border border-ainative-border-2 bg-ainative-bg-1 shadow-sm animate-ainative-fade-up"
 					>
-						{children}
+						{typeof children === 'function' ? children({ close: () => setOpen(false) }) : children}
 					</div>
 				</FloatingFocusManager>
 			)}
