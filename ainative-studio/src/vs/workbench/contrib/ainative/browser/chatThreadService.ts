@@ -17,7 +17,7 @@ import { generateUuid } from '../../../../base/common/uuid.js';
 import { FeatureName, ModelSelection, ModelSelectionOptions } from '../common/ainativeSettingsTypes.js';
 import { IAINativeSettingsService } from '../common/ainativeSettingsService.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, ToolCallParams, ToolName, ToolResult } from '../common/toolsServiceTypes.js';
-import { IToolsService } from './toolsService.js';
+import { IToolsService, ToolCallContext } from './toolsService.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
 import { ChatMessage, CheckpointEntry, CodespanLocationLink, StagingSelectionItem, ToolMessage } from '../common/chatThreadServiceTypes.js';
@@ -147,6 +147,15 @@ export type ThreadType = {
 			mountedIsResolvedRef: { current: boolean };
 		}
 
+		/**
+		 * #159 phase 1 (see docs/planning/SHADOW_WORKSPACE_DESIGN.md): whether this thread's
+		 * file-mutating tool calls write into a per-thread shadow copy instead of the real
+		 * workspace. Default/undefined = off (identical to today's behavior) - opt-in, not a
+		 * breaking change to any existing thread. Persisted via the same JSON.stringify/parse
+		 * round-trip as the rest of ThreadType['state']; an old persisted thread simply lacks this
+		 * field, which parses back as undefined = off, so no migration is needed.
+		 */
+		shadowModeEnabled?: boolean;
 
 	};
 }
@@ -714,7 +723,13 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 			this._setStreamState(threadId, { isRunning: 'tool', interrupt: interruptorPromise, toolInfo: { toolName, toolParams, id: toolId, content: 'interrupted...', rawParams: opts.unvalidatedToolParams, mcpServerName } })
 
 			if (isBuiltInTool) {
-				const { result, interruptTool } = await this._toolsService.callTool[toolName](toolParams as any)
+				// #159 phase 1: shadowModeEnabled defaults to undefined/falsy for every existing
+				// and new thread unless explicitly turned on, so this ToolCallContext is inert
+				// (every write/read tool's ctx?.shadowModeEnabled check short-circuits to the
+				// exact same real-URI behavior as before this feature existed) until a thread
+				// opts in.
+				const toolCallCtx: ToolCallContext = { threadId, shadowModeEnabled: !!this.state.allThreads[threadId]?.state.shadowModeEnabled }
+				const { result, interruptTool } = await this._toolsService.callTool[toolName](toolParams as any, toolCallCtx)
 				const interruptor = () => { interrupted = true; interruptTool?.() }
 				resolveInterruptor(interruptor)
 

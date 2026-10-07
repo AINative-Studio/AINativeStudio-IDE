@@ -19,11 +19,27 @@ import { RawToolParamsObj } from '../common/sendLLMMessageTypes.js'
 import { MAX_CHILDREN_URIs_PAGE, MAX_FILE_CHARS_PAGE, MAX_TERMINAL_BG_COMMAND_TIME, MAX_TERMINAL_INACTIVE_TIME } from '../common/prompt/prompts.js'
 import { IAINativeSettingsService } from '../common/ainativeSettingsService.js'
 import { generateUuid } from '../../../../base/common/uuid.js'
+import { IShadowWorkspaceService } from '../common/shadowWorkspaceService.js'
 
 
 // tool use for AI
 type ValidateBuiltinParams = { [T in BuiltinToolName]: (p: RawToolParamsObj) => BuiltinToolCallParams[T] }
-type CallBuiltinTool = { [T in BuiltinToolName]: (p: BuiltinToolCallParams[T]) => Promise<{ result: BuiltinToolResultType[T] | Promise<BuiltinToolResultType[T]>, interruptTool?: () => void }> }
+
+/**
+ * Per-call context for the shadow workspace feature (#159 phase 1, see
+ * docs/planning/SHADOW_WORKSPACE_DESIGN.md §3.2). Optional and additive rather than folded into
+ * BuiltinToolCallParams: that type is specifically "params the LLM provides and we validate",
+ * while this is internal invocation context chatThreadService._runToolCall already has in scope
+ * (threadId) and derives from settings (shadowModeEnabled) - conflating the two would mean every
+ * other BuiltinToolCallParams consumer (the LLM-facing tool-definition prompts, param validation)
+ * would need to know about a concept that has nothing to do with what the LLM is allowed to pass.
+ * Omitted entirely at the two call sites that don't run in a thread/shadow context
+ * (search_pathnames_only's direct use in chatThreadService.ts's own codespan-link resolution and
+ * in util/inputs.tsx's file-mention autocomplete) - both keep working completely unmodified.
+ */
+export type ToolCallContext = { threadId: string, shadowModeEnabled: boolean }
+
+type CallBuiltinTool = { [T in BuiltinToolName]: (p: BuiltinToolCallParams[T], ctx?: ToolCallContext) => Promise<{ result: BuiltinToolResultType[T] | Promise<BuiltinToolResultType[T]>, interruptTool?: () => void }> }
 type BuiltinToolResultToString = { [T in BuiltinToolName]: (p: BuiltinToolCallParams[T], result: Awaited<BuiltinToolResultType[T]>) => string }
 
 
@@ -153,8 +169,31 @@ export class ToolsService implements IToolsService {
 		@IDirectoryStrService private readonly directoryStrService: IDirectoryStrService,
 		@IMarkerService private readonly markerService: IMarkerService,
 		@IAINativeSettingsService private readonly voidSettingsService: IAINativeSettingsService,
+		@IShadowWorkspaceService private readonly shadowWorkspaceService: IShadowWorkspaceService,
 	) {
 		const queryBuilder = instantiationService.createInstance(QueryBuilder);
+
+		// Resolves the real-or-shadow target URI for a write tool (#159 phase 1, design doc §3.2).
+		// workspaceContextService.getWorkspaceFolder gives the workspace root a file belongs to -
+		// required by syncFileIntoShadow's signature, and also the natural "no shadow mode possible"
+		// bail-out for a URI outside any open workspace folder (e.g. an untitled/external file),
+		// where shadowing has no meaningful real-workspace-relative path to mirror.
+		const resolveTargetUri = async (uri: URI, ctx: ToolCallContext | undefined): Promise<URI> => {
+			if (!ctx?.shadowModeEnabled) return uri
+			const workspaceFolder = workspaceContextService.getWorkspaceFolder(uri)
+			if (!workspaceFolder) return uri
+			return this.shadowWorkspaceService.syncFileIntoShadow(ctx.threadId, workspaceFolder.uri, uri)
+		}
+
+		// Pure path-mapping for a folder target (create_file_or_folder/delete_file_or_folder when
+		// isFolder is true) - shadowUriFor is synchronous path math, no file content involved, so
+		// this doesn't need resolveTargetUri's async syncFileIntoShadow call. Falls back to the
+		// real uri for a folder outside any open workspace folder, same as resolveTargetUri.
+		const resolveFolderUri = (uri: URI, ctx: ToolCallContext): URI => {
+			const workspaceFolder = workspaceContextService.getWorkspaceFolder(uri)
+			if (!workspaceFolder) return uri
+			return this.shadowWorkspaceService.shadowUriFor(ctx.threadId, workspaceFolder.uri, uri)
+		}
 
 		this.validateParams = {
 			read_file: (params: RawToolParamsObj) => {
@@ -293,8 +332,22 @@ export class ToolsService implements IToolsService {
 		}
 
 
+		// Serves the shadow version of a file if one has been synced for this thread (#159 phase
+		// 1, design doc §3.2 "read tools need a parallel redirect... so the agent sees its own
+		// prior edits"), falling back to the real file transparently otherwise - including when
+		// shadow mode is off, or on for a thread that simply hasn't touched this particular file yet.
+		const resolveReadUri = (uri: URI, ctx: ToolCallContext | undefined): URI => {
+			if (!ctx?.shadowModeEnabled) return uri
+			const shadow = this.shadowWorkspaceService.getShadowForThread(ctx.threadId)
+			if (!shadow || !shadow.syncedFsPaths.has(uri.fsPath)) return uri
+			const workspaceFolder = workspaceContextService.getWorkspaceFolder(uri)
+			if (!workspaceFolder) return uri
+			return this.shadowWorkspaceService.shadowUriFor(ctx.threadId, workspaceFolder.uri, uri)
+		}
+
 		this.callTool = {
-			read_file: async ({ uri, startLine, endLine, pageNumber }) => {
+			read_file: async ({ uri: realUri, startLine, endLine, pageNumber }, ctx) => {
+				const uri = resolveReadUri(realUri, ctx)
 				await voidModelService.initializeModel(uri)
 				const { model } = await voidModelService.getModelSafe(uri)
 				if (model === null) { throw new Error(`No contents; File does not exist.`) }
@@ -319,6 +372,12 @@ export class ToolsService implements IToolsService {
 				return { result: { fileContents, totalFileLen, hasNextPage, totalNumLines } }
 			},
 
+			// Not shadow-redirected (#159 phase 1): the shadow tree only ever mirrors files the
+			// agent has individually touched via syncFileIntoShadow, never a directory wholesale -
+			// listing the shadow directory here would show an incomplete, misleading view (every
+			// untouched sibling file missing) rather than the real workspace's actual contents.
+			// read_file/search_in_file redirect per-file because that matches exactly what's
+			// synced; a directory listing has no equivalent 1:1 shadow counterpart to redirect to.
 			ls_dir: async ({ uri, pageNumber }) => {
 				const dirResult = await computeDirectoryTree1Deep(fileService, uri, pageNumber)
 				return { result: dirResult }
@@ -369,7 +428,8 @@ export class ToolsService implements IToolsService {
 				const hasNextPage = (data.results.length - 1) - toIdx >= 1
 				return { result: { queryStr, uris, hasNextPage } }
 			},
-			search_in_file: async ({ uri, query, isRegex }) => {
+			search_in_file: async ({ uri: realUri, query, isRegex }, ctx) => {
+				const uri = resolveReadUri(realUri, ctx)
 				await voidModelService.initializeModel(uri);
 				const { model } = await voidModelService.getModelSafe(uri);
 				if (model === null) { throw new Error(`No contents; File does not exist.`); }
@@ -396,7 +456,14 @@ export class ToolsService implements IToolsService {
 
 			// ---
 
-			create_file_or_folder: async ({ uri, isFolder }) => {
+			create_file_or_folder: async ({ uri: realUri, isFolder }, ctx) => {
+				// Folders are not shadow-redirected: syncFileIntoShadow copies one file's *content*
+				// (design doc §3.1), which has no meaning for a directory - a new folder is created
+				// directly in the shadow tree's own real-fs location instead, mirroring the real
+				// workspace-relative path the same way shadowUriFor already computes for files.
+				const uri = isFolder
+					? (ctx?.shadowModeEnabled ? resolveFolderUri(realUri, ctx) : realUri)
+					: await resolveTargetUri(realUri, ctx)
 				if (isFolder)
 					await fileService.createFolder(uri)
 				else {
@@ -405,12 +472,19 @@ export class ToolsService implements IToolsService {
 				return { result: {} }
 			},
 
-			delete_file_or_folder: async ({ uri, isRecursive }) => {
+			delete_file_or_folder: async ({ uri: realUri, isRecursive, isFolder }, ctx) => {
+				// Same folder caveat as create_file_or_folder - syncFileIntoShadow operates on file
+				// content, so a folder delete targets the shadow tree's mirrored path directly
+				// rather than going through the file-sync primitive.
+				const uri = isFolder
+					? (ctx?.shadowModeEnabled ? resolveFolderUri(realUri, ctx) : realUri)
+					: await resolveTargetUri(realUri, ctx)
 				await fileService.del(uri, { recursive: isRecursive })
 				return { result: {} }
 			},
 
-			rewrite_file: async ({ uri, newContent }) => {
+			rewrite_file: async ({ uri: realUri, newContent }, ctx) => {
+				const uri = await resolveTargetUri(realUri, ctx)
 				await voidModelService.initializeModel(uri)
 				if (this.commandBarService.getStreamState(uri) === 'streaming') {
 					throw new Error(`Another LLM is currently making changes to this file. Please stop streaming for now and ask the user to resume later.`)
@@ -426,7 +500,8 @@ export class ToolsService implements IToolsService {
 				return { result: lintErrorsPromise }
 			},
 
-			edit_file: async ({ uri, searchReplaceBlocks }) => {
+			edit_file: async ({ uri: realUri, searchReplaceBlocks }, ctx) => {
+				const uri = await resolveTargetUri(realUri, ctx)
 				await voidModelService.initializeModel(uri)
 				if (this.commandBarService.getStreamState(uri) === 'streaming') {
 					throw new Error(`Another LLM is currently making changes to this file. Please stop streaming for now and ask the user to resume later.`)
