@@ -8,7 +8,9 @@ import { ProviderName, SettingName, displayInfoOfSettingName, providerNames, AIN
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js'
 import { AINativeButtonBgDarken, AINativeCustomDropdownBox, AINativeInputBox2, AINativeSimpleInputBox, AINativeSwitch } from '../util/inputs.js'
 import { useAccessor, useIsDark, useIsOptedOut, useRefreshModelListener, useRefreshModelState, useSettingsState, useAINativeAuth } from '../util/services.js'
-import { X, RefreshCw, Loader2, Check, Asterisk, Plus } from 'lucide-react'
+import { X, RefreshCw, Loader2, Check, Asterisk, Plus, ChevronRight } from 'lucide-react'
+import { StatusDot, StatusDotState } from '../primitives/StatusDot.js'
+import { EmptyState } from '../primitives/EmptyState.js'
 import { URI } from '../../../../../../../base/common/uri.js'
 import { ModelDropdown } from './ModelDropdown.js'
 import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js'
@@ -20,7 +22,8 @@ import { ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsSer
 import Severity from '../../../../../../../base/common/severity.js'
 import { getModelCapabilities, modelOverrideKeys, ModelOverrides } from '../../../../common/modelCapabilities.js';
 import { TransferEditorType, TransferFilesInfo } from '../../../extensionTransferTypes.js';
-import { MCPServer } from '../../../../common/mcpServiceTypes.js';
+import { MCPServer, MCPConnectionLogEntry } from '../../../../common/mcpServiceTypes.js';
+import { Button } from '../primitives/Button.js'
 import { useMCPServiceState } from '../util/services.js';
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js';
 import { StorageScope, StorageTarget } from '../../../../../../../platform/storage/common/storage.js';
@@ -1015,6 +1018,33 @@ const MCPTestToolForm = ({ serverName, tools }: { serverName: string, tools: { n
 }
 
 // MCP Server component
+/**
+ * MCP status vocabulary, per the redesign (docs/design/handoff README "MCP servers"):
+ * connected (ok), connecting (accent, pulse), failed (error), disabled (fg-2). Pure mapping
+ * from the service's own MCPServer['status'] + the user's isOn toggle - kept as a standalone
+ * exported function so it stays testable in isolation if/when this codebase wires up a
+ * runner for its .tsx-local pure logic (there's a vitest + Testing Library convention
+ * already present under test/browser/react/*.test.tsx, but no vitest config/script exists
+ * yet to actually run it - confirmed via repo search).
+ */
+export type MCPRowStatus = 'connected' | 'connecting' | 'failed' | 'disabled';
+
+export const mcpRowStatus = (serverStatus: MCPServer['status'], isOn: boolean | undefined): MCPRowStatus => {
+	if (!isOn) return 'disabled';
+	if (serverStatus === 'error' || serverStatus === 'offline') return 'failed';
+	if (serverStatus === 'loading') return 'connecting';
+	return 'connected';
+};
+
+const statusDotStateOfMcpRowStatus: Record<MCPRowStatus, StatusDotState> = {
+	connected: 'done',
+	connecting: 'running',
+	failed: 'failed',
+	disabled: 'disabled',
+};
+
+// Table row, per the redesign's MCP servers table view: status dot, Server (name + caret),
+// Command (mono), Tools (on/total), switch - row click expands in place.
 const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer }) => {
 	const accessor = useAccessor();
 	const mcpService = accessor.get('IMCPService');
@@ -1023,8 +1053,14 @@ const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer 
 	const voidSettings = useSettingsState()
 	const isOn = voidSettings.mcpUserStateOfName[name]?.isOn
 	const [isReconnecting, setIsReconnecting] = useState(false)
+	const [isExpanded, setIsExpanded] = useState(false)
 
 	const removeUniquePrefix = (name: string) => name.split('_').slice(1).join('_')
+
+	const status = mcpRowStatus(server.status, isOn)
+	const tools = server.tools ?? []
+	const disabledToolNames = voidSettings.mcpUserStateOfName[name]?.disabledToolNames ?? []
+	const enabledToolCount = tools.filter(t => !disabledToolNames.includes(t.name)).length
 
 	const reconnect = useCallback(async () => {
 		setIsReconnecting(true)
@@ -1038,38 +1074,32 @@ const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer 
 		}
 	}, [mcpService, name])
 
-	return (
-		<div className="border border-ainative-border-2 bg-ainative-bg-1 py-3 px-4 rounded-sm my-2">
-			<div className="flex items-center justify-between">
-				{/* Left side - status and name */}
-				<div className="flex items-center gap-2">
-					{/* Status indicator */}
-					<div className={`w-2 h-2 rounded-full
-						${server.status === 'success' ? 'bg-green-500'
-							: server.status === 'error' ? 'bg-red-500'
-								: server.status === 'loading' ? 'bg-yellow-500'
-									: server.status === 'offline' ? 'bg-ainative-fg-3'
-										: ''}
-					`}></div>
+	const setAllTools = (enabled: boolean) => {
+		for (const tool of tools) voidSettingsService.setMCPToolEnabled(name, tool.name, enabled)
+	}
 
-					{/* Server name */}
-					<div className="text-sm font-medium text-ainative-fg-1">{name}</div>
+	return (
+		<div className={`border-b border-ainative-border-1 ${status === 'disabled' ? 'opacity-70' : ''}`}>
+			<div
+				className="flex items-center gap-3 py-[11px] px-[14px] cursor-pointer hover:bg-ainative-bg-3 transition-colors"
+				onClick={() => setIsExpanded(v => !v)}
+			>
+				<StatusDot state={statusDotStateOfMcpRowStatus[status]} />
+
+				<div className="flex items-center gap-1 flex-1 min-w-0">
+					<ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 text-ainative-fg-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+					<span className="text-root font-medium text-ainative-fg-1 truncate">{name}</span>
 				</div>
 
-				{/* Right side - reconnect + power toggle switch */}
-				<div className="flex items-center gap-2">
-					{isOn && (
-						<button
-							type="button"
-							className="text-ainative-fg-3 hover:text-ainative-fg-1 disabled:opacity-50"
-							disabled={isReconnecting}
-							onClick={reconnect}
-							data-tooltip-id='ainative-tooltip'
-							data-tooltip-content='Reconnect'
-						>
-							<RefreshCw className={`w-3.5 h-3.5 ${isReconnecting ? 'animate-spin' : ''}`} />
-						</button>
-					)}
+				<div className="w-[220px] flex-shrink-0 hidden md:block">
+					<span className="font-mono text-xs text-ainative-fg-2 truncate block">{server.command ?? ''}</span>
+				</div>
+
+				<div className="w-[72px] flex-shrink-0 text-xs text-ainative-fg-2 text-right">
+					{tools.length > 0 ? `${enabledToolCount}/${tools.length}` : ''}
+				</div>
+
+				<div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
 					<AINativeSwitch
 						value={isOn ?? false}
 						size='xs'
@@ -1079,93 +1109,174 @@ const MCPServerComponent = ({ name, server }: { name: string, server: MCPServer 
 				</div>
 			</div>
 
-			{/* Tools section - each tool individually enable/disable-able (#175). A disabled tool
-				is hidden from the agent's tool list (mcpService.getMCPTools()) and server-side
-				rejected if called anyway (mcpService.callMCPTool()), not just visually dimmed. */}
-			{isOn && (
-				<div className="mt-3">
-					<div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-						{(server.tools ?? []).length > 0 ? (
-							(server.tools ?? []).map((tool: { name: string; description?: string }) => {
-								const disabledToolNames = voidSettings.mcpUserStateOfName[name]?.disabledToolNames ?? []
-								const toolIsEnabled = !disabledToolNames.includes(tool.name)
-								return (
-									<label
-										key={tool.name}
-										className={`flex items-center gap-1 px-2 py-0.5 bg-ainative-bg-2 rounded-sm text-xs cursor-pointer select-none
-											${toolIsEnabled ? 'text-ainative-fg-3' : 'text-ainative-fg-3/40 line-through'}`}
-
-										data-tooltip-id='ainative-tooltip'
-										data-tooltip-content={tool.description || ''}
-										data-tooltip-class-name='ainative-max-w-[300px]'
-									>
-										<input
-											type='checkbox'
-											className='w-3 h-3'
-											checked={toolIsEnabled}
-											onChange={() => voidSettingsService.setMCPToolEnabled(name, tool.name, !toolIsEnabled)}
-										/>
-										{removeUniquePrefix(tool.name)}
-									</label>
-								)
-							})
-						) : (
-							<span className="text-xs text-ainative-fg-3">No tools available</span>
-						)}
-					</div>
-				</div>
-			)}
-
-			{/* Command badge */}
-			{isOn && server.command && (
-				<div className="mt-3">
-					<div className="text-xs text-ainative-fg-3 mb-1">Command:</div>
-					<div className="px-2 py-1 bg-ainative-bg-2 text-xs font-mono overflow-x-auto whitespace-nowrap text-ainative-fg-2 rounded-sm">
-						{server.command}
-					</div>
-				</div>
-			)}
-
-			{/* Test tool form */}
-			{isOn && server.status === 'success' && (
-				<MCPTestToolForm serverName={name} tools={server.tools ?? []} />
-			)}
-
-			{/* Error message if present */}
-			{server.error && (
-				<div className="mt-3">
-					<WarningBox text={server.error} />
+			{isExpanded && (
+				<div className="px-[14px] pb-4" onClick={e => e.stopPropagation()}>
+					{status === 'failed' ? (
+						<div className="rounded-md border border-ainative-error bg-ainative-error-bg p-3">
+							<div className="text-sm text-ainative-fg-1 mb-2">{server.error}</div>
+							<div className="flex items-center gap-2">
+								<button
+									type="button"
+									className="text-xs font-medium text-ainative-accent-fg hover:underline disabled:opacity-50"
+									disabled={isReconnecting}
+									onClick={reconnect}
+								>
+									{isReconnecting ? 'Connecting…' : 'Reconnect'}
+								</button>
+							</div>
+						</div>
+					) : isOn && tools.length === 0 && status === 'connected' ? (
+						<EmptyState
+							mascot='cody'
+							title='No tools found'
+							body='This server connected but is not reporting any tools.'
+						/>
+					) : isOn ? (
+						<>
+							<div className="flex items-center justify-between mb-2">
+								<div className="text-xs font-medium text-ainative-fg-2">Tools</div>
+								<div className="flex items-center gap-3">
+									<button type="button" className="text-xs text-ainative-accent-fg hover:underline" onClick={() => setAllTools(true)}>Enable all</button>
+									<button type="button" className="text-xs text-ainative-accent-fg hover:underline" onClick={() => setAllTools(false)}>Disable all</button>
+								</div>
+							</div>
+							<div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+								{tools.map((tool: { name: string; description?: string }) => {
+									const toolIsEnabled = !disabledToolNames.includes(tool.name)
+									return (
+										<label
+											key={tool.name}
+											className={`flex items-center gap-1.5 px-2 py-1 bg-ainative-bg-2 rounded-md text-xs cursor-pointer select-none
+												${toolIsEnabled ? 'text-ainative-fg-1' : 'text-ainative-fg-2/60 line-through'}`}
+											data-tooltip-id='ainative-tooltip'
+											data-tooltip-content={tool.description || ''}
+											data-tooltip-class-name='ainative-max-w-[300px]'
+										>
+											<span>{toolIsEnabled ? '■' : '□'}</span>
+											<input
+												type='checkbox'
+												className='hidden'
+												checked={toolIsEnabled}
+												onChange={() => voidSettingsService.setMCPToolEnabled(name, tool.name, !toolIsEnabled)}
+											/>
+											<span className="truncate">{removeUniquePrefix(tool.name)}</span>
+										</label>
+									)
+								})}
+							</div>
+							{status === 'connected' && <MCPTestToolForm serverName={name} tools={tools} />}
+						</>
+					) : null}
 				</div>
 			)}
 		</div>
 	);
 };
 
-// Main component that renders the list of servers
+// Main component that renders the servers table, per the redesign's MCP servers table view.
+// Failed servers sort first, per spec.
 const MCPServersList = () => {
 	const mcpServiceState = useMCPServiceState()
+	const voidSettings = useSettingsState()
 
-	let content: React.ReactNode
 	if (mcpServiceState.error) {
-		content = <div className="text-ainative-fg-3 text-sm mt-2">
-			{mcpServiceState.error}
-		</div>
-	}
-	else {
-		const entries = Object.entries(mcpServiceState.mcpServerOfName)
-		if (entries.length === 0) {
-			content = <div className="text-ainative-fg-3 text-sm mt-2">
-				No servers found
-			</div>
-		}
-		else {
-			content = entries.map(([name, server]) => (
-				<MCPServerComponent key={name} name={name} server={server} />
-			))
-		}
+		return <div className="text-ainative-fg-3 text-sm mt-2">{mcpServiceState.error}</div>
 	}
 
-	return <div className="my-2">{content}</div>
+	const entries = Object.entries(mcpServiceState.mcpServerOfName)
+	if (entries.length === 0) {
+		return <EmptyState
+			mascot='cody'
+			title='No MCP servers yet'
+			body='Add a server to give the agent new tools, like search, databases, or your own APIs.'
+		/>
+	}
+
+	const sorted = [...entries].sort(([nameA, serverA], [nameB, serverB]) => {
+		const statusA = mcpRowStatus(serverA.status, voidSettings.mcpUserStateOfName[nameA]?.isOn)
+		const statusB = mcpRowStatus(serverB.status, voidSettings.mcpUserStateOfName[nameB]?.isOn)
+		if (statusA === 'failed' && statusB !== 'failed') return -1
+		if (statusB === 'failed' && statusA !== 'failed') return 1
+		return 0
+	})
+
+	return (
+		<div className="rounded-xl border border-ainative-border-1 overflow-hidden my-2">
+			{sorted.map(([name, server]) => (
+				<MCPServerComponent key={name} name={name} server={server} />
+			))}
+		</div>
+	)
+};
+
+const connectionLogLevelColor: Record<MCPConnectionLogEntry['level'], string> = {
+	info: 'text-ainative-fg-2',
+	warn: 'text-ainative-warning',
+	error: 'text-ainative-error',
+};
+
+/**
+ * #176 connection log viewer: a flat, timestamped feed of MCP connect/disconnect/transport
+ * events (main-process-only until now - mcpChannel.ts's `_log`). Read-only and append-only
+ * (newest last, auto-scrolled), distinct from the Tool Logs panel which is tool-*call* history,
+ * not connection/transport-level events. Collapsed by default since most users never need it -
+ * a toggle next to "Add MCP Server", not its own settings tab.
+ */
+const MCPConnectionLogPanel = () => {
+	const accessor = useAccessor();
+	const mcpService = accessor.get('IMCPService');
+
+	const [isOpen, setIsOpen] = useState(false);
+	const [entries, setEntries] = useState<MCPConnectionLogEntry[]>([]);
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+
+	useEffect(() => {
+		if (!isOpen) return;
+		let disposed = false;
+		mcpService.getConnectionLogs().then(logs => { if (!disposed) setEntries(logs); });
+		const disposable = mcpService.onDidAddConnectionLog((entry: MCPConnectionLogEntry) => {
+			setEntries(prev => [...prev, entry]);
+		});
+		return () => { disposed = true; disposable.dispose(); };
+	}, [isOpen, mcpService]);
+
+	useEffect(() => {
+		if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+	}, [entries]);
+
+	return (
+		<div className="my-2">
+			<button
+				type="button"
+				className="text-xs text-ainative-fg-2 hover:text-ainative-fg-1 hover:underline"
+				onClick={() => setIsOpen(v => !v)}
+			>
+				{isOpen ? 'Hide connection log' : 'View connection log'}
+			</button>
+
+			{isOpen && (
+				<div className="mt-2 rounded-xl border border-ainative-border-1 bg-ainative-bg-sunken">
+					<div className="flex items-center justify-between px-3 py-2 border-b border-ainative-border-1">
+						<span className="text-xs font-medium text-ainative-fg-2">Connection log</span>
+						<Button variant='ghost' className="!px-2 !py-1 text-xs" onClick={() => setEntries([])}>Clear</Button>
+					</div>
+					<div ref={scrollRef} className="max-h-48 overflow-y-auto px-3 py-2 font-mono text-xs leading-5">
+						{entries.length === 0 ? (
+							<div className="text-ainative-fg-3">No connection events yet.</div>
+						) : (
+							entries.map((entry, i) => (
+								<div key={i} className="flex gap-2 whitespace-pre-wrap break-all">
+									<span className="text-ainative-fg-3 shrink-0">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+									<span className="text-ainative-fg-2 shrink-0">{entry.serverName}</span>
+									<span className={connectionLogLevelColor[entry.level]}>{entry.message}</span>
+								</div>
+							))
+						)}
+					</div>
+				</div>
+			)}
+		</div>
+	)
 };
 
 export const Settings = () => {
@@ -1726,7 +1837,7 @@ Alternatively, place a \`.ainativerules\` file in the root of your workspace.
 Use Model Context Protocol to provide Agent mode with more tools.
 							`} chatMessageLocation={undefined} />
 									</h4>
-									<div className='my-2'>
+									<div className='my-2 flex items-center justify-between'>
 										<AINativeButtonBgDarken className='px-4 py-1 w-full max-w-48' onClick={async () => { await mcpService.revealMCPConfigFile() }}>
 											Add MCP Server
 										</AINativeButtonBgDarken>
@@ -1734,6 +1845,10 @@ Use Model Context Protocol to provide Agent mode with more tools.
 
 									<ErrorBoundary>
 										<MCPServersList />
+									</ErrorBoundary>
+
+									<ErrorBoundary>
+										<MCPConnectionLogPanel />
 									</ErrorBoundary>
 								</ErrorBoundary>
 							</div>
