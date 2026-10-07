@@ -192,7 +192,13 @@ suite('WebFetchService - Integration Tests', () => {
 
 			assert.strictEqual(results.length, 1);
 			assert.ok(results[0].suggested_search_url.includes('site:numpy.org'));
-			assert.ok(results[0].suggested_search_url.includes('array+manipulation'));
+			// searchDocumentation() builds the query half of the URL with
+			// encodeURIComponent(), which encodes spaces as '%20', not '+' (confirmed by
+			// reading webFetchService.ts directly - the literal '+' in its template is
+			// the separator between "site:domain" and the query, not a space encoding).
+			// The sibling test above ("should generate search suggestions for query")
+			// already asserts the correct '%20' encoding for this same reason.
+			assert.ok(results[0].suggested_search_url.includes('array%20manipulation'));
 		});
 	});
 
@@ -281,7 +287,15 @@ suite('WebFetchService - Integration Tests', () => {
 			assert.ok(schema.description);
 			assert.strictEqual(schema.input_schema.type, 'object');
 			assert.ok(schema.input_schema.properties.url);
-			assert.ok(schema.input_schema.required.includes('url'));
+			// 'url' is deliberately not in `required`: this tool has three operations
+			// (fetch_url, fetch_documentation, search_docs) and only the first two need
+			// 'url' - search_docs needs 'query' instead. Only 'operation' is
+			// unconditionally required; per-operation requirements are documented in
+			// each field's description instead. This is the same convention
+			// codeIntelligenceService.ts's analogous tool schema already uses (confirmed
+			// by reading it): symbol_name/function_name are also left out of `required`
+			// even though they're genuinely required for specific operation values.
+			assert.ok(schema.input_schema.required.includes('operation'));
 		});
 
 		test('should include parse_format option in schema', () => {
