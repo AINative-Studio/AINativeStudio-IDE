@@ -42,6 +42,9 @@ import './convertToLLMMessageWorkbenchContrib.js'
 // Codebase-wide semantic retrieval (#160): initial workspace index + debounced per-file reindex
 import './codeContextIndexContribution.js'
 
+// Provision usable provider API keys after a Cloud sign-in (#184)
+import './cloudBootstrapContribution.js'
+
 // tools
 import './toolsService.js'
 import './terminalToolService.js'
