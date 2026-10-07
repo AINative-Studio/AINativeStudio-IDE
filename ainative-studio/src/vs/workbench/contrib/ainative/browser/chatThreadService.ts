@@ -49,6 +49,7 @@ import { IWebFetchService } from '../common/webFetchService.js';
 import { IUsageTrackingService } from '../common/usageTrackingService.js';
 import { MessageMetadata } from '../common/chatThreadServiceTypes.js';
 import { IShadowWorkspaceService, FileDiff } from '../common/shadowWorkspaceService.js';
+import { IShadowTypeCheckService, ShadowTypeCheckResult } from '../common/shadowTypeCheckService.js';
 
 
 // related to retrying when LLM message has error
@@ -316,6 +317,17 @@ export interface IChatThreadService {
 	getPendingShadowDiffs(threadId: string): Promise<FileDiff[]>;
 	promoteShadowDiffs(threadId: string): Promise<void>;
 	discardShadowDiffs(threadId: string): Promise<void>;
+
+	// #159 phase 2 bullet 1: subprocess type-check against the shadow tree (design doc §3.3), run
+	// alongside the diff so the end-of-turn review can show "does this still type-check", not just
+	// "what changed". A sibling to getPendingShadowDiffs rather than a field merged into FileDiff -
+	// FileDiff is produced per-file by ShadowWorkspaceService.diffShadowAgainstReal, which has no
+	// concept of a whole-project compile; a single typeCheckShadow run naturally produces
+	// diagnostics for the thread as a whole (and, via config-ancestor files, sometimes for files that
+	// were never part of any individual diff at all), so folding it into FileDiff's per-file shape
+	// would be a poor fit. Only meaningful for a thread with shadowModeEnabled; returns
+	// `{ status: 'no-toolchain', diagnostics: [] }` otherwise.
+	getShadowTypeCheckResult(threadId: string): Promise<ShadowTypeCheckResult>;
 }
 
 export const IChatThreadService = createDecorator<IChatThreadService>('ainativeChatThreadService');
@@ -359,6 +371,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		@IWebFetchService private readonly _webFetchService: IWebFetchService,
 		@IUsageTrackingService private readonly _usageTrackingService: IUsageTrackingService,
 		@IShadowWorkspaceService private readonly _shadowWorkspaceService: IShadowWorkspaceService,
+		@IShadowTypeCheckService private readonly _shadowTypeCheckService: IShadowTypeCheckService,
 	) {
 		super()
 		this.state = { allThreads: {}, currentThreadId: null as unknown as string } // default state
@@ -630,6 +643,16 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		}
 
 		return pending
+	}
+
+	// #159 phase 2 bullet 1: subprocess type-check against the shadow tree (design doc §3.3), meant
+	// to be called by the UI alongside getPendingShadowDiffs so the end-of-turn review can show type
+	// errors introduced by the agent's shadow edits before the user promotes them. Deliberately a
+	// read-only query with no side effects on the shadow tree or thread state (unlike
+	// getPendingShadowDiffs, which materializes DiffZones) - a failed/empty type-check result should
+	// never block or alter promote/discard, only inform the user's decision to use them.
+	async getShadowTypeCheckResult(threadId: string): Promise<ShadowTypeCheckResult> {
+		return this._shadowTypeCheckService.typeCheckShadow(threadId)
 	}
 
 	// Accepts every pending shadow diff for a thread: 'modified' files go through the normal

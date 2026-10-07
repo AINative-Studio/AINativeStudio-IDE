@@ -37,6 +37,7 @@ import { persistentTerminalNameOfId } from '../../../terminalToolService.js';
 import { removeMCPToolNamePrefix } from '../../../../common/mcpServiceTypes.js';
 import { StatusDot, StatusDotState } from '../primitives/StatusDot.js';
 import { FileDiff } from '../../../../common/shadowWorkspaceService.js';
+import { ShadowTypeCheckResult } from '../../../../common/shadowTypeCheckService.js';
 
 
 
@@ -1722,14 +1723,25 @@ const ShadowDiffPromotionBanner = ({ threadId }: { threadId: string }) => {
 	const isIdle = streamState?.isRunning === undefined
 
 	const [diffs, setDiffs] = useState<FileDiff[]>([])
+	const [typeCheck, setTypeCheck] = useState<ShadowTypeCheckResult | null>(null)
 	const [isBusy, setIsBusy] = useState(false)
 
 	const refresh = useCallback(async () => {
-		if (!shadowModeEnabled || !isIdle) { setDiffs([]); return }
+		if (!shadowModeEnabled || !isIdle) { setDiffs([]); setTypeCheck(null); return }
 		try {
 			const pending = await chatThreadsService.getPendingShadowDiffs(threadId)
 			setDiffs(pending)
 		} catch (e) { console.error('Error fetching pending shadow diffs:', e) }
+
+		// #159 phase 2 bullet 1: fetch the shadow tree's type-check result alongside the diff, so the
+		// reviewer sees "does this still type-check" next to "what changed". Queried separately from
+		// (and after) the diff fetch above - a type-check failure/timeout should never prevent the
+		// diff itself from showing, since promote/discard must keep working even when no TypeScript
+		// toolchain is configured for this workspace at all (the overwhelmingly common non-TS case).
+		try {
+			const result = await chatThreadsService.getShadowTypeCheckResult(threadId)
+			setTypeCheck(result)
+		} catch (e) { console.error('Error fetching shadow type-check result:', e); setTypeCheck(null) }
 	}, [chatThreadsService, threadId, shadowModeEnabled, isIdle])
 
 	useEffect(() => { refresh() }, [refresh])
@@ -1756,43 +1768,58 @@ const ShadowDiffPromotionBanner = ({ threadId }: { threadId: string }) => {
 
 	if (!shadowModeEnabled || diffs.length === 0) return null
 
+	// #159 phase 2 bullet 1: surfaced only for the two states actually worth telling the user about -
+	// 'diagnostics' (something to see) and 'spawn-error' (the check itself failed, worth knowing
+	// about since it means the type-check gave no signal either way). 'ok' is deliberately silent
+	// (no news is good news, avoids a banner that's "loud" on every successful turn) and
+	// 'no-toolchain' is silent because it's the expected, common case for any non-TypeScript project.
+	const typeCheckDiagnosticCount = typeCheck?.status === 'diagnostics' ? typeCheck.diagnostics.length : 0
+
 	return <div className='px-4 pb-2'>
-		<div className='flex items-center justify-between gap-2 px-2 py-1.5 rounded border border-[var(--vscode-editorWidget-border)] bg-[var(--vscode-editorWidget-background)]'>
-			<div className='text-sm text-ainative-fg-3'>
-				{diffs.length} file{diffs.length === 1 ? '' : 's'} changed in shadow workspace - review before applying
+		<div className='flex flex-col gap-1.5 px-2 py-1.5 rounded border border-[var(--vscode-editorWidget-border)] bg-[var(--vscode-editorWidget-background)]'>
+			<div className='flex items-center justify-between gap-2'>
+				<div className='text-sm text-ainative-fg-3'>
+					{diffs.length} file{diffs.length === 1 ? '' : 's'} changed in shadow workspace - review before applying
+				</div>
+				<div className='flex gap-2 shrink-0'>
+					<button
+						disabled={isBusy}
+						onClick={onPromote}
+						className={`
+							px-2 py-1
+							bg-[var(--vscode-button-background)]
+							text-[var(--vscode-button-foreground)]
+							hover:bg-[var(--vscode-button-hoverBackground)]
+							disabled:opacity-50
+							rounded
+							text-sm font-medium
+						`}
+					>
+						Apply All
+					</button>
+					<button
+						disabled={isBusy}
+						onClick={onDiscard}
+						className={`
+							px-2 py-1
+							bg-[var(--vscode-button-secondaryBackground)]
+							text-[var(--vscode-button-secondaryForeground)]
+							hover:bg-[var(--vscode-button-secondaryHoverBackground)]
+							disabled:opacity-50
+							rounded
+							text-sm font-medium
+						`}
+					>
+						Discard All
+					</button>
+				</div>
 			</div>
-			<div className='flex gap-2 shrink-0'>
-				<button
-					disabled={isBusy}
-					onClick={onPromote}
-					className={`
-						px-2 py-1
-						bg-[var(--vscode-button-background)]
-						text-[var(--vscode-button-foreground)]
-						hover:bg-[var(--vscode-button-hoverBackground)]
-						disabled:opacity-50
-						rounded
-						text-sm font-medium
-					`}
-				>
-					Apply All
-				</button>
-				<button
-					disabled={isBusy}
-					onClick={onDiscard}
-					className={`
-						px-2 py-1
-						bg-[var(--vscode-button-secondaryBackground)]
-						text-[var(--vscode-button-secondaryForeground)]
-						hover:bg-[var(--vscode-button-secondaryHoverBackground)]
-						disabled:opacity-50
-						rounded
-						text-sm font-medium
-					`}
-				>
-					Discard All
-				</button>
-			</div>
+			{typeCheckDiagnosticCount > 0 && <div className='text-sm text-ainative-warning'>
+				tsc found {typeCheckDiagnosticCount} issue{typeCheckDiagnosticCount === 1 ? '' : 's'} in the shadow workspace
+			</div>}
+			{typeCheck?.status === 'spawn-error' && <div className='text-sm text-ainative-fg-3 opacity-70'>
+				Shadow type-check could not run{typeCheck.errorMessage ? `: ${typeCheck.errorMessage}` : ''}
+			</div>}
 		</div>
 	</div>
 }
