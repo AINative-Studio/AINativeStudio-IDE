@@ -32,6 +32,8 @@ export interface IMCPService {
 	toggleServerIsOn(serverName: string, isOn: boolean): Promise<void>;
 	installFromRegistry(entry: MCPRegistryEntry, installAsName?: string): Promise<MCPInstallResult>;
 	getConnectionLogs(): Promise<MCPConnectionLogEntry[]>;
+	/** Finishes an in-progress OAuth sign-in for a server (#176 re-authentication), per the ainativestudio://auth/mcp/callback URL. */
+	completeOAuth(serverName: string, authorizationCode: string): Promise<void>;
 	onDidAddConnectionLog: Event<MCPConnectionLogEntry>;
 
 	readonly state: MCPServiceState; // NOT persisted
@@ -343,6 +345,10 @@ class MCPService extends Disposable implements IMCPService {
 
 	public async getConnectionLogs(): Promise<MCPConnectionLogEntry[]> {
 		return this.channel.call<MCPConnectionLogEntry[]>('getConnectionLogs');
+	}
+
+	public async completeOAuth(serverName: string, authorizationCode: string): Promise<void> {
+		await this.channel.call('completeOAuth', { serverName, authorizationCode });
 	}
 
 	// toggle MCP server and update isOn in void settings

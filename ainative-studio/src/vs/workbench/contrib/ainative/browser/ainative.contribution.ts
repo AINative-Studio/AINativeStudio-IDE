@@ -45,6 +45,9 @@ import './codeContextIndexContribution.js'
 // Provision usable provider API keys after a Cloud sign-in (#184)
 import './cloudBootstrapContribution.js'
 
+// MCP server OAuth re-authentication callback handler (#176)
+import './mcpOAuthUrlHandler.js'
+
 // tools
 import './toolsService.js'
 import './terminalToolService.js'

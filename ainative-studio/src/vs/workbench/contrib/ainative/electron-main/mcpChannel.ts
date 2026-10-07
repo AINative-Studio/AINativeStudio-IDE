@@ -17,6 +17,8 @@ import { MCPConfigFileJSON, MCPConfigFileEntryJSON, MCPServer, RawMCPToolCall, M
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { MCPUserStateOfName } from '../common/ainativeSettingsTypes.js';
+import { MCPOAuthClientProvider } from './mcpOAuthProvider.js';
+import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js';
 
 const getClientConfig = (serverName: string) => {
 	return {
@@ -52,6 +54,11 @@ export class MCPChannel implements IServerChannel {
 	private readonly infoOfClientId: InfoOfClientId = {}
 	private readonly _refreshingServerNames: Set<string> = new Set()
 	private readonly _connectionLog: MCPConnectionLogEntry[] = []
+	// Servers whose connection attempt hit UnauthorizedError (#176 re-authentication): the user
+	// agent has already been redirected to the authorization URL by MCPOAuthClientProvider;
+	// these wait here for completeOAuth() to be called once the ainativestudio://auth/mcp/callback
+	// URL arrives, which finishes the OAuth exchange and retries the connection.
+	private readonly _pendingAuth = new Map<string, { client: Client; transport: StreamableHTTPClientTransport | SSEClientTransport; serverConfig: MCPConfigFileEntryJSON; isOn: boolean }>()
 
 	// mcp emitters
 	private readonly mcpEmitters = {
@@ -125,6 +132,9 @@ export class MCPChannel implements IServerChannel {
 			else if (command === 'getConnectionLogs') {
 				return this._connectionLog.slice()
 			}
+			else if (command === 'completeOAuth') {
+				await this._completeOAuth(params.serverName, params.authorizationCode)
+			}
 			else {
 				throw new Error(`Void sendLLM: command "${command}" not recognized.`)
 			}
@@ -194,9 +204,18 @@ export class MCPChannel implements IServerChannel {
 		let info: MCPServerNonError;
 
 		if (server.url) {
-			// first try HTTP, fall back to SSE
+			// authProvider is set unconditionally - StreamableHTTPClientTransport/SSEClientTransport
+			// only ever use it (attempt token refresh, redirect to authorize) when the server
+			// actually responds 401, so this has no effect on servers that don't require OAuth.
+			const authProvider = new MCPOAuthClientProvider(serverName);
+
+			// first try HTTP, fall back to SSE - except on UnauthorizedError, which means the
+			// user agent has just been redirected to authorize (MCPOAuthClientProvider already
+			// called shell.openExternal) - retrying over SSE would just trigger a second,
+			// redundant redirect for the same auth. Register as pending instead and stop here;
+			// completeOAuth() finishes the connection once the callback URL arrives.
 			try {
-				transport = new StreamableHTTPClientTransport(server.url);
+				transport = new StreamableHTTPClientTransport(server.url, { authProvider });
 				await client.connect(transport);
 				this._log(serverName, 'info', `Connected via HTTP to ${serverName}`);
 				const { tools } = await client.listTools()
@@ -207,9 +226,24 @@ export class MCPChannel implements IServerChannel {
 					command: server.url.toString(),
 				}
 			} catch (httpErr) {
+				if (httpErr instanceof UnauthorizedError) {
+					this._log(serverName, 'info', `${serverName} requires sign-in - opened in your browser.`);
+					this._pendingAuth.set(serverName, { client, transport: transport! as StreamableHTTPClientTransport, serverConfig: server, isOn });
+					return { mcpServerEntryJSON: server, mcpServer: { status: 'error', error: 'Waiting for sign-in - check your browser.', command: server.url.toString() } };
+				}
+
 				this._log(serverName, 'warn', `HTTP failed for ${serverName}, trying SSE… ${httpErr}`);
-				transport = new SSEClientTransport(server.url);
-				await client.connect(transport);
+				transport = new SSEClientTransport(server.url, { authProvider });
+				try {
+					await client.connect(transport);
+				} catch (sseErr) {
+					if (sseErr instanceof UnauthorizedError) {
+						this._log(serverName, 'info', `${serverName} requires sign-in - opened in your browser.`);
+						this._pendingAuth.set(serverName, { client, transport: transport as SSEClientTransport, serverConfig: server, isOn });
+						return { mcpServerEntryJSON: server, mcpServer: { status: 'error', error: 'Waiting for sign-in - check your browser.', command: server.url.toString() } };
+					}
+					throw sseErr;
+				}
 				const { tools } = await client.listTools()
 				const toolsWithUniqueName = tools.map(({ name, ...rest }) => ({ name: this._addUniquePrefix(name), ...rest }))
 				this._log(serverName, 'info', `Connected via SSE to ${serverName}`);
@@ -331,6 +365,44 @@ export class MCPChannel implements IServerChannel {
 					prevServer: prevServer,
 				}
 			})
+		}
+	}
+
+	/**
+	 * Finishes the OAuth flow for a server that hit UnauthorizedError during connect (#176
+	 * re-authentication): completes the authorization-code exchange on the pending transport,
+	 * then retries the connection - per the MCP SDK's own documented flow (finishAuth, then
+	 * retry connect/start). Called via the 'completeOAuth' channel command, itself triggered by
+	 * MCPOAuthUrlHandler (browser/) when the ainativestudio://auth/mcp/callback URL arrives.
+	 */
+	private async _completeOAuth(serverName: string, authorizationCode: string): Promise<void> {
+		const pending = this._pendingAuth.get(serverName)
+		if (!pending) {
+			this._log(serverName, 'warn', `Received an OAuth callback for "${serverName}" but no sign-in was pending for it.`)
+			return
+		}
+		this._pendingAuth.delete(serverName)
+
+		const prevServer = this.infoOfClientId[serverName]?.mcpServer
+		try {
+			await pending.transport.finishAuth(authorizationCode)
+			await pending.client.connect(pending.transport)
+			this._log(serverName, 'info', `Signed in to ${serverName}.`)
+
+			const { tools } = await pending.client.listTools()
+			const toolsWithUniqueName = tools.map(({ name, ...rest }) => ({ name: this._addUniquePrefix(name), ...rest }))
+			const mcpServer: MCPServerNonError = {
+				status: pending.isOn ? 'success' : 'offline',
+				tools: toolsWithUniqueName,
+				command: pending.serverConfig.url?.toString() ?? '',
+			}
+			this.infoOfClientId[serverName] = { _client: pending.client, mcpServerEntryJSON: pending.serverConfig, mcpServer }
+			this.mcpEmitters.serverEvent.onUpdate.fire({ response: { name: serverName, newServer: mcpServer, prevServer } })
+		} catch (err) {
+			this._log(serverName, 'error', `Sign-in to ${serverName} failed: ${err}`)
+			const mcpServer: MCPServerError = { status: 'error', error: `Sign-in failed: ${err}`, command: pending.serverConfig.url?.toString() ?? '' }
+			this.infoOfClientId[serverName] = { mcpServerEntryJSON: pending.serverConfig, mcpServer }
+			this.mcpEmitters.serverEvent.onUpdate.fire({ response: { name: serverName, newServer: mcpServer, prevServer } })
 		}
 	}
 
