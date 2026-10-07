@@ -255,11 +255,14 @@ suite('UsageTrackingService - Integration Tests', () => {
 			provider: 'openai',
 			description: 'GPT-4o Mini model',
 			capabilities: [],
+			// PricingInfo's real fields are inputTokenCost/outputTokenCost (confirmed in
+			// aiModelRegistryTypes.ts) - calculateCost() reads exactly those names, so
+			// the stale inputCost/outputCost/requestCost fields here were silently
+			// ignored and every cost calculation fell back to 0.
 			pricing: {
 				tier: PricingTier.Free,
-				inputCost: 0.15,
-				outputCost: 0.60,
-				requestCost: 0,
+				inputTokenCost: 0.15,
+				outputTokenCost: 0.60,
 				currency: 'USD'
 			},
 			parameters: [],
@@ -275,9 +278,8 @@ suite('UsageTrackingService - Integration Tests', () => {
 			capabilities: [],
 			pricing: {
 				tier: PricingTier.Free,
-				inputCost: 0.59,
-				outputCost: 0.79,
-				requestCost: 0,
+				inputTokenCost: 0.59,
+				outputTokenCost: 0.79,
 				currency: 'USD'
 			},
 			parameters: [],
@@ -413,9 +415,13 @@ suite('UsageTrackingService - Integration Tests', () => {
 			const cost = await usageTrackingService.calculateCost('gpt-4o-mini', 1000, 500);
 
 			// (1000/1000 * 0.15) + (500/1000 * 0.60) = 0.45
-			assert.strictEqual(cost.inputCost, 0.15);
-			assert.strictEqual(cost.outputCost, 0.30);
-			assert.strictEqual(cost.totalCost, 0.45);
+			// IEEE754 floating point: 0.15 + 0.30 === 0.44999999999999996, not exactly
+			// 0.45 - strictEqual on a computed float is inherently flaky. Same tolerance
+			// pattern already used for totalCost/Llama cost assertions elsewhere in this
+			// file.
+			assert.ok(Math.abs(cost.inputCost - 0.15) < 0.001);
+			assert.ok(Math.abs(cost.outputCost - 0.30) < 0.001);
+			assert.ok(Math.abs(cost.totalCost - 0.45) < 0.001);
 		});
 
 		test('should calculate cost for Llama 3.3', async () => {
