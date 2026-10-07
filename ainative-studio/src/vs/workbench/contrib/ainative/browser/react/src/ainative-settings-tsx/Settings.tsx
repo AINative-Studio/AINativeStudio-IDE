@@ -27,6 +27,7 @@ import { Button } from '../primitives/Button.js'
 import { useMCPServiceState } from '../util/services.js';
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js';
 import { StorageScope, StorageTarget } from '../../../../../../../platform/storage/common/storage.js';
+import { SteeringFile } from '../../../../common/steeringDocsService.js';
 
 type Tab =
 	| 'models'
@@ -37,6 +38,80 @@ type Tab =
 	| 'general'
 	| 'all';
 
+
+// Steering docs (#161): lets a user discover, create, and open .ainative/steering/*.md files
+// from Settings instead of needing to know they exist and hand-create them via a terminal or
+// external editor. The actual context-loading side of this feature (reading these files into
+// every chat turn) already exists and is tested - this is purely the missing UI half.
+const SteeringDocsSection = () => {
+	const accessor = useAccessor()
+	const steeringDocsService = accessor.get('ISteeringDocsService')
+
+	const [files, setFiles] = useState<SteeringFile[]>([])
+	const [newFileName, setNewFileName] = useState('')
+	const [isCreating, setIsCreating] = useState(false)
+
+	const refresh = useCallback(() => {
+		steeringDocsService.listSteeringFiles().then(setFiles)
+	}, [steeringDocsService])
+
+	useEffect(() => { refresh() }, [refresh])
+
+	const handleCreate = useCallback(async () => {
+		const name = newFileName.trim()
+		if (!name) return
+		setIsCreating(true)
+		try {
+			await steeringDocsService.createAndOpenSteeringFile(name)
+			setNewFileName('')
+			refresh()
+		} finally {
+			setIsCreating(false)
+		}
+	}, [newFileName, steeringDocsService, refresh])
+
+	return (
+		<ErrorBoundary>
+			<h2 className='text-3xl mb-2'>Steering Docs</h2>
+			<h4 className='text-ainative-fg-3 mb-4'>{`Standing project context the agent reads on every chat turn - coding conventions, architecture notes, "always use X", "never touch Y". Saved as Markdown files under `}<span className='font-mono'>.ainative/steering/</span>{` in your workspace.`}</h4>
+
+			{files.length === 0 ? (
+				<EmptyState
+					mascot='cody'
+					title='No steering docs yet'
+					body='Create one below to give the agent standing context it never has to be re-told.'
+				/>
+			) : (
+				<div className='flex flex-col gap-1 mb-4'>
+					{files.map(f => (
+						<button
+							key={f.uri.toString()}
+							type='button'
+							className='flex items-center gap-2 text-left px-2 py-1.5 rounded-md hover:bg-ainative-bg-3 text-root text-ainative-fg-1 font-mono'
+							onClick={() => steeringDocsService.openSteeringFile(f.uri)}
+						>
+							{f.name}
+						</button>
+					))}
+				</div>
+			)}
+
+			<div className='flex items-center gap-2'>
+				<input
+					type='text'
+					value={newFileName}
+					onChange={e => setNewFileName(e.target.value)}
+					onKeyDown={e => { if (e.key === 'Enter') handleCreate() }}
+					placeholder='e.g. architecture'
+					className='px-3 py-1.5 rounded-lg border border-ainative-border-2 bg-ainative-bg-1 text-root text-ainative-fg-1 placeholder:text-ainative-fg-3 w-48'
+				/>
+				<Button variant='outline' onClick={handleCreate} disabled={!newFileName.trim() || isCreating}>
+					{isCreating ? 'Creating…' : 'New steering doc'}
+				</Button>
+			</div>
+		</ErrorBoundary>
+	)
+}
 
 const ButtonLeftTextRightOption = ({ text, leftButton }: { text: string, leftButton?: React.ReactNode }) => {
 
@@ -1710,6 +1785,11 @@ export const Settings = () => {
 											</span>
 										</div>
 									</ErrorBoundary>
+								</div>
+
+								{/* Steering Docs section (#161) */}
+								<div>
+									<SteeringDocsSection />
 								</div>
 
 								{/* One-Click Switch section */}
