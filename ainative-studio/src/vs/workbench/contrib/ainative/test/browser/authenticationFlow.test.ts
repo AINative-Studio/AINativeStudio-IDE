@@ -132,7 +132,10 @@ function createMockJWT(expiresInSeconds: number, customClaims?: any): string {
 
 	const headerB64 = Buffer.from(JSON.stringify(header)).toString('base64');
 	const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64');
-	const signature = 'mock-signature-' + Math.random();
+	// Math.random() stringifies as e.g. "0.731..." - a literal '.' here would silently
+	// produce a 4-part token, which _decodeJWT()'s `parts.length !== 3` check rejects
+	// as malformed even though this is meant to be a valid mock token.
+	const signature = 'mock-signature-' + Math.random().toString(36).slice(2);
 
 	return `${headerB64}.${payloadB64}.${signature}`;
 }
@@ -222,18 +225,12 @@ class MockFetch {
 			body: options?.body
 		});
 
-		// Determine which response to return based on URL
+		// Determine which response to return based on URL. The real endpoint is
+		// '/api/v1/auth/login' (the SDK client's own comment notes '/login-json' was a
+		// stale path never matching the actual contract), so match on '/login' - but
+		// check it after the other more specific auth paths so it doesn't shadow them.
 		if (url.includes('/register')) {
 			return this.responses.get('register') || this._defaultError();
-		}
-		if (url.includes('/login-json')) {
-			return this.responses.get('login') || this._defaultError();
-		}
-		if (url.includes('/refresh')) {
-			return this.responses.get('refresh') || this._defaultError();
-		}
-		if (url.includes('/logout')) {
-			return this.responses.get('logout') || this._defaultError();
 		}
 		if (url.includes('/forgot-password')) {
 			return this.responses.get('forgot-password') || this._defaultError();
@@ -243,6 +240,15 @@ class MockFetch {
 		}
 		if (url.includes('/verify-email')) {
 			return this.responses.get('verify-email') || this._defaultError();
+		}
+		if (url.includes('/login')) {
+			return this.responses.get('login') || this._defaultError();
+		}
+		if (url.includes('/refresh')) {
+			return this.responses.get('refresh') || this._defaultError();
+		}
+		if (url.includes('/logout')) {
+			return this.responses.get('logout') || this._defaultError();
 		}
 
 		return this._defaultError();
@@ -272,6 +278,7 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 	let storageService: MockStorageService;
 	let authService: AINativeCloudAuthService;
 	let mockFetch: MockFetch;
+	let originalFetch: typeof globalThis.fetch;
 
 	setup(() => {
 		encryptionService = new MockEncryptionService();
@@ -281,9 +288,18 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 
 		mockFetch = new MockFetch();
 		mockFetch.setupSuccessfulAuthFlow();
+
+		// AINativeSDKClient calls the global fetch directly against the real
+		// production API (https://api.ainative.studio) with no injection seam. Without
+		// this, MockFetch's responses were defined but never actually used - every
+		// test in this suite was silently making real network calls and passing only
+		// when the live API happened to agree with the assertions.
+		originalFetch = globalThis.fetch;
+		globalThis.fetch = mockFetch.fetch.bind(mockFetch) as typeof globalThis.fetch;
 	});
 
 	teardown(() => {
+		globalThis.fetch = originalFetch;
 		disposables.clear();
 		storageService.clear();
 		mockFetch.reset();
@@ -398,10 +414,15 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 				stateChanges.push(state);
 			}));
 
-			// Simulate state changes
-			const service = authService as any;
-			service._setState(CloudAuthState.Registering);
-			service._setState(CloudAuthState.Authenticated);
+			// register() itself transitions Registering -> Authenticated and fires
+			// onDidChangeAuthState for each - there is no _setState method on the real
+			// service (confirmed by reading ainativeCloudAuthService.ts directly), so
+			// drive the real state machine through its public API instead.
+			await authService.register({
+				username: 'stateuser',
+				email: 'stateuser@ainative.studio',
+				password: 'SecurePassword123!'
+			});
 
 			ok(stateChanges.includes(CloudAuthState.Registering), 'Should emit Registering state');
 			ok(stateChanges.includes(CloudAuthState.Authenticated), 'Should emit Authenticated state');
@@ -471,9 +492,14 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 				stateChanges.push(state);
 			}));
 
+			// refreshToken() itself transitions Refreshing -> Authenticated and fires
+			// onDidChangeAuthState for each - there is no _setState method on the real
+			// service. It requires a refresh token to already be set, same as the
+			// seeding 4.2 does above.
 			const service = authService as any;
-			service._setState(CloudAuthState.Refreshing);
-			service._setState(CloudAuthState.Authenticated);
+			service._refreshToken = createMockJWT(86400);
+
+			await authService.refreshToken();
 
 			ok(stateChanges.includes(CloudAuthState.Refreshing), 'Should emit Refreshing state');
 			ok(stateChanges.includes(CloudAuthState.Authenticated), 'Should return to Authenticated state');
@@ -683,12 +709,15 @@ suite('Authentication Flow Integration Tests (Browser) - Issue #47', () => {
 		});
 
 		test('8.3 Should maintain state consistency during rapid operations', async () => {
-			// Rapid state changes
+			// Rapid state changes - there is no _setState method on the real service,
+			// _authState is a plain private field assigned directly throughout
+			// ainativeCloudAuthService.ts (confirmed by reading it), so mutate it the
+			// same way.
+			const service = authService as any;
 			for (let i = 0; i < 10; i++) {
-				const service = authService as any;
-				service._setState(CloudAuthState.Registering);
-				service._setState(CloudAuthState.Authenticated);
-				service._setState(CloudAuthState.Unauthenticated);
+				service._authState = CloudAuthState.Registering;
+				service._authState = CloudAuthState.Authenticated;
+				service._authState = CloudAuthState.Unauthenticated;
 			}
 
 			// Final state should be consistent

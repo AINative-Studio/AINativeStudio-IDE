@@ -213,6 +213,14 @@ export class AINativeCloudAuthService extends Disposable implements IAINativeClo
 		this._operationInProgress = true;
 
 		try {
+			if (!email || !password) {
+				const error = new CloudAuthError(
+					CloudAuthErrorCode.InvalidCredentials,
+					'Email and password are required'
+				);
+				return { success: false, error };
+			}
+
 			const response = await this._apiClient.login(email, password);
 
 			// Store tokens and user data

@@ -45,7 +45,12 @@ class TestUtils {
 
 		const headerB64 = Buffer.from(JSON.stringify(header)).toString('base64');
 		const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64');
-		return `${headerB64}.${payloadB64}.signature-${Math.random()}`;
+		// _decodeJWT() requires exactly 3 dot-separated parts. Math.random() stringifies
+		// as e.g. "0.731..." - embedding a literal '.' that silently produced a 4-part
+		// token on every call, making _decodeJWT() reject it as malformed even though
+		// it's meant to be a valid mock token.
+		const signature = Math.random().toString(36).slice(2);
+		return `${headerB64}.${payloadB64}.signature-${signature}`;
 	}
 
 	static async sleep(ms: number): Promise<void> {
@@ -446,12 +451,19 @@ suite('Comprehensive Integration Tests - Issue #47 AINative Authentication', () 
 				stateChanges.push(state);
 			}));
 
-			// Rapid state changes
+			// Rapid state changes - there is no _setState method on the real service;
+			// _authState is a plain private field that every real state transition in
+			// ainativeCloudAuthService.ts sets directly and pairs with firing
+			// _onDidChangeAuthState (confirmed by reading it). Drive both the same way
+			// so onDidChangeAuthState listeners (asserted on below) actually fire.
 			const service = authService as any;
 			for (let i = 0; i < 20; i++) {
-				service._setState(CloudAuthState.Registering);
-				service._setState(CloudAuthState.Authenticated);
-				service._setState(CloudAuthState.Unauthenticated);
+				service._authState = CloudAuthState.Registering;
+				service._onDidChangeAuthState.fire(service._authState);
+				service._authState = CloudAuthState.Authenticated;
+				service._onDidChangeAuthState.fire(service._authState);
+				service._authState = CloudAuthState.Unauthenticated;
+				service._onDidChangeAuthState.fire(service._authState);
 			}
 
 			// Verify all state changes were captured
