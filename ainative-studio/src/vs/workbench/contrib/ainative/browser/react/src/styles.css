@@ -22,7 +22,7 @@
 	/* --ainative-fg-4: var(--vscode-tab-inactiveForeground); */
 	--ainative-fg-4: var(--vscode-list-deemphasizedForeground);
 
-	--ainative-warning: var(--vscode-charts-yellow);
+	--ainative-bg-sunken: color-mix(in srgb, var(--vscode-editor-background) 92%, black 8%);
 
 	--ainative-border-1: var(--vscode-commandCenter-activeBorder);
 	--ainative-border-2: var(--vscode-commandCenter-border);
@@ -31,6 +31,40 @@
 
 	--ainative-ring-color: #007FD4;
 	--ainative-link-color: #007FD4;
+
+	/*
+	 * Brand/status tokens (redesign, see docs/design/handoff). Fixed values rather than
+	 * derived from --vscode-* theme vars on purpose - per the handoff README's "Design Tokens"
+	 * section, these are brand/semantic colors that must read consistently regardless of the
+	 * user's arbitrary VS Code theme, unlike bg/fg/border which should flow with the theme.
+	 * Light values here; .vs-dark/.hc-black below override to the dark demo values.
+	 */
+	--ainative-accent: #7C6BFF;
+	--ainative-accent-solid: #6A58F2;
+	--ainative-accent-solid-hover: #7C6BFF;
+	--ainative-accent-fg: #5B49E0;
+	--ainative-accent-bg: rgba(124, 107, 255, .10);
+	--ainative-ok: #18864F;
+	--ainative-error: #C0352B;
+	--ainative-error-bg: rgba(192, 53, 43, .08);
+	--ainative-warning: #9A6700;
+	--ainative-shadow-sm: 0 1px 2px rgba(20, 20, 31, .06);
+}
+
+/*
+ * .vs-dark/.hc-black are Monaco's own base-theme classes, applied to the workbench root
+ * element (see src/vs/code/electron-sandbox/workbench/workbench.ts) - these React islands
+ * mount inside that same document, not a sandboxed webview, so this is the real selector,
+ * not the extension-webview-only .vscode-dark/.vscode-light convention.
+ */
+:is(.vs-dark, .hc-black) & {
+	--ainative-accent-fg: #A99EFF;
+	--ainative-accent-bg: rgba(124, 107, 255, .18);
+	--ainative-ok: #46D393;
+	--ainative-error: #FF8A80;
+	--ainative-error-bg: rgba(255, 138, 128, .10);
+	--ainative-warning: #F2C14E;
+	--ainative-shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
 }
 
 .select-child-restyle select {

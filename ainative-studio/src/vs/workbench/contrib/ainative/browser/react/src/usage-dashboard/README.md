@@ -113,7 +113,7 @@ Uses AINative Studio theme variables:
 - `ainative-fg-1` - Primary text
 - `ainative-fg-3` - Secondary text
 - `ainative-border-2` - Borders
-- `#0e70c0` - AINative blue accent
+- `var(--ainative-accent-solid)` - AINative violet accent
 
 ## Responsive Design
 

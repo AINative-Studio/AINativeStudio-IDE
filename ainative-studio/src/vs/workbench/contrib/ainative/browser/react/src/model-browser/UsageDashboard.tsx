@@ -187,7 +187,7 @@ export const UsageDashboard: React.FC = () => {
 						<p className="text-ainative-fg-3 mb-4">{error}</p>
 						<button
 							onClick={loadData}
-							className="px-4 py-2 bg-[#0e70c0] text-white rounded-md hover:bg-[#1177cb]"
+							className="px-4 py-2 bg-ainative-accent-solid text-white rounded-md hover:bg-ainative-accent-solid-hover"
 						>
 							Try Again
 						</button>
@@ -249,7 +249,7 @@ export const UsageDashboard: React.FC = () => {
 												? 'bg-red-500'
 												: quotaApproaching
 												? 'bg-yellow-500'
-												: 'bg-[#0e70c0]'
+												: 'bg-ainative-accent-solid'
 										}`}
 										style={{ width: `${Math.min(quotaPercentage, 100)}%` }}
 									/>
@@ -268,7 +268,7 @@ export const UsageDashboard: React.FC = () => {
 							{/* Total Calls */}
 							<div className="p-4 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
 								<div className="flex items-center gap-2 mb-2">
-									<Activity size={18} className="text-[#0e70c0]" />
+									<Activity size={18} className="text-ainative-accent-fg" />
 									<span className="text-xs text-ainative-fg-3 uppercase">Total Calls</span>
 								</div>
 								<div className="text-2xl font-medium text-ainative-fg-1">{formatNumber(totalCalls)}</div>
@@ -277,7 +277,7 @@ export const UsageDashboard: React.FC = () => {
 							{/* Total Tokens */}
 							<div className="p-4 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
 								<div className="flex items-center gap-2 mb-2">
-									<TrendingUp size={18} className="text-[#0e70c0]" />
+									<TrendingUp size={18} className="text-ainative-accent-fg" />
 									<span className="text-xs text-ainative-fg-3 uppercase">Total Tokens</span>
 								</div>
 								<div className="text-2xl font-medium text-ainative-fg-1">{formatNumber(totalTokens)}</div>
@@ -289,7 +289,7 @@ export const UsageDashboard: React.FC = () => {
 							{/* Total Cost */}
 							<div className="p-4 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
 								<div className="flex items-center gap-2 mb-2">
-									<DollarSign size={18} className="text-[#0e70c0]" />
+									<DollarSign size={18} className="text-ainative-accent-fg" />
 									<span className="text-xs text-ainative-fg-3 uppercase">Total Cost</span>
 								</div>
 								<div className="text-2xl font-medium text-ainative-fg-1">{formatCost(totalCost)}</div>
@@ -298,7 +298,7 @@ export const UsageDashboard: React.FC = () => {
 							{/* Period */}
 							<div className="p-4 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
 								<div className="flex items-center gap-2 mb-2">
-									<Calendar size={18} className="text-[#0e70c0]" />
+									<Calendar size={18} className="text-ainative-accent-fg" />
 									<span className="text-xs text-ainative-fg-3 uppercase">Period</span>
 								</div>
 								<div className="text-2xl font-medium text-ainative-fg-1">{getPeriodLabel(period)}</div>
@@ -342,7 +342,7 @@ export const UsageDashboard: React.FC = () => {
 													{/* Progress Bar */}
 													<div className="w-full h-1.5 bg-ainative-bg-2 rounded-full overflow-hidden">
 														<div
-															className="h-full bg-[#0e70c0] transition-all duration-300"
+															className="h-full bg-ainative-accent-solid transition-all duration-300"
 															style={{ width: `${percentage}%` }}
 														/>
 													</div>

@@ -47,7 +47,7 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 	const barColor = {
 		red: 'bg-red-500',
 		yellow: 'bg-yellow-500',
-		blue: 'bg-[#0e70c0]'
+		blue: 'bg-ainative-accent-solid'
 	}[statusColor];
 
 	const trend = percentUsed >= 80 ? 'high' : percentUsed <= 20 ? 'low' : 'normal';
@@ -57,7 +57,7 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 			{/* Header */}
 			<div className="flex items-center justify-between mb-4">
 				<div className="flex items-center gap-2">
-					<DollarSign size={20} className="text-[#0e70c0]" />
+					<DollarSign size={20} className="text-ainative-accent-fg" />
 					<h3 className="text-lg font-medium text-ainative-fg-1">Credits Status</h3>
 				</div>
 
@@ -68,7 +68,7 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 					</div>
 					<button
 						type="button"
-						className="flex items-center gap-1 px-3 py-1 bg-[#0e70c0] hover:bg-[#1177cb] text-white rounded-full text-xs font-medium transition-colors"
+						className="flex items-center gap-1 px-3 py-1 bg-ainative-accent-solid hover:bg-ainative-accent-solid-hover text-white rounded-full text-xs font-medium transition-colors"
 						onClick={() => window.open(REFILLS_URL, '_blank')}
 					>
 						Buy Refill
@@ -141,7 +141,7 @@ export const CreditsDisplay: React.FC<CreditsDisplayProps> = ({ creditsStatus, l
 					<span className={`font-medium ${
 						statusColor === 'red' ? 'text-red-500' :
 						statusColor === 'yellow' ? 'text-yellow-500' :
-						'text-[#0e70c0]'
+						'text-ainative-accent-fg'
 					}`}>
 						{percentUsed.toFixed(1)}%
 					</span>

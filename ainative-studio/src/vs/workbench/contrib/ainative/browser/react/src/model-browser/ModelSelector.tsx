@@ -309,7 +309,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ model, projectId, 
 							<AINativeButtonBgDarken
 								onClick={handleSelect}
 								disabled={selecting}
-								className="px-4 py-2 bg-[#0e70c0] text-white hover:bg-[#1177cb] flex items-center gap-2"
+								className="px-4 py-2 bg-ainative-accent-solid text-white hover:bg-ainative-accent-solid-hover flex items-center gap-2"
 							>
 								{selecting ? (
 									<>

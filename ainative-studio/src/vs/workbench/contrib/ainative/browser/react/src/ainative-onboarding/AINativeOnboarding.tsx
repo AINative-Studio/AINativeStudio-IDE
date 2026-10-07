@@ -163,7 +163,7 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 					<button
 						key={tab}
 						className={`py-2 px-4 rounded-md text-left ${currentTab === tab
-							? 'bg-[#0e70c0]/80 text-white font-medium shadow-sm'
+							? 'bg-ainative-accent-solid/80 text-white font-medium shadow-sm'
 							: 'bg-ainative-bg-2 hover:bg-ainative-bg-2/80 text-ainative-fg-1'
 							} transition-all duration-200`}
 						onClick={() => {
@@ -209,14 +209,14 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 				<div
 					key={providerName}
 					className={`w-full max-w-xl mb-10 ${providerName === 'ainativeCloud' && auth.isAuthenticated
-						? 'ring-1 ring-[#0e70c0] rounded-lg p-4 -m-4 mb-6'
+						? 'ring-1 ring-ainative-accent rounded-lg p-4 -m-4 mb-6'
 						: ''
 						}`}
 				>
 					<div className="text-xl mb-2">
 						Add {displayInfoOfProviderName(providerName).title}
 						{providerName === 'ainativeCloud' && auth.isAuthenticated && (
-							<span className="ml-2 text-xs align-middle px-2 py-0.5 rounded-full bg-[#0e70c0]/20 text-[#0e70c0] font-normal">
+							<span className="ml-2 text-xs align-middle px-2 py-0.5 rounded-full bg-ainative-accent-bg text-ainative-accent-fg font-normal">
 								Signed in — paste your key to finish
 							</span>
 						)}

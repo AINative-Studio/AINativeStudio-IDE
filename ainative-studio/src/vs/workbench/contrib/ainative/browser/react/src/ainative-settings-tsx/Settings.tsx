@@ -163,7 +163,7 @@ const AddButton = ({ disabled, text = 'Add', ...props }: { disabled?: boolean, t
 
 	return <button
 		disabled={disabled}
-		className={`bg-[#0e70c0] px-3 py-1 text-white rounded-sm ${!disabled ? 'hover:bg-[#1177cb] cursor-pointer' : 'opacity-50 cursor-not-allowed bg-opacity-70'}`}
+		className={`bg-ainative-accent-solid px-3 py-1 text-white rounded-sm ${!disabled ? 'hover:bg-ainative-accent-solid-hover cursor-pointer' : 'opacity-50 cursor-not-allowed bg-opacity-70'}`}
 		{...props}
 	>{text}</button>
 
@@ -359,7 +359,7 @@ const SimpleModelSettingsDialog = ({
 					</AINativeButtonBgDarken>
 					<AINativeButtonBgDarken
 						onClick={onSave}
-						className="px-3 py-1 bg-[#0e70c0] text-white"
+						className="px-3 py-1 bg-ainative-accent-solid text-white"
 					>
 						Save
 					</AINativeButtonBgDarken>
@@ -455,9 +455,9 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 
 
 			const detailAboutModel = type === 'autodetected' ?
-				<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='ainative-tooltip' data-tooltip-place='right' data-tooltip-content='Detected locally' />
+				<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-ainative-accent-fg" data-tooltip-id='ainative-tooltip' data-tooltip-place='right' data-tooltip-content='Detected locally' />
 				: type === 'custom' ?
-					<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='ainative-tooltip' data-tooltip-place='right' data-tooltip-content='Custom model' />
+					<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-ainative-accent-fg" data-tooltip-id='ainative-tooltip' data-tooltip-place='right' data-tooltip-content='Custom model' />
 					: undefined
 
 			const hasOverrides = !!settingsState.overridesOfModel?.[providerName]?.[modelName]
@@ -525,7 +525,7 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 		{/* Add Model Section */}
 		{showCheckmark ? (
 			<div className="mt-4">
-				<AnimatedCheckmarkButton text='Added' className="bg-[#0e70c0] text-white px-3 py-1 rounded-sm" />
+				<AnimatedCheckmarkButton text='Added' className="bg-ainative-accent-solid text-white px-3 py-1 rounded-sm" />
 			</div>
 		) : isAddModelOpen ? (
 			<div className="mt-4">
@@ -1286,7 +1286,7 @@ export const Settings = () => {
 								className={`
           py-2 px-4 rounded-md text-left transition-all duration-200
           ${selectedSection === tab
-										? 'bg-[#0e70c0]/80 text-white font-medium shadow-sm'
+										? 'bg-ainative-accent-solid/80 text-white font-medium shadow-sm'
 										: 'bg-ainative-bg-2 hover:bg-ainative-bg-2/80 text-ainative-fg-1'}
         `}
 							>
@@ -1318,7 +1318,7 @@ export const Settings = () => {
 											<div className='w-12 h-12 rounded-full bg-ainative-bg-2 flex items-center justify-center overflow-hidden'>
 												{auth.user?.name ? (
 													<img
-														src={`https://ui-avatars.com/api/?name=${encodeURIComponent(auth.user.name)}&background=0e70c0&color=fff`}
+														src={`https://ui-avatars.com/api/?name=${encodeURIComponent(auth.user.name)}&background=7C6BFF&color=fff`}
 														alt='User Avatar'
 														className='w-full h-full object-cover'
 													/>
@@ -1344,7 +1344,7 @@ export const Settings = () => {
 											Sign in to access AINative Cloud models
 										</p>
 										<AINativeButtonBgDarken
-											className='px-4 py-2 w-fit bg-[#0e70c0] text-white hover:bg-[#1177cb]'
+											className='px-4 py-2 w-fit bg-ainative-accent-solid text-white hover:bg-ainative-accent-solid-hover'
 											onClick={() => setShowLoginModal(true)}
 										>
 											Sign In to AINative Cloud

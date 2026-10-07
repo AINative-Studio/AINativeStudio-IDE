@@ -96,7 +96,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data, period, loading })
 		return (
 			<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
 				<div className="flex items-center gap-2 mb-4">
-					<TrendingUp size={20} className="text-[#0e70c0]" />
+					<TrendingUp size={20} className="text-ainative-accent-fg" />
 					<h3 className="text-lg font-medium text-ainative-fg-1">Usage Over Time</h3>
 				</div>
 				<div className="h-48 flex items-center justify-center text-ainative-fg-3">
@@ -111,7 +111,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data, period, loading })
 			{/* Header */}
 			<div className="flex items-center justify-between mb-4">
 				<div className="flex items-center gap-2">
-					<TrendingUp size={20} className="text-[#0e70c0]" />
+					<TrendingUp size={20} className="text-ainative-accent-fg" />
 					<h3 className="text-lg font-medium text-ainative-fg-1">Usage Over Time</h3>
 				</div>
 
@@ -175,7 +175,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data, period, loading })
 					<path
 						d={areaPath}
 						fill="currentColor"
-						className="text-[#0e70c0]"
+						className="text-ainative-accent-fg"
 						opacity="0.1"
 					/>
 
@@ -185,7 +185,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data, period, loading })
 						fill="none"
 						stroke="currentColor"
 						strokeWidth="2"
-						className="text-[#0e70c0]"
+						className="text-ainative-accent-fg"
 						strokeLinecap="round"
 						strokeLinejoin="round"
 					/>
@@ -198,14 +198,14 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data, period, loading })
 								cy={p.y}
 								r="4"
 								fill="currentColor"
-								className="text-[#0e70c0]"
+								className="text-ainative-accent-fg"
 							/>
 							<circle
 								cx={p.x}
 								cy={p.y}
 								r="8"
 								fill="transparent"
-								className="cursor-pointer hover:fill-current hover:text-[#0e70c0] hover:opacity-10"
+								className="cursor-pointer hover:fill-current hover:text-ainative-accent-fg hover:opacity-10"
 							>
 								<title>
 									{formatDate(p.data.date)}: {p.data.credits} credits ({p.data.tokens.toLocaleString()} tokens)

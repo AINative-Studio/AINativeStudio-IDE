@@ -178,7 +178,7 @@ export const ModelBrowser: React.FC<ModelBrowserProps> = ({
 							onClick={() => setView('browse')}
 							className={`px-4 py-2 rounded-md transition-colors ${
 								view === 'browse'
-									? 'bg-[#0e70c0] text-white'
+									? 'bg-ainative-accent-solid text-white'
 									: 'bg-ainative-bg-2 text-ainative-fg-3 hover:bg-ainative-bg-2-hover'
 							}`}
 						>
@@ -188,7 +188,7 @@ export const ModelBrowser: React.FC<ModelBrowserProps> = ({
 							onClick={() => setView('usage')}
 							className={`px-4 py-2 rounded-md transition-colors ${
 								view === 'usage'
-									? 'bg-[#0e70c0] text-white'
+									? 'bg-ainative-accent-solid text-white'
 									: 'bg-ainative-bg-2 text-ainative-fg-3 hover:bg-ainative-bg-2-hover'
 							}`}
 						>
@@ -231,7 +231,7 @@ export const ModelBrowser: React.FC<ModelBrowserProps> = ({
 											<p className="text-ainative-fg-3 mb-4">{error}</p>
 											<button
 												onClick={refreshModels}
-												className="px-4 py-2 bg-[#0e70c0] text-white rounded-md hover:bg-[#1177cb]"
+												className="px-4 py-2 bg-ainative-accent-solid text-white rounded-md hover:bg-ainative-accent-solid-hover"
 											>
 												Try Again
 											</button>

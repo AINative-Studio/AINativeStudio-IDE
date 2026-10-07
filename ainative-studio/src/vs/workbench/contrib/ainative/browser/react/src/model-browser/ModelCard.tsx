@@ -112,7 +112,7 @@ export const ModelCard: React.FC<ModelCardProps> = ({ model, onClick, isSelected
 				transition-all duration-200 hover:shadow-lg
 				${
 					isSelected
-						? 'border-[#0e70c0] ring-2 ring-[#0e70c0]/20'
+						? 'border-ainative-accent ring-2 ring-ainative-accent-bg'
 						: 'border-ainative-border-2 hover:border-ainative-border-1'
 				}
 				${!model.available ? 'opacity-60' : ''}
@@ -130,7 +130,7 @@ export const ModelCard: React.FC<ModelCardProps> = ({ model, onClick, isSelected
 			{/* Availability Badge */}
 			{isSelected && (
 				<div className="absolute top-2 right-2">
-					<CheckCircle2 size={20} className="text-[#0e70c0]" />
+					<CheckCircle2 size={20} className="text-ainative-accent-fg" />
 				</div>
 			)}
 

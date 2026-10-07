@@ -82,7 +82,7 @@ export const UsageDashboard: React.FC = () => {
 
 			// Convert to model usage data
 			const modelColors = [
-				'#0e70c0', '#4a90e2', '#7fba00', '#ffb900',
+				'var(--ainative-accent)', '#4a90e2', '#7fba00', '#ffb900',
 				'#e74856', '#8764b8', '#00b7c3', '#ca5010'
 			];
 
@@ -250,7 +250,7 @@ export const UsageDashboard: React.FC = () => {
 			{/* Header */}
 			<div className="flex items-center justify-between mb-6">
 				<div className="flex items-center gap-3">
-					<Activity size={28} className="text-[#0e70c0]" />
+					<Activity size={28} className="text-ainative-accent-fg" />
 					<h1 className="text-3xl font-medium text-ainative-fg-1">Usage Dashboard</h1>
 				</div>
 
@@ -319,7 +319,7 @@ export const UsageDashboard: React.FC = () => {
 						<p className="text-ainative-fg-3 mb-4">{error}</p>
 						<button
 							onClick={loadData}
-							className="px-4 py-2 bg-[#0e70c0] text-white rounded-md hover:bg-[#1177cb] transition-colors"
+							className="px-4 py-2 bg-ainative-accent-solid text-white rounded-md hover:bg-ainative-accent-solid-hover transition-colors"
 						>
 							Try Again
 						</button>

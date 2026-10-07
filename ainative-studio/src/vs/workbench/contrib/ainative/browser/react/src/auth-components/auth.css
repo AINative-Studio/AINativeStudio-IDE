@@ -231,8 +231,8 @@
 	padding: 12px 16px;
 	font-size: 14px;
 	font-weight: 500;
-	color: var(--vscode-button-foreground, #ffffff);
-	background-color: var(--vscode-button-background, #0e70c0);
+	color: #ffffff;
+	background-color: var(--ainative-accent-solid);
 	border: none;
 	border-radius: 4px;
 	cursor: pointer;
@@ -246,11 +246,11 @@
 }
 
 .auth-submit-button:hover:not(:disabled) {
-	background-color: var(--vscode-button-hoverBackground, #1177cb);
+	background-color: var(--ainative-accent-solid-hover);
 }
 
 .auth-submit-button:active:not(:disabled) {
-	background-color: #0c5fa0;
+	background-color: var(--ainative-accent-fg);
 }
 
 .auth-submit-button:focus-visible {

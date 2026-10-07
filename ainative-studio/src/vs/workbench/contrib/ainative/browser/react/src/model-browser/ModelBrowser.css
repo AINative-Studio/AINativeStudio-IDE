@@ -125,7 +125,7 @@
 
 /* Quota Warning States */
 .quota-normal {
-	background-color: #0e70c0;
+	background-color: var(--ainative-accent-solid);
 }
 
 .quota-warning {
@@ -225,7 +225,7 @@
 /* Custom Checkbox/Radio Styles */
 input[type='checkbox'],
 input[type='radio'] {
-	accent-color: #0e70c0;
+	accent-color: var(--ainative-accent-solid);
 }
 
 input[type='checkbox']:disabled,

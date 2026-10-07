@@ -69,7 +69,7 @@ export const ModelBreakdown: React.FC<ModelBreakdownProps> = ({ data, loading })
 
 	// Color palette for models
 	const modelColors = [
-		'#0e70c0', // AINative Blue
+		'var(--ainative-accent)', // AINative Violet
 		'#4a90e2',
 		'#7fba00',
 		'#ffb900',
@@ -92,7 +92,7 @@ export const ModelBreakdown: React.FC<ModelBreakdownProps> = ({ data, loading })
 		return (
 			<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
 				<div className="flex items-center gap-2 mb-4">
-					<PieChart size={20} className="text-[#0e70c0]" />
+					<PieChart size={20} className="text-ainative-accent-fg" />
 					<h3 className="text-lg font-medium text-ainative-fg-1">Model Distribution</h3>
 				</div>
 				<div className="h-64 flex items-center justify-center text-ainative-fg-3">
@@ -106,7 +106,7 @@ export const ModelBreakdown: React.FC<ModelBreakdownProps> = ({ data, loading })
 		<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
 			{/* Header */}
 			<div className="flex items-center gap-2 mb-6">
-				<PieChart size={20} className="text-[#0e70c0]" />
+				<PieChart size={20} className="text-ainative-accent-fg" />
 				<h3 className="text-lg font-medium text-ainative-fg-1">Model Distribution</h3>
 			</div>
 

@@ -156,7 +156,7 @@
 	font-size: 14px;
 	font-weight: 500;
 	color: white;
-	background-color: #0e70c0;
+	background-color: var(--ainative-accent-solid);
 	border: none;
 	border-radius: 4px;
 	cursor: pointer;
@@ -165,11 +165,11 @@
 }
 
 .ainative-submit-button:hover:not(:disabled) {
-	background-color: #1177cb;
+	background-color: var(--ainative-accent-solid-hover);
 }
 
 .ainative-submit-button:active:not(:disabled) {
-	background-color: #0c5fa0;
+	background-color: var(--ainative-accent-fg);
 }
 
 .ainative-submit-button:focus {

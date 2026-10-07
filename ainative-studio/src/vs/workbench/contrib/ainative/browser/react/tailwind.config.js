@@ -9,6 +9,25 @@ module.exports = {
 	content: ['./src2/**/*.{jsx,tsx}'], // uses these files to decide how to transform the css file
 	theme: {
 		extend: {
+			boxShadow: {
+				sm: 'var(--ainative-shadow-sm)',
+			},
+			keyframes: {
+				'ainative-running-pulse': {
+					'0%, 100%': { opacity: 1 },
+					'50%': { opacity: .3 },
+				},
+				'ainative-fade-up': {
+					'0%': { opacity: 0, transform: 'translateY(6px)' },
+					'100%': { opacity: 1, transform: 'translateY(0)' },
+				},
+			},
+			animation: {
+				// Running/connecting state dot and live status line - spec: opacity 1 -> .3, 1.2-1.4s.
+				'ainative-running-pulse': 'ainative-running-pulse 1.3s ease-in-out infinite',
+				// New thread item entrance - spec: fade up 6px over 250ms.
+				'ainative-fade-up': 'ainative-fade-up 250ms ease-out',
+			},
 			typography: theme => ({
 				DEFAULT: {
 					css: {
@@ -35,7 +54,9 @@ module.exports = {
 				xs: '10px',
 				sm: '11px',
 				root: '13px',
+				md: '13px',
 				lg: '14px',
+				vibe: '15px', // Vibe Coder Mode body text - larger scale than the IDE on purpose
 				xl: '16px',
 				'2xl': '18px',
 				'3xl': '20px',
@@ -55,6 +76,7 @@ module.exports = {
 				'ainative-bg-2-alt': 'var(--ainative-bg-2-alt)',
 				'ainative-bg-2-hover': 'var(--ainative-bg-2-hover)',
 				'ainative-bg-3': 'var(--ainative-bg-3)',
+				'ainative-bg-sunken': 'var(--ainative-bg-sunken)',
 
 
 				'ainative-fg-0': 'var(--ainative-fg-0)',
@@ -73,6 +95,16 @@ module.exports = {
 
 				'ainative-ring-color': 'var(--ainative-ring-color)',
 				'ainative-link-color': 'var(--ainative-link-color)',
+
+				// Redesign brand/status tokens - see styles.css for light/dark values.
+				'ainative-accent': 'var(--ainative-accent)',
+				'ainative-accent-solid': 'var(--ainative-accent-solid)',
+				'ainative-accent-solid-hover': 'var(--ainative-accent-solid-hover)',
+				'ainative-accent-fg': 'var(--ainative-accent-fg)',
+				'ainative-accent-bg': 'var(--ainative-accent-bg)',
+				'ainative-ok': 'var(--ainative-ok)',
+				'ainative-error': 'var(--ainative-error)',
+				'ainative-error-bg': 'var(--ainative-error-bg)',
 
 				vscode: {
 					// see: https://code.visualstudio.com/api/extension-guides/webview#theming-webview-content

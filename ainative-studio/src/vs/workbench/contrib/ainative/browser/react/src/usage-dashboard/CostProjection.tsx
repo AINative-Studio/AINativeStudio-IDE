@@ -46,7 +46,7 @@ export const CostProjection: React.FC<CostProjectionProps> = ({ projection, load
 		<div className="p-6 bg-ainative-bg-1 border border-ainative-border-2 rounded-md">
 			{/* Header */}
 			<div className="flex items-center gap-2 mb-6">
-				<TrendingUp size={20} className="text-[#0e70c0]" />
+				<TrendingUp size={20} className="text-ainative-accent-fg" />
 				<h3 className="text-lg font-medium text-ainative-fg-1">Cost Projection</h3>
 			</div>
 
@@ -73,7 +73,7 @@ export const CostProjection: React.FC<CostProjectionProps> = ({ projection, load
 				{/* Monthly Credits Estimate */}
 				<div className="p-4 bg-ainative-bg-2 rounded-md">
 					<div className="flex items-center gap-2 mb-2">
-						<DollarSign size={16} className="text-[#0e70c0]" />
+						<DollarSign size={16} className="text-ainative-accent-fg" />
 						<span className="text-xs text-ainative-fg-3 uppercase">Estimated Monthly Credits</span>
 					</div>
 					<div className="text-2xl font-medium text-ainative-fg-1 mb-1">
@@ -87,7 +87,7 @@ export const CostProjection: React.FC<CostProjectionProps> = ({ projection, load
 				{/* Monthly Cost Estimate */}
 				<div className="p-4 bg-ainative-bg-2 rounded-md">
 					<div className="flex items-center gap-2 mb-2">
-						<DollarSign size={16} className="text-[#0e70c0]" />
+						<DollarSign size={16} className="text-ainative-accent-fg" />
 						<span className="text-xs text-ainative-fg-3 uppercase">Estimated Monthly Cost</span>
 					</div>
 					<div className="text-2xl font-medium text-ainative-fg-1 mb-1">
@@ -102,7 +102,7 @@ export const CostProjection: React.FC<CostProjectionProps> = ({ projection, load
 				{projectedExhaustionDate && (
 					<div className={`p-4 rounded-md ${isConcerning ? 'bg-red-500/10 border border-red-500/20' : 'bg-ainative-bg-2'}`}>
 						<div className="flex items-center gap-2 mb-2">
-							<Calendar size={16} className={isConcerning ? 'text-red-500' : 'text-[#0e70c0]'} />
+							<Calendar size={16} className={isConcerning ? 'text-red-500' : 'text-ainative-accent-fg'} />
 							<span className={`text-xs uppercase ${isConcerning ? 'text-red-500' : 'text-ainative-fg-3'}`}>
 								Projected Exhaustion
 							</span>
@@ -122,7 +122,7 @@ export const CostProjection: React.FC<CostProjectionProps> = ({ projection, load
 				{/* Confidence Level */}
 				<div className="p-4 bg-ainative-bg-2 rounded-md">
 					<div className="flex items-center gap-2 mb-2">
-						<TrendingUp size={16} className="text-[#0e70c0]" />
+						<TrendingUp size={16} className="text-ainative-accent-fg" />
 						<span className="text-xs text-ainative-fg-3 uppercase">Confidence Level</span>
 					</div>
 					<div className={`text-2xl font-medium mb-1 ${confidenceColor}`}>
@@ -142,11 +142,11 @@ export const CostProjection: React.FC<CostProjectionProps> = ({ projection, load
 			</div>
 
 			{/* Recommendation */}
-			<div className="p-4 bg-[#0e70c0]/10 border border-[#0e70c0]/20 rounded-md">
+			<div className="p-4 bg-ainative-accent-bg border border-ainative-accent rounded-md">
 				<div className="flex items-start gap-3">
-					<Lightbulb size={20} className="text-[#0e70c0] mt-0.5 flex-shrink-0" />
+					<Lightbulb size={20} className="text-ainative-accent-fg mt-0.5 flex-shrink-0" />
 					<div>
-						<h4 className="text-sm font-medium text-[#0e70c0] mb-1">Recommendation</h4>
+						<h4 className="text-sm font-medium text-ainative-accent-fg mb-1">Recommendation</h4>
 						<p className="text-sm text-ainative-fg-3">
 							{recommendation}
 						</p>
