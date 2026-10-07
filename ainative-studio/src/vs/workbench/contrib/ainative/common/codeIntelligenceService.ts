@@ -475,8 +475,12 @@ export class CodeIntelligenceService extends Disposable implements ICodeIntellig
 		let totalComplexity = 0;
 		let maxComplexity = 0;
 
-		// Extract function complexity data from text
-		const functionPattern = /(?:Function|Method):\s*(\w+).*?Complexity:\s*(\d+)/gi;
+		// Extract function complexity data from text. The 's' (dotAll) flag is required: a real
+		// "Function: X ... Complexity: Y" block from the backend has the two labels on separate
+		// lines, but '.' does not match newlines by default in JS regex - without 's', this
+		// pattern can never span the line break between the function name and its complexity
+		// value, silently matching 0 functions for any real multi-line response.
+		const functionPattern = /(?:Function|Method):\s*(\w+).*?Complexity:\s*(\d+)/gis;
 		let match;
 
 		while ((match = functionPattern.exec(text)) !== null) {
