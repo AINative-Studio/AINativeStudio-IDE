@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------*/
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
+import { VSBuffer } from '../../../../base/common/buffer.js';
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
@@ -47,6 +48,7 @@ import { ICodeIntelligenceService } from '../common/codeIntelligenceService.js';
 import { IWebFetchService } from '../common/webFetchService.js';
 import { IUsageTrackingService } from '../common/usageTrackingService.js';
 import { MessageMetadata } from '../common/chatThreadServiceTypes.js';
+import { IShadowWorkspaceService, FileDiff } from '../common/shadowWorkspaceService.js';
 
 
 // related to retrying when LLM message has error
@@ -308,6 +310,12 @@ export interface IChatThreadService {
 
 	focusCurrentChat: () => Promise<void>
 	blurCurrentChat: () => Promise<void>
+
+	// #159 phase 1: shadow workspace end-of-turn promotion (design doc §3.4). Only meaningful for a
+	// thread with shadowModeEnabled; returns an empty array / is a no-op otherwise.
+	getPendingShadowDiffs(threadId: string): Promise<FileDiff[]>;
+	promoteShadowDiffs(threadId: string): Promise<void>;
+	discardShadowDiffs(threadId: string): Promise<void>;
 }
 
 export const IChatThreadService = createDecorator<IChatThreadService>('ainativeChatThreadService');
@@ -350,6 +358,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		@ICodeIntelligenceService private readonly _codeIntelligenceService: ICodeIntelligenceService,
 		@IWebFetchService private readonly _webFetchService: IWebFetchService,
 		@IUsageTrackingService private readonly _usageTrackingService: IUsageTrackingService,
+		@IShadowWorkspaceService private readonly _shadowWorkspaceService: IShadowWorkspaceService,
 	) {
 		super()
 		this.state = { allThreads: {}, currentThreadId: null as unknown as string } // default state
@@ -596,6 +605,80 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		const errorMessage = this.toolErrMsgs.rejected
 		this._updateLatestTool(threadId, { role: 'tool', type: 'rejected', params: params, name: name, content: errorMessage, result: null, id, rawParams, mcpServerName })
 		this._setStreamState(threadId, undefined)
+	}
+
+	// #159 phase 1: shadow workspace end-of-turn promotion (design doc §3.4). Returns only the files
+	// that actually differ - 'unchanged' entries from diffShadowAgainstReal are filtered out since
+	// there is nothing to review/promote/discard for them. As a side effect, materializes a visible
+	// DiffZone (shadow content vs. real content) on each 'modified' file's real URI via
+	// editCodeService.instantlyRewriteFile, reusing the exact same diff-preview machinery normal
+	// (non-shadow) edits already use - see editCodeService.ts's instantlyRewriteFile/_startStreamingDiffZone,
+	// which clears any stale DiffZone on the URI before creating a fresh one, so calling this
+	// repeatedly (e.g. on every render of a UI banner) is safe and idempotent. 'added'/'deleted'
+	// files have no real-file model to diff against, so no DiffZone is created for them - the UI is
+	// expected to list them plainly and let promote/discard apply directly (see promoteShadowDiffs/
+	// discardShadowDiffs below).
+	async getPendingShadowDiffs(threadId: string): Promise<FileDiff[]> {
+		const allDiffs = await this._shadowWorkspaceService.diffShadowAgainstReal(threadId)
+		const pending = allDiffs.filter(d => d.kind !== 'unchanged')
+
+		for (const diff of pending) {
+			if (diff.kind !== 'modified') continue
+			await this._voidModelService.initializeModel(diff.realUri)
+			await this._editCodeService.callBeforeApplyOrEdit(diff.realUri)
+			this._editCodeService.instantlyRewriteFile({ uri: diff.realUri, newContent: diff.shadowContent ?? '' })
+		}
+
+		return pending
+	}
+
+	// Accepts every pending shadow diff for a thread: 'modified' files go through the normal
+	// DiffZone accept path (keeps the already-materialized newContent in the model, then saves it to
+	// disk via voidModelService.saveModel - the same save step rewrite_file/edit_file would
+	// eventually get from the user's own save, just forced here since promotion is the user's
+	// explicit "yes, write this" action). 'added' files are written directly to disk (no real file,
+	// hence no model/DiffZone to accept). 'deleted' files are removed from disk. Disposes the
+	// thread's shadow workspace afterward - promotion is an end-of-turn, whole-batch action (design
+	// doc §3.4), so there is nothing left in the shadow worth keeping once every touched file has
+	// been promoted; the next turn starts a fresh shadow copy on first touch, same as a brand-new
+	// thread would.
+	async promoteShadowDiffs(threadId: string): Promise<void> {
+		const diffs = await this.getPendingShadowDiffs(threadId)
+
+		for (const diff of diffs) {
+			if (diff.kind === 'modified') {
+				this._editCodeService.acceptOrRejectAllDiffAreas({ uri: diff.realUri, removeCtrlKs: false, behavior: 'accept' })
+				await this._voidModelService.saveModel(diff.realUri)
+			}
+			else if (diff.kind === 'added') {
+				await this._fileService.writeFile(diff.realUri, VSBuffer.fromString(diff.shadowContent ?? ''))
+			}
+			else if (diff.kind === 'deleted') {
+				try { await this._fileService.del(diff.realUri, { recursive: true, useTrash: false }) } catch { /* already gone */ }
+			}
+		}
+
+		await this._shadowWorkspaceService.disposeShadow(threadId)
+	}
+
+	// Discards every pending shadow diff for a thread: 'modified' files are reverted via the normal
+	// DiffZone reject path (restores the real file's original content in its model - no disk write
+	// needed since the real file on disk was never touched by shadow edits in the first place).
+	// 'added'/'deleted' diffs need no real-file action at all (the real file was never created/
+	// removed - only the shadow copy was). Disposes the thread's shadow workspace either way, same
+	// rationale as promoteShadowDiffs: discard is also a whole-batch, end-of-turn action, and the
+	// design doc (§3.1) explicitly calls out "explicit discard from the user" as a disposeShadow
+	// trigger.
+	async discardShadowDiffs(threadId: string): Promise<void> {
+		const diffs = await this.getPendingShadowDiffs(threadId)
+
+		for (const diff of diffs) {
+			if (diff.kind === 'modified') {
+				this._editCodeService.acceptOrRejectAllDiffAreas({ uri: diff.realUri, removeCtrlKs: false, behavior: 'reject' })
+			}
+		}
+
+		await this._shadowWorkspaceService.disposeShadow(threadId)
 	}
 
 	private _computeMCPServerOfToolName = (toolName: string) => {
@@ -974,6 +1057,17 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 
 		// add checkpoint before the next user message
 		if (!isRunningWhenEnd) this._addUserCheckpoint({ threadId })
+
+		// #159 phase 1: the agent's turn has now fully ended (not just paused awaiting approval on
+		// some other tool) - if shadow mode is on for this thread, materialize the aggregate diff
+		// preview now so it's already visible (DiffZones on the touched real files) by the time the
+		// UI's promote/discard banner renders, instead of the banner's first render racing a fresh
+		// getPendingShadowDiffs call. Best-effort: a failure here (e.g. a touched file was deleted
+		// out from under the shadow tree) must not crash the chat loop - the banner will still call
+		// getPendingShadowDiffs itself and surface whatever it can.
+		if (!isRunningWhenEnd && this.state.allThreads[threadId]?.state.shadowModeEnabled) {
+			try { await this.getPendingShadowDiffs(threadId) } catch (e) { console.error('Error materializing shadow diff preview:', e) }
+		}
 
 		// capture number of messages sent
 		this._metricsService.capture('Agent Loop Done', { nMessagesSent, chatMode })

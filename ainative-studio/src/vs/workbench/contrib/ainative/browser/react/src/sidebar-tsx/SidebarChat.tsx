@@ -36,6 +36,7 @@ import { ToolApprovalTypeSwitch } from '../ainative-settings-tsx/Settings.js';
 import { persistentTerminalNameOfId } from '../../../terminalToolService.js';
 import { removeMCPToolNamePrefix } from '../../../../common/mcpServiceTypes.js';
 import { StatusDot, StatusDotState } from '../primitives/StatusDot.js';
+import { FileDiff } from '../../../../common/shadowWorkspaceService.js';
 
 
 
@@ -1700,6 +1701,102 @@ const ToolRequestAcceptRejectButtons = ({ toolName }: { toolName: ToolName }) =>
 	</div>
 }
 
+// #159 phase 1 (see docs/planning/SHADOW_WORKSPACE_DESIGN.md §3.4): end-of-turn aggregate diff +
+// single promote/discard action for a thread with shadow mode enabled. Rendered once per thread,
+// between the message list and the chat input - deliberately not tied to any individual tool-call
+// message, since this reviews the whole turn's accumulated shadow edits at once, not one tool call
+// at a time (that's the entire point of shadow mode vs. today's per-call approval). Renders nothing
+// for a thread that doesn't have shadowModeEnabled, or that has no pending (non-'unchanged') shadow
+// diffs - both are the overwhelmingly common case today, since nothing turns shadowModeEnabled on
+// yet, so this is purely additive UI with no effect on existing threads.
+const ShadowDiffPromotionBanner = ({ threadId }: { threadId: string }) => {
+	const accessor = useAccessor()
+	const chatThreadsService = accessor.get('IChatThreadService')
+	const metricsService = accessor.get('IMetricsService')
+
+	const chatThreadsState = useChatThreadsState()
+	const shadowModeEnabled = !!chatThreadsState.allThreads[threadId]?.state.shadowModeEnabled
+	const streamState = useChatThreadsStreamState(threadId)
+	// only poll/show once the turn is fully idle - mid-turn, the shadow tree is still being written
+	// to, so diffing it now would show a partial, still-changing result.
+	const isIdle = streamState?.isRunning === undefined
+
+	const [diffs, setDiffs] = useState<FileDiff[]>([])
+	const [isBusy, setIsBusy] = useState(false)
+
+	const refresh = useCallback(async () => {
+		if (!shadowModeEnabled || !isIdle) { setDiffs([]); return }
+		try {
+			const pending = await chatThreadsService.getPendingShadowDiffs(threadId)
+			setDiffs(pending)
+		} catch (e) { console.error('Error fetching pending shadow diffs:', e) }
+	}, [chatThreadsService, threadId, shadowModeEnabled, isIdle])
+
+	useEffect(() => { refresh() }, [refresh])
+
+	const onPromote = useCallback(async () => {
+		setIsBusy(true)
+		try {
+			await chatThreadsService.promoteShadowDiffs(threadId)
+			metricsService.capture('Shadow Diffs Promoted', { numFiles: diffs.length })
+			setDiffs([])
+		} catch (e) { console.error('Error promoting shadow diffs:', e) }
+		finally { setIsBusy(false) }
+	}, [chatThreadsService, metricsService, threadId, diffs.length])
+
+	const onDiscard = useCallback(async () => {
+		setIsBusy(true)
+		try {
+			await chatThreadsService.discardShadowDiffs(threadId)
+			metricsService.capture('Shadow Diffs Discarded', { numFiles: diffs.length })
+			setDiffs([])
+		} catch (e) { console.error('Error discarding shadow diffs:', e) }
+		finally { setIsBusy(false) }
+	}, [chatThreadsService, metricsService, threadId, diffs.length])
+
+	if (!shadowModeEnabled || diffs.length === 0) return null
+
+	return <div className='px-4 pb-2'>
+		<div className='flex items-center justify-between gap-2 px-2 py-1.5 rounded border border-[var(--vscode-editorWidget-border)] bg-[var(--vscode-editorWidget-background)]'>
+			<div className='text-sm text-ainative-fg-3'>
+				{diffs.length} file{diffs.length === 1 ? '' : 's'} changed in shadow workspace - review before applying
+			</div>
+			<div className='flex gap-2 shrink-0'>
+				<button
+					disabled={isBusy}
+					onClick={onPromote}
+					className={`
+						px-2 py-1
+						bg-[var(--vscode-button-background)]
+						text-[var(--vscode-button-foreground)]
+						hover:bg-[var(--vscode-button-hoverBackground)]
+						disabled:opacity-50
+						rounded
+						text-sm font-medium
+					`}
+				>
+					Apply All
+				</button>
+				<button
+					disabled={isBusy}
+					onClick={onDiscard}
+					className={`
+						px-2 py-1
+						bg-[var(--vscode-button-secondaryBackground)]
+						text-[var(--vscode-button-secondaryForeground)]
+						hover:bg-[var(--vscode-button-secondaryHoverBackground)]
+						disabled:opacity-50
+						rounded
+						text-sm font-medium
+					`}
+				>
+					Discard All
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
 export const ToolChildrenWrapper = ({ children, className }: { children: React.ReactNode, className?: string }) => {
 	return <div className={`${className ? className : ''} cursor-default select-none`}>
 		<div className='px-2 min-w-full overflow-hidden'>
@@ -3239,6 +3336,9 @@ export const SidebarChat = () => {
 
 		<ErrorBoundary>
 			{messagesHTML}
+		</ErrorBoundary>
+		<ErrorBoundary>
+			<ShadowDiffPromotionBanner threadId={threadId} />
 		</ErrorBoundary>
 		<ErrorBoundary>
 			{threadPageInput}
