@@ -71,6 +71,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # #165: "Install dependencies" has failed on this job (and Linux ARM64's
+      # equivalent step) every time this workflow has been run so far - specifically
+      # on extensions/open-remote-ssh's own npm ci, which pulls ssh2/simple-socks as
+      # GitHub-tarball dependencies (confirmed harmless/reproducible locally and in a
+      # real matching Ubuntu 24.04 + Node 22.23.3 Docker container - ruled out an
+      # OS/Node mismatch and an SSH-auth requirement by direct reproduction; npm
+      # actually fetches these via an anonymous HTTPS tarball from
+      # codeload.github.com, not a real git clone, so SSH was never actually
+      # involved). The real failure only manifests on GitHub's own hosted runners,
+      # and the actual npm debug log (referenced in the failure output as
+      # /home/runner/.npm/_logs/*.log) has never been captured - this step uploads
+      # it on failure so the next run actually tells us the real error instead of
+      # just "command failed".
+      - name: Upload npm debug logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-debug-logs-linux-x64
+          path: /home/runner/.npm/_logs/*.log
+          if-no-files-found: warn
+          retention-days: 7
+
       # The ainative-specific contrib code (src/vs/workbench/contrib/ainative)
       # imports its React panels from react/out/**/index.js, which only
       # exists after this build step runs - without it, compile-src fails
@@ -189,6 +211,18 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # See the comment on the equivalent step in the Linux x64 job above (#165) -
+      # captures the real npm debug log on failure instead of leaving us with just
+      # "command failed".
+      - name: Upload npm debug logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-debug-logs-linux-arm64
+          path: /home/runner/.npm/_logs/*.log
+          if-no-files-found: warn
+          retention-days: 7
 
       # See the comment on the equivalent step in build-server-linux-x64
       # above - compile-src fails without this.
