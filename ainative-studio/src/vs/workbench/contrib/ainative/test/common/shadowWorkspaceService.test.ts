@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
+import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
 import { URI } from '../../../../../base/common/uri.js';
@@ -224,5 +225,96 @@ suite('ShadowWorkspaceService Tests', () => {
 
 		const diffs = await service.diffShadowAgainstReal('thread-diff-6');
 		assert.deepStrictEqual(diffs.map(d => d.realUri.toString()), [fileC.toString(), fileA.toString(), fileB.toString()]);
+	});
+
+	suite('ensureNodeModulesLinked', () => {
+		test('symlinks the real node_modules into the shadow workspace-folder root', async () => {
+			const realNodeModules = path.join(testWorkspaceDir.fsPath, 'node_modules');
+			fs.mkdirSync(path.join(realNodeModules, 'left-pad'), { recursive: true });
+			fs.writeFileSync(path.join(realNodeModules, 'left-pad', 'index.js'), 'module.exports = {};');
+
+			await service.ensureNodeModulesLinked('thread-nm-1', testWorkspaceDir);
+
+			const shadow = service.getShadowForThread('thread-nm-1')!;
+			const shadowNodeModules = path.join(shadow.rootUri.fsPath, path.basename(testWorkspaceDir.fsPath), 'node_modules');
+
+			const stat = fs.lstatSync(shadowNodeModules);
+			assert.strictEqual(stat.isSymbolicLink(), true);
+			assert.strictEqual(fs.realpathSync(shadowNodeModules), fs.realpathSync(realNodeModules));
+
+			// the link must actually resolve to real package contents, not just exist as a dangling path
+			const linkedPkg = fs.readFileSync(path.join(shadowNodeModules, 'left-pad', 'index.js'), 'utf8');
+			assert.strictEqual(linkedPkg, 'module.exports = {};');
+		});
+
+		test('finds node_modules in a parent directory when the workspace root has none of its own', async () => {
+			// monorepo shape: node_modules hoisted to a directory above the workspace root being
+			// shadowed (e.g. a package inside a yarn/npm/pnpm workspace)
+			const monorepoRoot = URI.file(path.join(tmpdir(), 'ainative-shadow-nm-monorepo-' + Date.now()));
+			const packageDir = URI.joinPath(monorepoRoot, 'packages', 'app');
+			await fileService.createFolder(packageDir);
+			fs.mkdirSync(path.join(monorepoRoot.fsPath, 'node_modules', 'shared-dep'), { recursive: true });
+			fs.writeFileSync(path.join(monorepoRoot.fsPath, 'node_modules', 'shared-dep', 'index.js'), 'hoisted');
+
+			try {
+				await service.ensureNodeModulesLinked('thread-nm-2', packageDir);
+
+				const shadow = service.getShadowForThread('thread-nm-2')!;
+				const shadowNodeModules = path.join(shadow.rootUri.fsPath, path.basename(packageDir.fsPath), 'node_modules');
+				const stat = fs.lstatSync(shadowNodeModules);
+				assert.strictEqual(stat.isSymbolicLink(), true);
+
+				const linkedPkg = fs.readFileSync(path.join(shadowNodeModules, 'shared-dep', 'index.js'), 'utf8');
+				assert.strictEqual(linkedPkg, 'hoisted');
+			} finally {
+				await fileService.del(monorepoRoot, { recursive: true, useTrash: false }).catch(() => { });
+			}
+		});
+
+		test('is a no-op when no node_modules exists anywhere above the workspace root', async () => {
+			// testWorkspaceDir sits directly under the OS temp dir by construction, with no
+			// node_modules anywhere above it (and tmpdir() itself certainly has none) - should not throw.
+			await service.ensureNodeModulesLinked('thread-nm-3', testWorkspaceDir);
+
+			const shadow = service.getShadowForThread('thread-nm-3')!;
+			const shadowNodeModules = path.join(shadow.rootUri.fsPath, path.basename(testWorkspaceDir.fsPath), 'node_modules');
+			assert.strictEqual(fs.existsSync(shadowNodeModules), false);
+		});
+
+		test('is idempotent: calling twice does not throw or replace an existing link', async () => {
+			fs.mkdirSync(path.join(testWorkspaceDir.fsPath, 'node_modules'), { recursive: true });
+
+			await service.ensureNodeModulesLinked('thread-nm-4', testWorkspaceDir);
+			// second call must not throw (e.g. EEXIST from re-symlinking the same path)
+			await service.ensureNodeModulesLinked('thread-nm-4', testWorkspaceDir);
+
+			const shadow = service.getShadowForThread('thread-nm-4')!;
+			const shadowNodeModules = path.join(shadow.rootUri.fsPath, path.basename(testWorkspaceDir.fsPath), 'node_modules');
+			assert.strictEqual(fs.lstatSync(shadowNodeModules).isSymbolicLink(), true);
+		});
+
+		test('creates the shadow workspace implicitly if one does not exist yet', async () => {
+			fs.mkdirSync(path.join(testWorkspaceDir.fsPath, 'node_modules'), { recursive: true });
+
+			assert.strictEqual(service.getShadowForThread('thread-nm-5'), undefined);
+			await service.ensureNodeModulesLinked('thread-nm-5', testWorkspaceDir);
+			assert.notStrictEqual(service.getShadowForThread('thread-nm-5'), undefined);
+		});
+
+		test('does not clobber a real (non-symlink) node_modules directory already in the shadow tree', async () => {
+			fs.mkdirSync(path.join(testWorkspaceDir.fsPath, 'node_modules'), { recursive: true });
+
+			const shadow = await service.createShadowForThread('thread-nm-6');
+			const shadowWorkspaceFolder = path.join(shadow.rootUri.fsPath, path.basename(testWorkspaceDir.fsPath));
+			const shadowNodeModules = path.join(shadowWorkspaceFolder, 'node_modules');
+			fs.mkdirSync(shadowNodeModules, { recursive: true });
+			fs.writeFileSync(path.join(shadowNodeModules, 'sentinel.txt'), 'do not touch');
+
+			await service.ensureNodeModulesLinked('thread-nm-6', testWorkspaceDir);
+
+			const stat = fs.lstatSync(shadowNodeModules);
+			assert.strictEqual(stat.isSymbolicLink(), false);
+			assert.strictEqual(fs.readFileSync(path.join(shadowNodeModules, 'sentinel.txt'), 'utf8'), 'do not touch');
+		});
 	});
 });

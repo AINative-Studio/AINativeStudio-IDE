@@ -25,6 +25,7 @@
 
 import { tmpdir } from 'os';
 import * as path from 'path';
+import * as fs from 'fs';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { URI } from '../../../../base/common/uri.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
@@ -105,6 +106,19 @@ export interface IShadowWorkspaceService {
 	 * is a targeted diff of known-touched files, not a full recursive tree walk.
 	 */
 	diffShadowAgainstReal(threadId: string): Promise<FileDiff[]>;
+
+	/**
+	 * Design doc §3.3/§6 phase 2 bullet 2: symlinks the nearest real `node_modules` directory above
+	 * `workspaceRootUri` into the thread's mirrored shadow copy of that workspace folder, so
+	 * subprocess tooling run against the shadow tree (e.g. ShadowTypeCheckService's `tsc`) can
+	 * resolve bare-specifier imports of real third-party packages instead of only the project's own
+	 * source files. Idempotent and cheap to call repeatedly: a no-op if the shadow `node_modules`
+	 * entry already exists (as a symlink or otherwise) or if no real `node_modules` can be found
+	 * walking up from the workspace root. Never copies `node_modules` - only ever symlinks - so this
+	 * is unaffected by dependency tree size. Creates the thread's shadow workspace (and the mirrored
+	 * workspace-folder subdirectory) first if neither exists yet.
+	 */
+	ensureNodeModulesLinked(threadId: string, workspaceRootUri: URI): Promise<void>;
 }
 
 const SHADOW_ROOT_FOLDER_NAME = 'ainative-shadow';
@@ -206,6 +220,83 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 		}
 
 		return diffs;
+	}
+
+	async ensureNodeModulesLinked(threadId: string, workspaceRootUri: URI): Promise<void> {
+		let state = this._shadowOfThreadId.get(threadId);
+		if (!state) {
+			await this.createShadowForThread(threadId);
+			state = this._shadowOfThreadId.get(threadId)!;
+		}
+
+		const realNodeModulesFsPath = this._findNearestNodeModules(workspaceRootUri.fsPath);
+		if (!realNodeModulesFsPath) {
+			// No installed dependencies anywhere above the workspace root - nothing to link. Not an
+			// error: a brand-new project, or one that's never had `npm install` run, legitimately has
+			// no node_modules yet, same as ShadowTypeCheckService's own "no toolchain" case.
+			return;
+		}
+
+		const shadowWorkspaceRootUri = this._mapToShadow(state.rootUri, workspaceRootUri, workspaceRootUri);
+		const shadowNodeModulesFsPath = path.join(shadowWorkspaceRootUri.fsPath, 'node_modules');
+
+		// mkdir -p the shadow workspace-folder directory itself first - it may not exist yet if no
+		// file has been synced into this workspace folder for this thread so far (symlinking can be
+		// requested independently of/before any file sync, e.g. up front when shadow mode turns on).
+		await this._fileService.createFolder(shadowWorkspaceRootUri);
+
+		if (this._existsOnDisk(shadowNodeModulesFsPath)) {
+			// Idempotent: already linked (or something else already occupies that path - deliberately
+			// not clobbering a real directory a caller might have put there on purpose). Covers the
+			// repeat-call case (e.g. re-invoked on every type-check run) without re-symlinking each time.
+			return;
+		}
+
+		try {
+			// Symlink, never copy - this is the whole point of the design doc's "pnpm-style" approach:
+			// avoiding the cost of duplicating potentially gigabytes of dependencies on every shadow
+			// workspace. 'dir' is the correct symlink type on Windows for a directory target; ignored
+			// on POSIX platforms where fs.symlink has no notion of typed links.
+			fs.symlinkSync(realNodeModulesFsPath, shadowNodeModulesFsPath, 'dir');
+		} catch (e) {
+			// Best-effort: a failed symlink (e.g. a permissions issue, or a platform without symlink
+			// support enabled - notably unprivileged Windows accounts) should degrade to "third-party
+			// imports don't resolve" (surfaced as valid TS2307 diagnostics by the type-checker, per
+			// shadowTypeCheckService.ts's own module doc), not crash shadow-mode entirely.
+		}
+	}
+
+	/**
+	 * Walks up from `startDirFsPath` looking for the nearest `node_modules` directory, the same
+	 * direction Node's own module resolution walks. Unlike _findNearestTsconfig (which looks for one
+	 * specific file), this looks for a directory, and deliberately only needs to find the *first*
+	 * one - module resolution for the workspace root's own project always starts there, regardless of
+	 * whether a monorepo root further up also has its own node_modules (pnpm/npm/yarn workspaces all
+	 * hoist in a way where the nearest node_modules is always the one to check first).
+	 */
+	private _findNearestNodeModules(startDirFsPath: string): string | undefined {
+		let dir = startDirFsPath;
+		for (; ;) {
+			const candidate = path.join(dir, 'node_modules');
+			if (this._existsOnDisk(candidate)) {
+				return candidate;
+			}
+			const parent = path.dirname(dir);
+			if (parent === dir) return undefined;
+			dir = parent;
+		}
+	}
+
+	/** Real `fs.existsSync`, not IFileService.exists - deliberately synchronous and symlink-aware
+	 * (existsSync follows symlinks, matching what a resolver/compiler actually sees on disk), used
+	 * only for the two node_modules-symlink checks above where IFileService's own async stat call
+	 * would be no more correct and strictly slower for a hot, repeatedly-called path. */
+	private _existsOnDisk(fsPath: string): boolean {
+		try {
+			return fs.existsSync(fsPath);
+		} catch {
+			return false;
+		}
 	}
 
 	private async _readFileIfExists(uri: URI): Promise<string | undefined> {

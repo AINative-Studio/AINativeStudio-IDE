@@ -30,18 +30,17 @@
  * subprocess analogue of "whatever's configured in the real workspace".
  *
  * Scope boundary (see design doc §6, phase 2 bullet list + GitHub issue #159):
- * - This service DOES copy the nearest tsconfig.json and its `extends` ancestor chain into the
+ * - This service copies the nearest tsconfig.json and its `extends` ancestor chain into the
  *   shadow tree on demand, because a subprocess tsc invocation is a complete no-op without a
  *   resolvable project file - that much "config-ancestor copying" is the minimum required for
- *   bullet 1 (this service) to do anything useful at all, not an attempt at bullet 2 in full.
- * - This service does NOT implement the node_modules symlink strategy from §3.3/phase-2 bullet 2.
- *   That remains genuinely separate, harder, and architecturally riskier work (symlink lifecycle,
- *   Windows junction fallback, cross-platform edge cases) that the task instructions explicitly
- *   call out as lower priority. Practically: type-checking a shadow tree whose tsconfig resolves
- *   ambient/@types-only dependencies (as this very codebase's own src/tsconfig.json does) works
- *   today without node_modules present; a shadow tree that imports concrete runtime packages via
- *   bare specifiers will currently fail to resolve those imports and surface that failure as (valid,
- *   if noisy) TS2307 "Cannot find module" diagnostics rather than silently skipping the check.
+ *   bullet 1 (this service) to do anything useful at all.
+ * - This service now also triggers IShadowWorkspaceService.ensureNodeModulesLinked (phase 2 bullet
+ *   2, §3.3) once a tsconfig + tsc binary are confirmed to exist, so a shadow tree whose project
+ *   imports concrete runtime packages via bare specifiers can actually resolve them against the
+ *   real workspace's installed dependencies instead of only its own source files. The symlink
+ *   primitive itself lives on ShadowWorkspaceService (see that file), since it's a general shadow-
+ *   tree mechanism, not something specific to type-checking - this service is just its first/only
+ *   caller today.
  * - No pyright/eslint support yet - TypeScript only, per the task's explicit "start with" guidance.
  */
 
@@ -171,6 +170,14 @@ export class ShadowTypeCheckService extends Disposable implements IShadowTypeChe
 			// *target workspace's own* installed TypeScript, never this IDE's.
 			return { status: 'no-toolchain', diagnostics: [] };
 		}
+
+		// #159 phase 2 bullet 2 (design doc §3.3): symlink the real node_modules into the shadow tree
+		// now that we know there's an actual project (tsconfig + tsc) to validate - doing this only
+		// once a toolchain is confirmed to exist avoids pointless symlink work for the common
+		// "no-toolchain" early-outs above. Best-effort: ensureNodeModulesLinked never throws (see its
+		// own doc comment), so a missing/failed link degrades to real TS2307 "Cannot find module"
+		// diagnostics for bare-specifier imports rather than blocking the type-check run.
+		await this._shadowWorkspaceService.ensureNodeModulesLinked(threadId, URI.file(realWorkspaceRootFsPath));
 
 		let stdout: string;
 		try {

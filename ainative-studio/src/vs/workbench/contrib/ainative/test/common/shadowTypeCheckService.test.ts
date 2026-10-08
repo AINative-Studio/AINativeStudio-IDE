@@ -199,6 +199,42 @@ suite('ShadowTypeCheckService Tests', function () {
 		}
 	});
 
+	test('typeCheckShadow resolves a real third-party dependency via the node_modules symlink (#159 phase 2 bullet 2)', async function () {
+		if (!hasRealTsc) { this.skip(); }
+
+		fs.writeFileSync(path.join(testWorkspaceDir.fsPath, 'tsconfig.json'),
+			JSON.stringify({ compilerOptions: { noEmit: true, strict: true, moduleResolution: 'node' }, include: ['**/*.ts'] }));
+		linkRealTscIntoFixture(testWorkspaceDir.fsPath);
+
+		// give the real workspace a fake third-party package with its own .d.ts - a bare-specifier
+		// import of this can only resolve in the shadow tree if ensureNodeModulesLinked actually ran
+		// and the symlink actually resolves to real package contents.
+		const depDir = path.join(testWorkspaceDir.fsPath, 'node_modules', 'fake-shadow-dep');
+		fs.mkdirSync(depDir, { recursive: true });
+		fs.writeFileSync(path.join(depDir, 'package.json'), JSON.stringify({ name: 'fake-shadow-dep', version: '1.0.0', types: 'index.d.ts' }));
+		fs.writeFileSync(path.join(depDir, 'index.d.ts'), 'export declare function fakeShadowDep(): number;\n');
+
+		const realFile = URI.joinPath(testWorkspaceDir, 'uses-dep.ts');
+		await fileService.writeFile(realFile, VSBuffer.fromString('export const x = 1;\n'));
+		const shadowUri = await shadowWorkspaceService.syncFileIntoShadow('nm-symlink-thread', testWorkspaceDir, realFile);
+		// the agent's shadow-only edit imports the "third-party" package by bare specifier
+		await fileService.writeFile(shadowUri, VSBuffer.fromString(
+			"import { fakeShadowDep } from 'fake-shadow-dep';\nexport const x: number = fakeShadowDep();\n"
+		));
+
+		const result = await typeCheckService.typeCheckShadow('nm-symlink-thread');
+
+		// if the symlink didn't happen (or didn't resolve to real content), this would be
+		// 'diagnostics' with a TS2307 "Cannot find module 'fake-shadow-dep'" error instead.
+		assert.strictEqual(result.status, 'ok', `expected ok, got: ${JSON.stringify(result)}`);
+		assert.deepStrictEqual(result.diagnostics, []);
+
+		// and confirm the symlink is really there, not just that tsc happened to succeed some other way
+		const shadow = shadowWorkspaceService.getShadowForThread('nm-symlink-thread')!;
+		const shadowNodeModules = path.join(shadow.rootUri.fsPath, path.basename(testWorkspaceDir.fsPath), 'node_modules');
+		assert.strictEqual(fs.lstatSync(shadowNodeModules).isSymbolicLink(), true);
+	});
+
 	test('typeCheckShadow returns no-toolchain (not spawn-error) when a tsconfig exists but no tsc is installed anywhere', async () => {
 		// Deliberately do NOT call linkRealTscIntoFixture - and since PATH lookups in the test
 		// environment could theoretically find a global tsc, this test only asserts the no-toolchain
