@@ -76,7 +76,17 @@ jobs:
               
               // macOS ARM64 - zip + dmg (signed)
               { file: 'build-macos-arm64-signed-checked.yml', artifact: 'ainative-studio-darwin-arm64-signed-checked-zip' },
-              { file: 'build-macos-arm64-signed-checked.yml', artifact: 'ainative-studio-darwin-arm64-signed-checked-dmg' }
+              { file: 'build-macos-arm64-signed-checked.yml', artifact: 'ainative-studio-darwin-arm64-signed-checked-dmg' },
+
+              // Remote-SSH / Remote-WSL / Dev Containers extension host
+              // servers (issue #165 - these did not exist in any prior
+              // release, which made Remote-SSH 404 on every connection
+              // attempt). Only Linux x64/arm64 build successfully today;
+              // darwin/win32 remote servers are still broken (see
+              // build-remote-servers.yml) so they're deliberately left out
+              // of this list until that workflow's non-Linux jobs are fixed.
+              { file: 'build-remote-servers.yml', artifact: 'ainative-server-linux-x64' },
+              { file: 'build-remote-servers.yml', artifact: 'ainative-server-linux-arm64' }
             ];
             
             const successfulRuns = [];
@@ -264,6 +274,20 @@ jobs:
             [ -n "$MACOS_ARM64_DMG" ] && \
               cp "$MACOS_ARM64_DMG" "./release-files/AINativeStudio-${VERSION}-macOS-arm64.dmg"
 
+            # Remote extension host servers (issue #165). These are copied
+            # through UNRENAMED - the open-remote-ssh install script builds
+            # this exact filename itself from product.json's
+            # serverDownloadUrlTemplate (ainative-server-${os}-${arch}.tar.gz)
+            # and has no awareness of the AINativeStudio-{version}-... naming
+            # convention used for desktop builds above.
+            [ -f "./artifacts/ainative-server-linux-x64/ainative-server-linux-x64.tar.gz" ] && \
+              cp "./artifacts/ainative-server-linux-x64/ainative-server-linux-x64.tar.gz" \
+                 "./release-files/ainative-server-linux-x64.tar.gz"
+
+            [ -f "./artifacts/ainative-server-linux-arm64/ainative-server-linux-arm64.tar.gz" ] && \
+              cp "./artifacts/ainative-server-linux-arm64/ainative-server-linux-arm64.tar.gz" \
+                 "./release-files/ainative-server-linux-arm64.tar.gz"
+
             echo "=== Renamed Release Files ==="
             ls -lh ./release-files/
           else
@@ -300,7 +324,13 @@ jobs:
               'darwin-x64-zip': '🍎 macOS Intel (ZIP)',
               'darwin-x64-dmg': '🍎 macOS Intel (DMG)',
               'darwin-arm64-zip': '🍎 macOS Apple Silicon (ZIP)',
-              'darwin-arm64-dmg': '🍎 macOS Apple Silicon (DMG)'
+              'darwin-arm64-dmg': '🍎 macOS Apple Silicon (DMG)',
+              // NOTE: these two artifact names (unlike every entry above) do
+              // NOT start with "ainative-studio-", so the
+              // .replace('ainative-studio-', '') below is a no-op for them
+              // and the full artifact name is the lookup key.
+              'ainative-server-linux-x64': '🖥️ Remote-SSH Server - Linux x64',
+              'ainative-server-linux-arm64': '🖥️ Remote-SSH Server - Linux ARM64'
             };
             
             runs.forEach(run => {

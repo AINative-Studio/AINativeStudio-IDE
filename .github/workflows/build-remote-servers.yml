@@ -20,6 +20,7 @@ jobs:
   build-server-linux-x64:
     name: Build Server - Linux x64
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,32 +29,94 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: |
+            ainative-studio/package-lock.json
+            ainative-studio/build/package-lock.json
 
-      - name: Install Kerberos system dependencies
+      # native-keymap and node-pty need these headers to build their native
+      # addons during `npm ci` (node-gyp fails with "Package 'x11'/'xkbfile'
+      # not found" otherwise - this was the actual cause of every prior
+      # failure of this workflow, independent of the Node version used).
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libkrb5-dev libgssapi-krb5-2
+          sudo apt-get install -y build-essential pkg-config libx11-dev libx11-xcb-dev libxkbfile-dev libkrb5-dev libgssapi-krb5-2
+
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
+        run: |
+          for i in {1..5}; do
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci in build/ failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci failed $i, trying again..."
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         working-directory: ainative-studio
         run: |
-          npm ci
-          npm install -g node-gyp
+          for i in {1..5}; do
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci failed $i, trying again..."
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build remote server
+      - name: Compile TypeScript
         working-directory: ainative-studio
-        run: npm run gulp -- vscode-reh-linux-x64-min
+        run: npm run gulp -- compile-build-without-mangling
         env:
           NODE_OPTIONS: --max-old-space-size=8192
 
-      - name: Package server
+      - name: Compile extensions
+        working-directory: ainative-studio
+        run: |
+          npm run gulp -- clean-extensions-build
+          npm run gulp -- compile-non-native-extensions-build
+          npm run gulp -- compile-extension-media-build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Minify remote server bundle
+        working-directory: ainative-studio
+        run: npm run gulp -- minify-vscode-reh
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package remote server (linux x64)
+        working-directory: ainative-studio
+        run: npm run gulp -- vscode-reh-linux-x64-min-ci
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify build output
+        run: |
+          if [ ! -d "VSCode-reh-linux-x64" ]; then
+            echo "::error::Build output directory VSCode-reh-linux-x64 not found!"
+            ls -la .
+            exit 1
+          fi
+          test -x VSCode-reh-linux-x64/node || { echo "::error::node runtime missing from server output"; exit 1; }
+          test -d VSCode-reh-linux-x64/out || { echo "::error::out directory missing from server output"; exit 1; }
+          test -d VSCode-reh-linux-x64/extensions || { echo "::error::extensions directory missing from server output"; exit 1; }
+
+      - name: Archive server (ainative-server-linux-x64.tar.gz)
         run: |
           cd VSCode-reh-linux-x64
-          tar czf ../ainative-server-linux-x64.tar.gz .
+          tar --owner=0 --group=0 --numeric-owner -czf ../ainative-server-linux-x64.tar.gz .
           cd ..
           ls -lh ainative-server-linux-x64.tar.gz
+          tar tzf ainative-server-linux-x64.tar.gz | head -40
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -65,6 +128,7 @@ jobs:
   build-server-linux-arm64:
     name: Build Server - Linux ARM64
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -73,32 +137,91 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: |
+            ainative-studio/package-lock.json
+            ainative-studio/build/package-lock.json
 
-      - name: Install Kerberos system dependencies
+      # Same native-addon headers as the x64 job above - see comment there.
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libkrb5-dev libgssapi-krb5-2
+          sudo apt-get install -y build-essential pkg-config libx11-dev libx11-xcb-dev libxkbfile-dev libkrb5-dev libgssapi-krb5-2
+
+      - name: Install build dependencies
+        working-directory: ainative-studio/build
+        run: |
+          for i in {1..5}; do
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci in build/ failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci failed $i, trying again..."
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         working-directory: ainative-studio
         run: |
-          npm ci
-          npm install -g node-gyp
+          for i in {1..5}; do
+            npm ci && break
+            if [ $i -eq 5 ]; then
+              echo "npm ci failed too many times" >&2
+              exit 1
+            fi
+            echo "npm ci failed $i, trying again..."
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build remote server
+      - name: Compile TypeScript
         working-directory: ainative-studio
-        run: npm run gulp -- vscode-reh-linux-arm64-min
+        run: npm run gulp -- compile-build-without-mangling
         env:
           NODE_OPTIONS: --max-old-space-size=8192
 
-      - name: Package server
+      - name: Compile extensions
+        working-directory: ainative-studio
+        run: |
+          npm run gulp -- clean-extensions-build
+          npm run gulp -- compile-non-native-extensions-build
+          npm run gulp -- compile-extension-media-build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Minify remote server bundle
+        working-directory: ainative-studio
+        run: npm run gulp -- minify-vscode-reh
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package remote server (linux arm64)
+        working-directory: ainative-studio
+        run: npm run gulp -- vscode-reh-linux-arm64-min-ci
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify build output
+        run: |
+          if [ ! -d "VSCode-reh-linux-arm64" ]; then
+            echo "::error::Build output directory VSCode-reh-linux-arm64 not found!"
+            ls -la .
+            exit 1
+          fi
+          test -x VSCode-reh-linux-arm64/node || { echo "::error::node runtime missing from server output"; exit 1; }
+          test -d VSCode-reh-linux-arm64/out || { echo "::error::out directory missing from server output"; exit 1; }
+          test -d VSCode-reh-linux-arm64/extensions || { echo "::error::extensions directory missing from server output"; exit 1; }
+
+      - name: Archive server (ainative-server-linux-arm64.tar.gz)
         run: |
           cd VSCode-reh-linux-arm64
-          tar czf ../ainative-server-linux-arm64.tar.gz .
+          tar --owner=0 --group=0 --numeric-owner -czf ../ainative-server-linux-arm64.tar.gz .
           cd ..
           ls -lh ainative-server-linux-arm64.tar.gz
+          tar tzf ainative-server-linux-arm64.tar.gz | head -40
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -279,7 +402,16 @@ jobs:
       - build-server-win32-x64
       - build-server-win32-arm64
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Run on a tag push as long as at least the two Linux server builds (the
+    # only platforms this job currently builds correctly - see comments on
+    # build-server-linux-x64/arm64) succeeded, rather than requiring every
+    # platform job to succeed. Without `if: always()` here, this job - and
+    # therefore every server tarball, including the working Linux ones -
+    # would be skipped by GitHub Actions whenever any single `needs` job
+    # fails, which is exactly what happened on every past release tag
+    # (darwin/win32 jobs here still run the slow, unfixed `vscode-reh-*-min`
+    # task and have historically failed or hit the 6h runner timeout).
+    if: always() && startsWith(github.ref, 'refs/tags/v') && needs.build-server-linux-x64.result == 'success' && needs.build-server-linux-arm64.result == 'success'
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -301,7 +433,10 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: release-files/*.tar.gz
-          fail_on_unmatched_files: true
+          # Linux-only is an expected, successful outcome right now (see the
+          # `if:` condition on this job) - do not fail the upload just
+          # because darwin/win32 tarballs aren't present yet.
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
