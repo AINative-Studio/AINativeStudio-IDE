@@ -71,6 +71,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # The ainative-specific contrib code (src/vs/workbench/contrib/ainative)
+      # imports its React panels from react/out/**/index.js, which only
+      # exists after this build step runs - without it, compile-src fails
+      # with "Cannot find module './react/out/.../index.js'" for every
+      # ainative React surface (sidebar, settings, onboarding, tooltips,
+      # etc.) This is the same step build-linux-arm64.yml's desktop build
+      # already runs before compiling; the original version of this
+      # workflow never built the server at all, so this gap was never hit.
+      - name: Build React components
+        working-directory: ainative-studio
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
       - name: Compile TypeScript
         working-directory: ainative-studio
         run: npm run gulp -- compile-build-without-mangling
@@ -175,6 +189,14 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # See the comment on the equivalent step in build-server-linux-x64
+      # above - compile-src fails without this.
+      - name: Build React components
+        working-directory: ainative-studio
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Compile TypeScript
         working-directory: ainative-studio
