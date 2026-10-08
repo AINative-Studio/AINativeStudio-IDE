@@ -64,21 +64,37 @@ jobs:
           # ...Visual Studio\18\Enterprise". node-gyp@13.1.0+ added explicit VS 2026
           # detection (confirmed by reading find-visualstudio.js directly:
           # findVSFromSpecifiedLocation/findNewVS both list [2019, 2022, 2026]).
-          # Installing it globally and pointing npm at it via npm_config_node_gyp
-          # (an env var/config key npm's own run-script wiring checks before falling
-          # back to its bundled copy - confirmed in
-          # node_modules/npm/node_modules/@npmcli/run-script/lib/make-spawn-args.js)
-          # avoids the install-order problem of only adding it as a devDependency of
-          # build/package.json, since that copy wouldn't exist yet when tree-sitter's
-          # own install script runs as part of the same `npm ci`.
+          #
+          # A prior version of this step pointed npm at the new node-gyp via the
+          # npm_config_node_gyp env var. That does NOT work for this failure:
+          # confirmed by reproducing locally that tree-sitter's actual install
+          # script is `node-gyp-build`, which internally shells out to whatever
+          # `node-gyp` command it finds on PATH - a plain PATH lookup, not an
+          # npm-API call that goes through npm's own config/env resolution (that
+          # resolution - read in node_modules/npm/node_modules/@npmcli/
+          # run-script/lib/make-spawn-args.js - only applies to a caller-supplied
+          # `nodeGyp` option npm's own internals pass through, not a raw shell
+          # env var reaching a subprocess's own `node-gyp rebuild` invocation).
+          # Verified the real fix locally instead: prepending the new node-gyp's
+          # bin directory to PATH, ahead of npm's own bundled copy, changes
+          # which binary `node-gyp rebuild` actually resolves and runs.
           npm install --global node-gyp@13.1.0
-          $nodeGypPath = (npm root -g) + "\node-gyp\bin\node-gyp.js"
-          Write-Host "Resolved global node-gyp at: $nodeGypPath"
-          if (-not (Test-Path $nodeGypPath)) {
-            Write-Host "::error::node-gyp not found at expected global path"
+          $globalBin = npm config get prefix
+          $nodeGypShim = Join-Path $globalBin "node-gyp.cmd"
+          Write-Host "Resolved global node-gyp shim at: $nodeGypShim"
+          if (-not (Test-Path $nodeGypShim)) {
+            Write-Host "::error::node-gyp.cmd not found at expected global npm prefix ($globalBin) after global install"
             exit 1
           }
-          echo "npm_config_node_gyp=$nodeGypPath" >> $env:GITHUB_ENV
+          & $nodeGypShim --version
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::node-gyp.cmd at $globalBin did not run successfully"
+            exit 1
+          }
+          # Prepend (not append) so this shadows npm's own bundled node-gyp, which
+          # lives alongside the Node install already earlier on PATH.
+          Write-Host "Prepending $globalBin to PATH"
+          echo "$globalBin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install build dependencies
         working-directory: ainative-studio/build
