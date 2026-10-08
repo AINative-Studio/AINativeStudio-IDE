@@ -495,20 +495,19 @@ jobs:
       #
       # NOTE: secrets.GITHUB_TOKEN here is scoped to THIS repo only and cannot push to
       # a different repo in the same org. This step requires a separate secret,
-      # VERSIONS_REPO_TOKEN, which must be a fine-grained PAT (or deploy key exchanged
-      # for a token) scoped to "Contents: Read and write" on AINative-Studio/versions
-      # specifically. As of this change, that secret has NOT been added to this repo -
-      # this step will fail (clone/push auth error) until a repo admin adds it under
-      # Settings -> Secrets and variables -> Actions -> New repository secret.
+      # VERSIONS_REPO, which must be a fine-grained PAT (or deploy key exchanged for a
+      # token) scoped to "Contents: Read and write" on AINative-Studio/versions
+      # specifically. Added under this repo's Settings -> Secrets and variables ->
+      # Actions -> New repository secret (confirmed present via `gh secret list`).
       - name: Push updated manifests to AINative-Studio/versions
         if: steps.build-manifests.outputs.manifest_count != '0'
         env:
-          VERSIONS_REPO_TOKEN: ${{ secrets.VERSIONS_REPO_TOKEN }}
+          VERSIONS_REPO_TOKEN: ${{ secrets.VERSIONS_REPO }}
         run: |
           set -euo pipefail
 
           if [ -z "${VERSIONS_REPO_TOKEN:-}" ]; then
-            echo "::error::VERSIONS_REPO_TOKEN secret is not set. This secret must be a fine-grained PAT with 'Contents: Read and write' permission scoped to the AINative-Studio/versions repo. Add it under this repo's Settings -> Secrets and variables -> Actions, then re-run this workflow (or re-run just this job) to actually push the updated latest.json files."
+            echo "::error::VERSIONS_REPO secret is not set. This secret must be a fine-grained PAT with 'Contents: Read and write' permission scoped to the AINative-Studio/versions repo. Add it under this repo's Settings -> Secrets and variables -> Actions, then re-run this workflow (or re-run just this job) to actually push the updated latest.json files."
             exit 1
           fi
 
