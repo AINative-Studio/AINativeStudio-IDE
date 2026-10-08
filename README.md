@@ -48,7 +48,7 @@ cd ainative-studio
 
 ### Prerequisites
 
-- Node.js 18.x or later (20.x recommended)
+- Node.js `20.18.2` (the exact version pinned in [`ainative-studio/.nvmrc`](ainative-studio/.nvmrc) — use [nvm](https://github.com/nvm-sh/nvm) and run `nvm install && nvm use` from inside `ainative-studio/` to get it automatically)
 - npm 9.x or later
 - Git
 - Python 3.x (for native dependencies)

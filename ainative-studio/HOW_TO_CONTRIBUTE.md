@@ -14,7 +14,7 @@ We [highly recommend reading this](https://github.com/AINative-Studio/AINativeSt
 
 The repo is not as intimidating as it first seems if you read the guide!
 
-Most of AINative Studio's code lives in the folder `src/vs/workbench/contrib/void/`.
+Most of AINative Studio's code lives in the folder `src/vs/workbench/contrib/ainative/`.
 
 
 
@@ -124,7 +124,7 @@ workspace/
 ```
 
 ### Distributing
-AINative Studio's maintainers distribute AINative Studio on our website and in releases. Our build pipeline is a fork of VSCodium, and it works by running GitHub Actions which create the downloadables.
+AINative Studio's maintainers distribute AINative Studio on our website and in GitHub releases. The build/release pipeline runs via GitHub Actions workflows in this repo's own [`.github/workflows/`](https://github.com/AINative-Studio/AINativeStudio-IDE/tree/main/.github/workflows) directory, one per platform/architecture.
 
 ## Pull Request Guidelines
 
@@ -132,36 +132,3 @@ AINative Studio's maintainers distribute AINative Studio on our website and in r
 - Please submit a pull request once you've made a change.
 - No need to submit an Issue unless you're creating a new feature that might involve multiple PRs.
 - Please don't use AI to write your PR 🙂
-
-
-
-
-
-<!--
-# Relevant files
-
-We keep track of all the files we've changed with AINative Studio so it's easy to rebase:
-
-Edit: far too many changes to track... this is old
-
-- README.md
-- CONTRIBUTING.md
-- VOID_USEFUL_LINKS.md
-- product.json
-- package.json
-
-- src/vs/workbench/api/common/{extHost.api.impl.ts | extHostApiCommands.ts}
-- src/vs/workbench/workbench.common.main.ts
-- src/vs/workbench/contrib/void/\*
-- extensions/void/\*
-
-- .github/\*
-- .vscode/settings/\*
-- .eslintrc.json
-- build/hygiene.js
-- build/lib/i18n.resources.json
-- build/npm/dirs.js
-
-- vscode.proposed.editorInsets.d.ts - not modified, but code copied
-
--->
