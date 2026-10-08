@@ -43,13 +43,21 @@ function hasSupportedVisualStudioVersion() {
 	const path = require('path');
 	// Translated over from
 	// https://source.chromium.org/chromium/chromium/src/+/master:build/vs_toolchain.py;l=140-175
-	const supportedVersions = ['2022', '2019', '2017'];
+	// VS 2026 installs into a folder named "18" (its major version) rather than "2026"
+	// (its year), unlike every earlier version - so year and install-folder name are
+	// tracked separately here.
+	const supportedVersions = [
+		{ year: '2026', folder: '18' },
+		{ year: '2022', folder: '2022' },
+		{ year: '2019', folder: '2019' },
+		{ year: '2017', folder: '2017' },
+	];
 
 	const availableVersions = [];
-	for (const version of supportedVersions) {
-		let vsPath = process.env[`vs${version}_install`];
+	for (const { year, folder } of supportedVersions) {
+		let vsPath = process.env[`vs${year}_install`];
 		if (vsPath && fs.existsSync(vsPath)) {
-			availableVersions.push(version);
+			availableVersions.push(year);
 			break;
 		}
 		const programFiles86Path = process.env['ProgramFiles(x86)'];
@@ -57,17 +65,17 @@ function hasSupportedVisualStudioVersion() {
 
 		const vsTypes = ['Enterprise', 'Professional', 'Community', 'Preview', 'BuildTools', 'IntPreview'];
 		if (programFiles64Path) {
-			vsPath = `${programFiles64Path}/Microsoft Visual Studio/${version}`;
+			vsPath = `${programFiles64Path}/Microsoft Visual Studio/${folder}`;
 			if (vsTypes.some(vsType => fs.existsSync(path.join(vsPath, vsType)))) {
-				availableVersions.push(version);
+				availableVersions.push(year);
 				break;
 			}
 		}
 
 		if (programFiles86Path) {
-			vsPath = `${programFiles86Path}/Microsoft Visual Studio/${version}`;
+			vsPath = `${programFiles86Path}/Microsoft Visual Studio/${folder}`;
 			if (vsTypes.some(vsType => fs.existsSync(path.join(vsPath, vsType)))) {
-				availableVersions.push(version);
+				availableVersions.push(year);
 				break;
 			}
 		}
