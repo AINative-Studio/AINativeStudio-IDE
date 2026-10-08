@@ -377,11 +377,17 @@ jobs:
           $certPath = "$env:TEMP\codesign.pfx"
           [System.IO.File]::WriteAllBytes($certPath, $certBytes)
 
-          # Import certificate to certificate store
+          # Import certificate to certificate store. -Exportable is required here:
+          # without it, signtool (a separate process from the one that imports the
+          # cert) can fail with "No certificates were found that met all the given
+          # criteria" even though the cert shows up fine in Cert:\CurrentUser\My,
+          # because the private key's DPAPI protection otherwise isn't guaranteed
+          # accessible outside the importing process/session.
           $securePassword = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
-          $cert = Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
+          $cert = Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword -Exportable
 
           Write-Host "Certificate imported with thumbprint: $($cert.Thumbprint)"
+          Write-Host "Has private key: $($cert.HasPrivateKey)"
           echo "CERT_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
 
           # Clean up temp file
@@ -407,6 +413,11 @@ jobs:
           if (Test-Path $exePath) {
             signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com `
               /sha1 $env:CERT_THUMBPRINT /d "AINative Studio IDE (ARM64)" $exePath
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "signtool failed (exit $LASTEXITCODE) - dumping Cert:\CurrentUser\My for diagnosis:"
+              Get-ChildItem Cert:\CurrentUser\My | Select-Object Thumbprint, Subject, NotAfter, HasPrivateKey | Format-List
+              exit $LASTEXITCODE
+            }
           }
 
       - name: Sign Node.js executable
