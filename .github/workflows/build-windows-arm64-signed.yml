@@ -315,40 +315,45 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Locating ARM64 SignTool..."
-          
+
+          # Tracked locally rather than via $env:SIGNTOOL_PATH: a `>> $env:GITHUB_ENV`
+          # write only takes effect for *later* steps, not the rest of this script, so
+          # the ARM64 branch below always looked unset to the x64 fallback check and
+          # every run silently used the (wrong, WOW64-redirected) x64 signtool instead.
+          $signToolPath = $null
+
           # Find Windows SDK versions
           $sdkPath = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
           if (Test-Path $sdkPath) {
             $sdkVersions = Get-ChildItem -Path $sdkPath -Directory | Sort-Object Name -Descending
-            
+
             foreach ($version in $sdkVersions) {
               $arm64SignTool = Join-Path $version.FullName "arm64\signtool.exe"
               if (Test-Path $arm64SignTool) {
                 Write-Host "✅ Found ARM64 SignTool at: $arm64SignTool"
-                # Add to PATH
-                $arm64BinPath = Split-Path $arm64SignTool -Parent
-                echo "$arm64BinPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-                echo "SIGNTOOL_PATH=$arm64SignTool" >> $env:GITHUB_ENV
+                $signToolPath = $arm64SignTool
                 break
               }
             }
-            
+
             # Fallback to x64 if ARM64 not found
-            if (-not $env:SIGNTOOL_PATH) {
+            if (-not $signToolPath) {
               foreach ($version in $sdkVersions) {
                 $x64SignTool = Join-Path $version.FullName "x64\signtool.exe"
                 if (Test-Path $x64SignTool) {
                   Write-Host "⚠️ ARM64 SignTool not found, using x64 version at: $x64SignTool"
-                  $x64BinPath = Split-Path $x64SignTool -Parent
-                  echo "$x64BinPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-                  echo "SIGNTOOL_PATH=$x64SignTool" >> $env:GITHUB_ENV
+                  $signToolPath = $x64SignTool
                   break
                 }
               }
             }
           }
-          
-          if (-not $env:SIGNTOOL_PATH) {
+
+          if ($signToolPath) {
+            $signToolBinPath = Split-Path $signToolPath -Parent
+            echo "$signToolBinPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            echo "SIGNTOOL_PATH=$signToolPath" >> $env:GITHUB_ENV
+          } else {
             # Final fallback: use the marketplace action
             Write-Host "⚠️ SignTool not found manually, will use marketplace action"
           }
