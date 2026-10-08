@@ -55,47 +55,6 @@ jobs:
             ainative-studio/package-lock.json
             ainative-studio/build/package-lock.json
 
-      - name: Install a VS2026-aware node-gyp
-        shell: pwsh
-        run: |
-          # The npm bundled with this runner's Node 22.23.3 ships node-gyp@11.5.0,
-          # whose Visual Studio finder doesn't recognize VS 2026 ("VS 18") - confirmed
-          # via a real CI run: "gyp ERR! find VS unknown version \"undefined\" found at
-          # ...Visual Studio\18\Enterprise". node-gyp@13.1.0+ added explicit VS 2026
-          # detection (confirmed by reading find-visualstudio.js directly:
-          # findVSFromSpecifiedLocation/findNewVS both list [2019, 2022, 2026]).
-          #
-          # A prior version of this step pointed npm at the new node-gyp via the
-          # npm_config_node_gyp env var. That does NOT work for this failure:
-          # confirmed by reproducing locally that tree-sitter's actual install
-          # script is `node-gyp-build`, which internally shells out to whatever
-          # `node-gyp` command it finds on PATH - a plain PATH lookup, not an
-          # npm-API call that goes through npm's own config/env resolution (that
-          # resolution - read in node_modules/npm/node_modules/@npmcli/
-          # run-script/lib/make-spawn-args.js - only applies to a caller-supplied
-          # `nodeGyp` option npm's own internals pass through, not a raw shell
-          # env var reaching a subprocess's own `node-gyp rebuild` invocation).
-          # Verified the real fix locally instead: prepending the new node-gyp's
-          # bin directory to PATH, ahead of npm's own bundled copy, changes
-          # which binary `node-gyp rebuild` actually resolves and runs.
-          npm install --global node-gyp@13.1.0
-          $globalBin = npm config get prefix
-          $nodeGypShim = Join-Path $globalBin "node-gyp.cmd"
-          Write-Host "Resolved global node-gyp shim at: $nodeGypShim"
-          if (-not (Test-Path $nodeGypShim)) {
-            Write-Host "::error::node-gyp.cmd not found at expected global npm prefix ($globalBin) after global install"
-            exit 1
-          }
-          & $nodeGypShim --version
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::node-gyp.cmd at $globalBin did not run successfully"
-            exit 1
-          }
-          # Prepend (not append) so this shadows npm's own bundled node-gyp, which
-          # lives alongside the Node install already earlier on PATH.
-          Write-Host "Prepending $globalBin to PATH"
-          echo "$globalBin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
       - name: Install build dependencies
         working-directory: ainative-studio/build
         run: |
