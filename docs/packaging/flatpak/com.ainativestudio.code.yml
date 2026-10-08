@@ -49,9 +49,26 @@ modules:
       # Re-check this when pointing at a newer release - a future tarball
       # may ship a renamed binary/icon and this module needs updating to
       # match.
+      # IMPORTANT: `void` must stay in place in /app/ainative-studio and be
+      # reached via a symlink, not copied/installed elsewhere. Confirmed by
+      # actually running flatpak-builder (see #109): `void` is built with
+      # RPATH=$ORIGIN (`readelf -d void` shows `Library rpath: [$ORIGIN]`),
+      # so it loads its sibling libffmpeg.so/libEGL.so/libGLESv2.so/etc.
+      # from whatever directory it is *executed from*, not a fixed path.
+      # The earlier version of this manifest did
+      # `install -Dm755 /app/ainative-studio/void /app/bin/ainative-studio`,
+      # which copies the binary alone into /app/bin, stranding it away from
+      # those sibling .so files - the built Flatpak failed at runtime with
+      # "ainative-studio: error while loading shared libraries: libffmpeg.so:
+      # cannot open shared object file: No such file or directory" every
+      # time (confirmed via `flatpak-builder --run build-dir
+      # com.ainativestudio.code.yml ainative-studio --version`). A symlink
+      # keeps $ORIGIN pointing at /app/ainative-studio, where the libs
+      # actually live, and resolves it.
       - mkdir -p /app/ainative-studio
       - cp -r app/* /app/ainative-studio/
-      - install -Dm755 /app/ainative-studio/void /app/bin/ainative-studio
+      - mkdir -p /app/bin
+      - ln -s /app/ainative-studio/void /app/bin/ainative-studio
       - install -Dm644 ainative-studio.desktop /app/share/applications/com.ainativestudio.code.desktop
       - install -Dm644 com.ainativestudio.code.metainfo.xml /app/share/metainfo/com.ainativestudio.code.metainfo.xml
       - install -Dm644 /app/ainative-studio/resources/app/resources/linux/code.png /app/share/icons/hicolor/512x512/apps/com.ainativestudio.code.png
