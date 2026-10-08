@@ -275,7 +275,14 @@ export class AINativeAuthService extends Disposable implements IAINativeSessionA
 		this._loginInProgress = true;
 
 		try {
-			const response = await fetch(`${AINativeAuthService.API_BASE}/v1/auth/login-json`, {
+			// '/v1/auth/login-json' is retired - confirmed live against the real backend
+			// (curl: HTTP 410 Gone). The corrected, live endpoint is '/api/v1/auth/login'
+			// (confirmed live: HTTP 401 on bad credentials, same as ainativeSDKClient.ts's
+			// already-corrected login(), which this service duplicates but never got the
+			// same fix applied to - this is the Settings > AINative Cloud sign-in path,
+			// which was failing for every user regardless of credential correctness since
+			// every request 410'd before even reaching credential validation).
+			const response = await fetch(`${AINativeAuthService.API_BASE}/api/v1/auth/login`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

@@ -228,7 +228,11 @@ function mockSuccessfulAuth(): void {
 	global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		const url = typeof input === 'string' ? input : input.toString();
 
-		if (url.includes('/v1/auth/login-json')) {
+		// '/v1/auth/login-json' is retired (confirmed live against the real backend: HTTP
+		// 410 Gone). ainativeAuthService.ts's login() now calls the corrected, confirmed-
+		// live '/api/v1/auth/login' - this mock must match that real path or login()
+		// silently 404s against the real current code instead of exercising it.
+		if (url.includes('/api/v1/auth/login')) {
 			const accessToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 3600 });
 			const refreshToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 7200 });
 			// login() sends { email, password } as the request body (confirmed in

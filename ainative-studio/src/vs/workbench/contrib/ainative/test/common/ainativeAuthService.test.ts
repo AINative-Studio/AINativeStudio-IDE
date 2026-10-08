@@ -184,15 +184,21 @@ function createMockJWT(claims: Partial<JWTClaims>): string {
 const originalFetch = global.fetch;
 
 /**
- * Builds a successful /v1/auth/login-json response, or undefined if the URL doesn't match.
+ * Builds a successful /api/v1/auth/login response, or undefined if the URL doesn't match.
  * Every test that needs both a login and a second operation (logout, refresh, etc.) calls
  * mockLoginSuccess() followed by that operation's own mock() - each mock*() function fully
  * replaces global.fetch, so without this shared helper, the second call's mock would only know
- * how to handle its own URL and 404 on login-json, breaking the login() call the test makes
+ * how to handle its own URL and 404 on login, breaking the login() call the test makes
  * first. Each combined mock below calls this before falling back to its own single-purpose check.
+ *
+ * '/v1/auth/login-json' was the path here until it was confirmed retired against the real
+ * backend (HTTP 410 Gone) - ainativeAuthService.ts's login() now calls the corrected,
+ * confirmed-live '/api/v1/auth/login', matching ainativeSDKClient.ts's own login(). This mock
+ * must match that same real path or every test using it silently 404s against the real
+ * current code instead of exercising it.
  */
 function loginSuccessResponse(url: string): Response | undefined {
-	if (!url.includes('/v1/auth/login-json')) return undefined;
+	if (!url.includes('/api/v1/auth/login')) return undefined;
 
 	const accessToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 3600 });
 	const refreshToken = createMockJWT({ exp: Math.floor(Date.now() / 1000) + 7200 });
@@ -226,7 +232,7 @@ function mockLoginInvalidCredentials(): void {
 	global.fetch = async (input: RequestInfo | URL): Promise<Response> => {
 		const url = typeof input === 'string' ? input : input.toString();
 
-		if (url.includes('/v1/auth/login-json')) {
+		if (url.includes('/api/v1/auth/login')) {
 			return {
 				ok: false,
 				status: 401,

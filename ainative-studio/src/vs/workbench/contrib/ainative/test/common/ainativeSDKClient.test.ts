@@ -164,7 +164,12 @@ suite('AINativeSDKClient', () => {
 			const baseUrl = config.baseUrl;
 
 			strictEqual(`${baseUrl}/v1/auth/register`, 'https://api.ainative.studio/v1/auth/register');
-			strictEqual(`${baseUrl}/v1/auth/login-json`, 'https://api.ainative.studio/v1/auth/login-json');
+			// '/v1/auth/login-json' is retired (confirmed live against the real backend:
+			// HTTP 410 Gone). The client's real login() calls '/api/v1/auth/login' (see its
+			// own doc comment) - asserting the old path here was stale and never actually
+			// verified what login() calls anyway (this suite only string-concatenates a
+			// literal, it never calls the client's methods).
+			strictEqual(`${baseUrl}/api/v1/auth/login`, 'https://api.ainative.studio/api/v1/auth/login');
 			strictEqual(`${baseUrl}/v1/auth/logout`, 'https://api.ainative.studio/v1/auth/logout');
 			strictEqual(`${baseUrl}/v1/auth/refresh`, 'https://api.ainative.studio/v1/auth/refresh');
 			strictEqual(`${baseUrl}/v1/auth/me`, 'https://api.ainative.studio/v1/auth/me');
