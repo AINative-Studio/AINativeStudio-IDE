@@ -63,6 +63,21 @@ export interface FileDiff {
 	readonly kind: 'added' | 'deleted' | 'modified' | 'unchanged';
 	readonly realContent: string | undefined;
 	readonly shadowContent: string | undefined;
+	/**
+	 * Design doc §4 "Real file changes underneath a shadow copy": true when the REAL file's content
+	 * at diff time no longer matches the baseline content captured at sync time (the moment
+	 * syncFileIntoShadow last copied it into the shadow tree) - i.e. something other than this
+	 * service touched the real file in the meantime (the user editing it directly, a git checkout,
+	 * another tool, etc). This is independent of `kind`, which only compares the CURRENT real vs.
+	 * shadow content and has no memory of what the real file looked like when the shadow copy was
+	 * taken - a file can be `kind: 'modified'` with no conflict at all (the totally expected case:
+	 * only the shadow copy changed since sync), or `kind: 'modified'` WITH a conflict (both the real
+	 * file and the shadow copy changed independently since sync - promoting would silently discard
+	 * whatever changed the real file). Always false for a file whose baseline could not be
+	 * determined (e.g. direct shadow-tree manipulation bypassing syncFileIntoShadow, as some of this
+	 * file's own tests do) - conflict detection requires a recorded baseline to compare against.
+	 */
+	readonly conflict: boolean;
 }
 
 export interface IShadowWorkspaceService {
@@ -129,9 +144,17 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 	// threadId -> mutable shadow workspace state. syncedFiles is keyed by real fsPath, in insertion
 	// (sync) order, and also stores each file's workspaceRootUri so diffShadowAgainstReal can
 	// re-derive the shadow URI for every synced file without the caller passing it again.
+	// baselineRealContent is the real file's content exactly as last read by syncFileIntoShadow
+	// (undefined if the real file didn't exist at sync time) - the reference point conflict
+	// detection (design doc §4) compares the CURRENT real content against, to tell "only the shadow
+	// copy changed since sync" (expected) apart from "the real file ALSO changed since sync"
+	// (a conflict). Updated whenever syncFileIntoShadow actually re-reads the real file (first sync,
+	// or a forced re-sync) - a forced re-sync is this service's own supported way of deliberately
+	// accepting the latest real content as the new baseline, consistent with FileDiff.conflict being
+	// about *unexpected* drift, not merely "the real file is not what the shadow started from".
 	private readonly _shadowOfThreadId = new Map<string, {
 		rootUri: URI;
-		syncedFiles: Map<string, { workspaceRootUri: URI; realUri: URI }>;
+		syncedFiles: Map<string, { workspaceRootUri: URI; realUri: URI; baselineRealContent: string | undefined }>;
 	}>();
 
 	constructor(
@@ -149,7 +172,7 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 		const rootUri = URI.file(path.join(tmpdir(), SHADOW_ROOT_FOLDER_NAME, this._sanitizeForPath(threadId) + '-' + generateUuid().slice(0, 8)));
 		await this._fileService.createFolder(rootUri);
 
-		const state = { rootUri, syncedFiles: new Map<string, { workspaceRootUri: URI; realUri: URI }>() };
+		const state = { rootUri, syncedFiles: new Map<string, { workspaceRootUri: URI; realUri: URI; baselineRealContent: string | undefined }>() };
 		this._shadowOfThreadId.set(threadId, state);
 		return this._toShadowWorkspace(threadId, state);
 	}
@@ -177,16 +200,20 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 
 		if (!alreadySynced || opts?.force) {
 			const exists = await this._fileService.exists(realFileUri);
+			let baselineRealContent: string | undefined;
 			if (exists) {
 				const content = await this._fileService.readFile(realFileUri);
+				baselineRealContent = content.value.toString();
 				await this._fileService.writeFile(shadowUri, content.value);
 			}
 			// If the real file doesn't exist yet (e.g. the agent is about to create it), there's
-			// nothing to copy - the shadow file simply won't exist until something writes to it.
+			// nothing to copy - the shadow file simply won't exist until something writes to it, and
+			// baselineRealContent stays undefined (matching "nothing existed at sync time" for
+			// conflict detection: a real file later appearing at that path is itself the conflict).
 			// Map.set on an existing key updates the value but keeps its original insertion
 			// position, which is what we want: re-syncing (even with force) shouldn't reorder a
 			// file that was already touched earlier in the thread.
-			state.syncedFiles.set(realFileUri.fsPath, { workspaceRootUri, realUri: realFileUri });
+			state.syncedFiles.set(realFileUri.fsPath, { workspaceRootUri, realUri: realFileUri, baselineRealContent });
 		}
 
 		return shadowUri;
@@ -197,7 +224,7 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 		if (!state) return [];
 
 		const diffs: FileDiff[] = [];
-		for (const { workspaceRootUri, realUri } of state.syncedFiles.values()) {
+		for (const { workspaceRootUri, realUri, baselineRealContent } of state.syncedFiles.values()) {
 			const shadowUri = this._mapToShadow(state.rootUri, workspaceRootUri, realUri);
 
 			const [realContent, shadowContent] = await Promise.all([
@@ -216,7 +243,11 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 				kind = 'modified';
 			}
 
-			diffs.push({ realUri, shadowUri, kind, realContent, shadowContent });
+			// design doc §4: a conflict is the REAL file's current content no longer matching what
+			// was captured at sync time, independent of `kind` - see FileDiff.conflict's doc comment.
+			const conflict = realContent !== baselineRealContent;
+
+			diffs.push({ realUri, shadowUri, kind, realContent, shadowContent, conflict });
 		}
 
 		return diffs;
@@ -331,7 +362,7 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 		super.dispose();
 	}
 
-	private _toShadowWorkspace(threadId: string, state: { rootUri: URI; syncedFiles: Map<string, { workspaceRootUri: URI; realUri: URI }> }): ShadowWorkspace {
+	private _toShadowWorkspace(threadId: string, state: { rootUri: URI; syncedFiles: Map<string, { workspaceRootUri: URI; realUri: URI; baselineRealContent: string | undefined }> }): ShadowWorkspace {
 		return { threadId, rootUri: state.rootUri, syncedFsPaths: new Set(state.syncedFiles.keys()) };
 	}
 

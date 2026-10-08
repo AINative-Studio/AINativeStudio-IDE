@@ -315,6 +315,12 @@ export interface IChatThreadService {
 	// #159 phase 1: shadow workspace end-of-turn promotion (design doc §3.4). Only meaningful for a
 	// thread with shadowModeEnabled; returns an empty array / is a no-op otherwise.
 	getPendingShadowDiffs(threadId: string): Promise<FileDiff[]>;
+	// #159 phase 2 bullet 3 (design doc §4 "Real file changes underneath a shadow copy"): throws
+	// ShadowPromotionConflictError (does not promote or dispose anything, for ANY file - see that
+	// class's own doc comment for why this is whole-batch, not per-file) if any pending diff's
+	// `conflict` flag is set, i.e. the real file changed independently of the shadow copy since it
+	// was synced. Callers should catch this specifically to offer the user a resolution (discard,
+	// or re-sync and retry) rather than treating it like any other promotion failure.
 	promoteShadowDiffs(threadId: string): Promise<void>;
 	discardShadowDiffs(threadId: string): Promise<void>;
 
@@ -328,6 +334,24 @@ export interface IChatThreadService {
 	// would be a poor fit. Only meaningful for a thread with shadowModeEnabled; returns
 	// `{ status: 'no-toolchain', diagnostics: [] }` otherwise.
 	getShadowTypeCheckResult(threadId: string): Promise<ShadowTypeCheckResult>;
+}
+
+// #159 phase 2 bullet 3 (design doc §4 "Real file changes underneath a shadow copy"): thrown by
+// promoteShadowDiffs instead of promoting anything when one or more pending diffs have
+// `conflict: true`. Whole-batch rather than per-file - promoteShadowDiffs disposes the thread's
+// entire shadow workspace as its last step (see that method's own doc comment), and doing that
+// after promoting only the non-conflicting files would still throw away the shadow copy of the
+// conflicting file with nowhere left for the user to recover it from. Refusing the whole batch
+// keeps the shadow tree fully intact - including every non-conflicting file's edit - so the user
+// can inspect the conflict, discard just that file's shadow edit some other way, or re-run the
+// agent, without having already lost unrelated promoted/disposed work. This mirrors
+// toolsService.ts's existing "Another LLM is currently making changes to this file" guard for the
+// same underlying concern (don't let one write path silently stomp a change made through another).
+export class ShadowPromotionConflictError extends Error {
+	constructor(public readonly conflictingRealUris: URI[]) {
+		super(`Cannot promote shadow changes: ${conflictingRealUris.length} file${conflictingRealUris.length === 1 ? '' : 's'} changed on disk since the agent's edit was staged (${conflictingRealUris.map(u => u.fsPath).join(', ')}). Discard the shadow changes, or resolve the conflicting file(s) manually, then try again.`);
+		this.name = 'ShadowPromotionConflictError';
+	}
 }
 
 export const IChatThreadService = createDecorator<IChatThreadService>('ainativeChatThreadService');
@@ -631,12 +655,21 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 	// files have no real-file model to diff against, so no DiffZone is created for them - the UI is
 	// expected to list them plainly and let promote/discard apply directly (see promoteShadowDiffs/
 	// discardShadowDiffs below).
+	//
+	// #159 phase 2 bullet 3 (design doc §4): a 'modified' diff with `conflict: true` deliberately
+	// does NOT get a DiffZone here. The DiffZone's "real" side is the model as of whenever
+	// diffShadowAgainstReal last read it, which for a conflicting file is already stale the moment
+	// the real file changed out from under the shadow copy - materializing it anyway would show the
+	// user a diff against content that's no longer actually on disk, and an accept would silently
+	// discard whatever changed the real file in the meantime (exactly the "silently clobbering the
+	// user's own edit" the design doc calls out). The conflict is still reported in the returned
+	// list - see FileDiff.conflict - so the UI can surface it; the file simply gets no preview.
 	async getPendingShadowDiffs(threadId: string): Promise<FileDiff[]> {
 		const allDiffs = await this._shadowWorkspaceService.diffShadowAgainstReal(threadId)
 		const pending = allDiffs.filter(d => d.kind !== 'unchanged')
 
 		for (const diff of pending) {
-			if (diff.kind !== 'modified') continue
+			if (diff.kind !== 'modified' || diff.conflict) continue
 			await this._voidModelService.initializeModel(diff.realUri)
 			await this._editCodeService.callBeforeApplyOrEdit(diff.realUri)
 			this._editCodeService.instantlyRewriteFile({ uri: diff.realUri, newContent: diff.shadowContent ?? '' })
@@ -665,8 +698,17 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 	// doc §3.4), so there is nothing left in the shadow worth keeping once every touched file has
 	// been promoted; the next turn starts a fresh shadow copy on first touch, same as a brand-new
 	// thread would.
+	//
+	// #159 phase 2 bullet 3 (design doc §4): checked first, before touching any file or disposing
+	// anything - see ShadowPromotionConflictError's own doc comment for why a conflict on even one
+	// file blocks promoting the whole batch rather than just that file.
 	async promoteShadowDiffs(threadId: string): Promise<void> {
 		const diffs = await this.getPendingShadowDiffs(threadId)
+
+		const conflicting = diffs.filter(d => d.conflict)
+		if (conflicting.length > 0) {
+			throw new ShadowPromotionConflictError(conflicting.map(d => d.realUri))
+		}
 
 		for (const diff of diffs) {
 			if (diff.kind === 'modified') {

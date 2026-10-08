@@ -151,6 +151,7 @@ suite('ShadowWorkspaceService Tests', () => {
 		assert.strictEqual(diffs[0].kind, 'unchanged');
 		assert.strictEqual(diffs[0].realContent, 'same content');
 		assert.strictEqual(diffs[0].shadowContent, 'same content');
+		assert.strictEqual(diffs[0].conflict, false);
 	});
 
 	test('diffShadowAgainstReal reports modified when the shadow copy was edited', async () => {
@@ -166,6 +167,9 @@ suite('ShadowWorkspaceService Tests', () => {
 		assert.strictEqual(diffs[0].kind, 'modified');
 		assert.strictEqual(diffs[0].realContent, 'original');
 		assert.strictEqual(diffs[0].shadowContent, 'agent rewrote this');
+		// the real file itself was never touched after syncing - only the shadow copy changed, which
+		// is the expected, non-conflicting case.
+		assert.strictEqual(diffs[0].conflict, false);
 	});
 
 	test('diffShadowAgainstReal reports added for a file the agent created only in the shadow tree', async () => {
@@ -315,6 +319,120 @@ suite('ShadowWorkspaceService Tests', () => {
 			const stat = fs.lstatSync(shadowNodeModules);
 			assert.strictEqual(stat.isSymbolicLink(), false);
 			assert.strictEqual(fs.readFileSync(path.join(shadowNodeModules, 'sentinel.txt'), 'utf8'), 'do not touch');
+		});
+	});
+
+	// #159 phase 2 bullet 3 (design doc §4 "Real file changes underneath a shadow copy"): FileDiff.conflict.
+	suite('conflict detection (FileDiff.conflict)', () => {
+		test('no conflict when only the shadow copy changes after sync', async () => {
+			const realFile = URI.joinPath(testWorkspaceDir, 'only-shadow-changes.ts');
+			await fileService.writeFile(realFile, VSBuffer.fromString('v1'));
+			const shadowUri = await service.syncFileIntoShadow('thread-conflict-1', testWorkspaceDir, realFile);
+			await fileService.writeFile(shadowUri, VSBuffer.fromString('agent edit'));
+
+			const [diff] = await service.diffShadowAgainstReal('thread-conflict-1');
+			assert.strictEqual(diff.kind, 'modified');
+			assert.strictEqual(diff.conflict, false);
+		});
+
+		test('conflict when the real file changes after sync while the shadow copy also changes', async () => {
+			const realFile = URI.joinPath(testWorkspaceDir, 'both-change.ts');
+			await fileService.writeFile(realFile, VSBuffer.fromString('v1'));
+			const shadowUri = await service.syncFileIntoShadow('thread-conflict-2', testWorkspaceDir, realFile);
+
+			// the agent edits its shadow copy...
+			await fileService.writeFile(shadowUri, VSBuffer.fromString('agent edit'));
+			// ...while the user independently edits the real file (e.g. directly in their editor)
+			await fileService.writeFile(realFile, VSBuffer.fromString('user edit'));
+
+			const [diff] = await service.diffShadowAgainstReal('thread-conflict-2');
+			assert.strictEqual(diff.kind, 'modified');
+			assert.strictEqual(diff.conflict, true);
+			// realContent must reflect the CURRENT real file (the user's edit), not the stale baseline
+			assert.strictEqual(diff.realContent, 'user edit');
+		});
+
+		test('conflict when the real file changes after sync but the shadow copy does not', async () => {
+			// the real file drifting is itself the conflict, even if the agent never touched its own
+			// shadow copy at all this turn - e.g. a git checkout touching a file nobody in this thread
+			// has edited yet.
+			const realFile = URI.joinPath(testWorkspaceDir, 'real-only-changes.ts');
+			await fileService.writeFile(realFile, VSBuffer.fromString('v1'));
+			await service.syncFileIntoShadow('thread-conflict-3', testWorkspaceDir, realFile);
+
+			await fileService.writeFile(realFile, VSBuffer.fromString('v2 - changed outside the shadow flow'));
+
+			const [diff] = await service.diffShadowAgainstReal('thread-conflict-3');
+			// kind is 'unchanged' because shadow-vs-CURRENT-real happen to read identically here? No -
+			// shadow still has 'v1' (what was synced), real now has 'v2', so this is still 'modified'
+			// from diffShadowAgainstReal's kind perspective too; asserting both explicitly to pin the
+			// distinction between `kind` (shadow vs current real) and `conflict` (current real vs
+			// baseline real).
+			assert.strictEqual(diff.kind, 'modified');
+			assert.strictEqual(diff.conflict, true);
+		});
+
+		test('conflict when the real file is deleted after sync', async () => {
+			const realFile = URI.joinPath(testWorkspaceDir, 'real-deleted-after-sync.ts');
+			await fileService.writeFile(realFile, VSBuffer.fromString('v1'));
+			await service.syncFileIntoShadow('thread-conflict-4', testWorkspaceDir, realFile);
+
+			await fileService.del(realFile);
+
+			const [diff] = await service.diffShadowAgainstReal('thread-conflict-4');
+			// the shadow tree still has the 'v1' content synced earlier, and the real file is now gone
+			// - from diffShadowAgainstReal's shadow-vs-current-real perspective that's 'added' (shadow
+			// has it, real doesn't), NOT 'deleted' ('deleted' is the real-has-it/shadow-doesn't case,
+			// e.g. an agent deleting its own shadow copy - see the dedicated 'deleted' test above).
+			// This is exactly the distinction `conflict` exists to capture: `kind` alone can't tell you
+			// "the real file disappeared out from under the shadow copy" from "the agent is creating a
+			// brand new file" - both look identical from the current-state comparison; only comparing
+			// against the recorded baseline (realContent existed at sync, is gone now) reveals it.
+			assert.strictEqual(diff.kind, 'added');
+			assert.strictEqual(diff.conflict, true);
+		});
+
+		test('conflict when a real file appears after sync for a file that did not exist yet', async () => {
+			// agent is about to create a brand-new file; meanwhile the user (or some other process)
+			// independently creates a real file at that same path before the agent's shadow edit is
+			// promoted - this is the "added" case's analogue of the conflict, going the other direction.
+			const newFile = URI.joinPath(testWorkspaceDir, 'appears-after-sync.ts');
+			const shadowUri = await service.syncFileIntoShadow('thread-conflict-5', testWorkspaceDir, newFile);
+			await fileService.writeFile(shadowUri, VSBuffer.fromString('agent-created content'));
+
+			// simulate something else creating the real file after the shadow sync captured "nothing"
+			await fileService.writeFile(newFile, VSBuffer.fromString('someone else created this'));
+
+			const [diff] = await service.diffShadowAgainstReal('thread-conflict-5');
+			assert.strictEqual(diff.kind, 'modified'); // both now exist with different content
+			assert.strictEqual(diff.conflict, true);
+		});
+
+		test('forcing a re-sync accepts the latest real content as the new baseline (no conflict afterward)', async () => {
+			const realFile = URI.joinPath(testWorkspaceDir, 'resync-resets-baseline.ts');
+			await fileService.writeFile(realFile, VSBuffer.fromString('v1'));
+			await service.syncFileIntoShadow('thread-conflict-6', testWorkspaceDir, realFile);
+
+			await fileService.writeFile(realFile, VSBuffer.fromString('v2 - the real file moved on'));
+			// before re-sync: a conflict, since the real file diverged from the v1 baseline
+			const beforeResync = await service.diffShadowAgainstReal('thread-conflict-6');
+			assert.strictEqual(beforeResync[0].conflict, true);
+
+			// force re-sync deliberately re-baselines against the latest real content
+			await service.syncFileIntoShadow('thread-conflict-6', testWorkspaceDir, realFile, { force: true });
+			const afterResync = await service.diffShadowAgainstReal('thread-conflict-6');
+			assert.strictEqual(afterResync[0].conflict, false);
+			assert.strictEqual(afterResync[0].kind, 'unchanged');
+		});
+
+		test('no conflict for a file nobody has touched on either side since sync', async () => {
+			const realFile = URI.joinPath(testWorkspaceDir, 'nobody-touched.ts');
+			await fileService.writeFile(realFile, VSBuffer.fromString('stable'));
+			await service.syncFileIntoShadow('thread-conflict-7', testWorkspaceDir, realFile);
+
+			const [diff] = await service.diffShadowAgainstReal('thread-conflict-7');
+			assert.strictEqual(diff.kind, 'unchanged');
+			assert.strictEqual(diff.conflict, false);
 		});
 	});
 });

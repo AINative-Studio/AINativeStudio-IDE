@@ -1725,6 +1725,12 @@ const ShadowDiffPromotionBanner = ({ threadId }: { threadId: string }) => {
 	const [diffs, setDiffs] = useState<FileDiff[]>([])
 	const [typeCheck, setTypeCheck] = useState<ShadowTypeCheckResult | null>(null)
 	const [isBusy, setIsBusy] = useState(false)
+	// #159 phase 2 bullet 3 (design doc §4): surfaces promoteShadowDiffs's thrown error message
+	// (ShadowPromotionConflictError) when the user actually tries to promote while a conflicting
+	// file is pending - the conflicting-files-exist state itself is shown proactively below (derived
+	// straight from diffs[].conflict, same as every other per-diff fact this banner already reads),
+	// but the message only needs to appear once the user has tried the now-blocked action.
+	const [promoteError, setPromoteError] = useState<string | null>(null)
 
 	const refresh = useCallback(async () => {
 		if (!shadowModeEnabled || !isIdle) { setDiffs([]); setTypeCheck(null); return }
@@ -1748,16 +1754,24 @@ const ShadowDiffPromotionBanner = ({ threadId }: { threadId: string }) => {
 
 	const onPromote = useCallback(async () => {
 		setIsBusy(true)
+		setPromoteError(null)
 		try {
 			await chatThreadsService.promoteShadowDiffs(threadId)
 			metricsService.capture('Shadow Diffs Promoted', { numFiles: diffs.length })
 			setDiffs([])
-		} catch (e) { console.error('Error promoting shadow diffs:', e) }
+		} catch (e) {
+			console.error('Error promoting shadow diffs:', e)
+			// #159 phase 2 bullet 3: surface ShadowPromotionConflictError's message specifically - it's
+			// the one promotion failure with a clear, actionable next step (discard, or resolve the
+			// real-file conflict and retry) rather than a generic unexpected-failure message.
+			setPromoteError(e instanceof Error ? e.message : String(e))
+		}
 		finally { setIsBusy(false) }
 	}, [chatThreadsService, metricsService, threadId, diffs.length])
 
 	const onDiscard = useCallback(async () => {
 		setIsBusy(true)
+		setPromoteError(null)
 		try {
 			await chatThreadsService.discardShadowDiffs(threadId)
 			metricsService.capture('Shadow Diffs Discarded', { numFiles: diffs.length })
@@ -1767,6 +1781,11 @@ const ShadowDiffPromotionBanner = ({ threadId }: { threadId: string }) => {
 	}, [chatThreadsService, metricsService, threadId, diffs.length])
 
 	if (!shadowModeEnabled || diffs.length === 0) return null
+
+	// #159 phase 2 bullet 3 (design doc §4): files whose real copy changed independently of the
+	// shadow copy since it was synced - see FileDiff.conflict's doc comment. Shown proactively (not
+	// only after a failed promote attempt) since it changes what "Apply All" is actually safe to do.
+	const conflictingDiffs = diffs.filter(d => d.conflict)
 
 	// #159 phase 2 bullet 1: surfaced only for the two states actually worth telling the user about -
 	// 'diagnostics' (something to see) and 'spawn-error' (the check itself failed, worth knowing
@@ -1783,7 +1802,8 @@ const ShadowDiffPromotionBanner = ({ threadId }: { threadId: string }) => {
 				</div>
 				<div className='flex gap-2 shrink-0'>
 					<button
-						disabled={isBusy}
+						disabled={isBusy || conflictingDiffs.length > 0}
+						title={conflictingDiffs.length > 0 ? 'Resolve or discard the conflicting file(s) below before applying' : undefined}
 						onClick={onPromote}
 						className={`
 							px-2 py-1
@@ -1819,6 +1839,12 @@ const ShadowDiffPromotionBanner = ({ threadId }: { threadId: string }) => {
 			</div>}
 			{typeCheck?.status === 'spawn-error' && <div className='text-sm text-ainative-fg-3 opacity-70'>
 				Shadow type-check could not run{typeCheck.errorMessage ? `: ${typeCheck.errorMessage}` : ''}
+			</div>}
+			{conflictingDiffs.length > 0 && <div className='text-sm text-ainative-warning'>
+				{conflictingDiffs.length} file{conflictingDiffs.length === 1 ? '' : 's'} changed on disk since the agent's edit was staged - discard or resolve before applying
+			</div>}
+			{promoteError && <div className='text-sm text-ainative-warning'>
+				{promoteError}
 			</div>}
 		</div>
 	</div>
