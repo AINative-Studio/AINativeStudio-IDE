@@ -49,6 +49,16 @@
 		"nlsBaseUrl": ""
 	},
 	"builtInExtensions": [],
+	"extensionEnabledApiProposals": {
+		"ainative-studio.open-remote-ssh": [
+			"resolvers",
+			"contribViewsRemote"
+		],
+		"ainative-studio.open-remote-wsl": [
+			"resolvers",
+			"contribViewsRemote"
+		]
+	},
 	"linkProtectionTrustedDomains": [
 		"https://ainativestudio.com",
 		"https://docs.ainativestudio.com",
