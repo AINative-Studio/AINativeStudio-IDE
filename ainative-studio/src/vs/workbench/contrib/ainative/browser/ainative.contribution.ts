@@ -48,6 +48,10 @@ import './cloudBootstrapContribution.js'
 // MCP server OAuth re-authentication callback handler (#176)
 import './mcpOAuthUrlHandler.js'
 
+// Shadow workspace: sweep orphaned shadow directories left over from a crashed/force-quit
+// previous session (#159 phase 2 bullet 4)
+import './shadowOrphanSweepContribution.js'
+
 // tools
 import './toolsService.js'
 import './terminalToolService.js'

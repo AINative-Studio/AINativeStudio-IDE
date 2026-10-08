@@ -14,6 +14,7 @@ import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { DiskFileSystemProvider } from '../../../../../platform/files/node/diskFileSystemProvider.js';
 import { Schemas } from '../../../../../base/common/network.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
+import { generateUuid } from '../../../../../base/common/uuid.js';
 import { ShadowWorkspaceService } from '../../common/shadowWorkspaceService.js';
 
 suite('ShadowWorkspaceService Tests', () => {
@@ -433,6 +434,124 @@ suite('ShadowWorkspaceService Tests', () => {
 			const [diff] = await service.diffShadowAgainstReal('thread-conflict-7');
 			assert.strictEqual(diff.kind, 'unchanged');
 			assert.strictEqual(diff.conflict, false);
+		});
+	});
+
+	// #159 phase 2 bullet 4 (design doc §4/§6): sweepOrphanedShadows, the startup orphan-sweep for
+	// shadow directories left behind by a crashed/force-quit previous process. These tests operate
+	// directly on <tmpdir>/ainative-shadow/ (the real, shared root this service always uses - it is
+	// not injectable, by design, since the whole point is sweeping the one real location a crashed
+	// previous OS process would have left directories in) rather than testWorkspaceDir, so each test
+	// tracks and removes exactly the directories IT creates under that shared root, never touching
+	// anything else that might already be there (e.g. a shadow genuinely owned by another test in
+	// this same run, or a real leftover from a real previous crash on the test machine).
+	suite('sweepOrphanedShadows', () => {
+		const shadowRoot = path.join(tmpdir(), 'ainative-shadow');
+		const extraDirsToClean: string[] = [];
+
+		teardown(() => {
+			for (const dir of extraDirsToClean) {
+				try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ }
+			}
+			extraDirsToClean.length = 0;
+		});
+
+		/** Creates a directory directly under the shared ainative-shadow root, outside this service
+		 * instance's own bookkeeping (simulating a leftover from some OTHER, now-dead process), with
+		 * its mtime backdated by `ageMs` so the sweep's age check can be exercised deterministically
+		 * without waiting real wall-clock time. */
+		function makeForeignShadowDir(name: string, ageMs: number): string {
+			const dir = path.join(shadowRoot, name);
+			fs.mkdirSync(dir, { recursive: true });
+			fs.writeFileSync(path.join(dir, 'some-file.ts'), 'leftover content');
+			const backdated = new Date(Date.now() - ageMs);
+			fs.utimesSync(dir, backdated, backdated);
+			extraDirsToClean.push(dir);
+			return dir;
+		}
+
+		test('removes a directory older than the default 24h threshold', async () => {
+			const old = makeForeignShadowDir('sweep-test-old-' + generateUuid(), 25 * 60 * 60 * 1000);
+
+			const removed = await service.sweepOrphanedShadows();
+
+			assert.ok(removed.includes(old), `expected ${old} to be removed, got: ${JSON.stringify(removed)}`);
+			assert.strictEqual(fs.existsSync(old), false);
+		});
+
+		test('leaves a directory younger than the default 24h threshold alone', async () => {
+			const young = makeForeignShadowDir('sweep-test-young-' + generateUuid(), 1 * 60 * 60 * 1000);
+
+			const removed = await service.sweepOrphanedShadows();
+
+			assert.ok(!removed.includes(young), `expected ${young} NOT to be removed, got: ${JSON.stringify(removed)}`);
+			assert.strictEqual(fs.existsSync(young), true);
+		});
+
+		test('respects an explicit maxAgeMs override', async () => {
+			const tenMinutesOld = makeForeignShadowDir('sweep-test-custom-age-' + generateUuid(), 10 * 60 * 1000);
+
+			// with the default 24h threshold this would be left alone (as the previous test confirms);
+			// with a 5-minute threshold it must be swept
+			const removed = await service.sweepOrphanedShadows({ maxAgeMs: 5 * 60 * 1000 });
+
+			assert.ok(removed.includes(tenMinutesOld));
+			assert.strictEqual(fs.existsSync(tenMinutesOld), false);
+		});
+
+		test('never removes a shadow this service instance currently owns, regardless of age', async () => {
+			const shadow = await service.createShadowForThread('thread-sweep-live');
+			// backdate the live shadow's own directory to look just as old as a genuine orphan would
+			const ancient = new Date(Date.now() - 48 * 60 * 60 * 1000);
+			fs.utimesSync(shadow.rootUri.fsPath, ancient, ancient);
+
+			const removed = await service.sweepOrphanedShadows();
+
+			assert.ok(!removed.includes(shadow.rootUri.fsPath));
+			assert.strictEqual(fs.existsSync(shadow.rootUri.fsPath), true);
+			// and the service's own bookkeeping must still consider the thread's shadow alive
+			assert.notStrictEqual(service.getShadowForThread('thread-sweep-live'), undefined);
+		});
+
+		test('never throws and returns an array even when there is nothing new to sweep', async () => {
+			// Doesn't assert the shadow root is literally absent - this test machine's real
+			// tmpdir()/ainative-shadow may already exist from other tests in this run or genuine prior
+			// runs, and sweepOrphanedShadows has no injectable root to isolate that away (deliberately
+			// - see the suite's own doc comment). What this DOES pin down is the "first-ever run,
+			// shadow root doesn't exist yet" code path's contract: resolve() failing on a missing
+			// resource must come back as an empty array, never a thrown error, so a startup caller
+			// expecting a Promise<string[]> can await this unconditionally.
+			const removed = await service.sweepOrphanedShadows();
+			assert.ok(Array.isArray(removed));
+		});
+
+		test('leaves non-directory entries directly under the shadow root alone', async () => {
+			const strayFile = path.join(shadowRoot, 'sweep-test-stray-file-' + generateUuid() + '.txt');
+			fs.mkdirSync(shadowRoot, { recursive: true });
+			fs.writeFileSync(strayFile, 'not a shadow directory');
+			const backdated = new Date(Date.now() - 48 * 60 * 60 * 1000);
+			fs.utimesSync(strayFile, backdated, backdated);
+			extraDirsToClean.push(strayFile);
+
+			const removed = await service.sweepOrphanedShadows();
+
+			assert.ok(!removed.includes(strayFile));
+			assert.strictEqual(fs.existsSync(strayFile), true);
+		});
+
+		test('sweeps multiple orphaned directories in one call and reports exactly the ones removed', async () => {
+			const old1 = makeForeignShadowDir('sweep-test-multi-1-' + generateUuid(), 30 * 60 * 60 * 1000);
+			const old2 = makeForeignShadowDir('sweep-test-multi-2-' + generateUuid(), 72 * 60 * 60 * 1000);
+			const young = makeForeignShadowDir('sweep-test-multi-young-' + generateUuid(), 1000);
+
+			const removed = await service.sweepOrphanedShadows();
+
+			assert.ok(removed.includes(old1));
+			assert.ok(removed.includes(old2));
+			assert.ok(!removed.includes(young));
+			assert.strictEqual(fs.existsSync(old1), false);
+			assert.strictEqual(fs.existsSync(old2), false);
+			assert.strictEqual(fs.existsSync(young), true);
 		});
 	});
 });

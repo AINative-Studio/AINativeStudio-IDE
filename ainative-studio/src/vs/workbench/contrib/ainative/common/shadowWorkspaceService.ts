@@ -6,21 +6,21 @@
 /**
  * Shadow Workspace Service
  *
- * Phase 0 primitive for the "shadow workspace" feature (see /SHADOW_WORKSPACE_DESIGN.md at the
- * repo root for the full design). This service owns creation and lifecycle of a per-chat-thread
- * temporary directory that mirrors the real workspace, so an agent can eventually read/write files
- * there instead of the user's real files, before any change is promoted.
+ * Core primitive for the "shadow workspace" feature (see docs/planning/SHADOW_WORKSPACE_DESIGN.md
+ * at the repo root for the full design, tracked in GitHub issue #159). Owns creation and lifecycle
+ * of a per-chat-thread temporary directory that mirrors the real workspace, so an agent's file
+ * tools (wired in toolsService.ts, gated by a thread's shadowModeEnabled flag) can read/write there
+ * instead of the user's real files, before any change is promoted via chatThreadService.ts's
+ * getPendingShadowDiffs/promoteShadowDiffs/discardShadowDiffs.
  *
- * Deliberately out of scope for this pass (see design doc §6/§7):
- * - No wiring into toolsService.ts's edit_file/rewrite_file/create_file_or_folder/delete_file_or_folder.
- * - No UI surface (no chat-panel status, no diff promotion view).
- * - No type-checking/lint invocation against the shadow tree.
- * - No URI scheme/file-system-provider for the shadow tree; shadow files live under file:// at a
- *   real temp path, so every existing disk-based tool (tsserver, eslint, etc.) keeps working
- *   unmodified if/when phase 1 wires this up.
- *
- * This service is registered as a singleton but is not invoked from anywhere yet - adding it here
- * now is intentionally inert so phase 1 has a tested foundation instead of starting from nothing.
+ * What this service does NOT do (see design doc §5/§6 for what's still open):
+ * - No URI scheme/file-system-provider for the shadow tree (design doc §3.1's "nice-to-have, not a
+ *   requirement" phase-3 item) - shadow files live under file:// at a real temp path, so every
+ *   disk-based tool (tsserver, eslint, etc.) keeps working unmodified without this service having
+ *   to know anything about them.
+ * - No lint/eslint/pytest subprocess invocation - only IShadowTypeCheckService's `tsc` integration
+ *   exists today (phase 2 bullet 1), which calls into this service's diffShadowAgainstReal/
+ *   ensureNodeModulesLinked rather than duplicating that logic.
  */
 
 import { tmpdir } from 'os';
@@ -134,9 +134,34 @@ export interface IShadowWorkspaceService {
 	 * workspace-folder subdirectory) first if neither exists yet.
 	 */
 	ensureNodeModulesLinked(threadId: string, workspaceRootUri: URI): Promise<void>;
+
+	/**
+	 * Design doc §4/§6 phase 2 bullet 4: deletes every directory directly under
+	 * `<tmpdir>/ainative-shadow/` that is both (a) not a shadow this SERVICE INSTANCE currently
+	 * knows about (i.e. not in `_shadowOfThreadId` - a live thread from this same running process,
+	 * never touched) and (b) older than `maxAgeMs` (default 24h, per the design doc's own "older
+	 * than, say, 24h" framing in §3.1/§4). Intended to be called once, early, on IDE startup -
+	 * before this process has created any shadow of its own, EVERY entry under the root is
+	 * necessarily left over from some previous process execution that crashed or was force-quit
+	 * before disposeShadow ran (disposeShadow always removes its own directory on normal
+	 * thread-deletion/discard/promotion, so a directory surviving to the next startup, by
+	 * construction, never went through that path) - condition (a) is a defensive no-op for that
+	 * common case, and only matters for a hypothetical caller that runs the sweep after already
+	 * creating some shadows of its own in the same process (e.g. a test). The age check in (b) is
+	 * the real safety net against a multi-window scenario: a second, concurrently-running window's
+	 * shadow directories are almost always far younger than the age threshold, and age (not PID or
+	 * any other liveness signal) is the same crash-safety mechanism the design doc already settled
+	 * on for this. Best-effort: a directory that fails to delete (e.g. a transient file lock) is
+	 * skipped, not retried or thrown, since a failed sweep of one leftover directory must never
+	 * block startup or the sweep of every other leftover directory. Returns the fsPaths actually
+	 * removed, for logging/telemetry - never throws.
+	 */
+	sweepOrphanedShadows(opts?: { maxAgeMs?: number }): Promise<string[]>;
 }
 
 const SHADOW_ROOT_FOLDER_NAME = 'ainative-shadow';
+// Design doc §3.1/§4's own "older than, say, 24h" framing for the startup orphan sweep.
+const DEFAULT_ORPHAN_SWEEP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export class ShadowWorkspaceService extends Disposable implements IShadowWorkspaceService {
 	_serviceBrand: undefined;
@@ -350,8 +375,58 @@ export class ShadowWorkspaceService extends Disposable implements IShadowWorkspa
 			await this._fileService.del(state.rootUri, { recursive: true, useTrash: false });
 		} catch {
 			// best-effort cleanup; an orphaned temp dir is not a correctness problem, just disk
-			// space, and a future startup sweep (design doc §6, phase 2) is the backstop for this.
+			// space, and the startup sweep (sweepOrphanedShadows, design doc §4/§6 phase 2 bullet 4)
+			// is the backstop for this.
 		}
+	}
+
+	async sweepOrphanedShadows(opts?: { maxAgeMs?: number }): Promise<string[]> {
+		const maxAgeMs = opts?.maxAgeMs ?? DEFAULT_ORPHAN_SWEEP_MAX_AGE_MS;
+		const shadowRootUri = URI.file(path.join(tmpdir(), SHADOW_ROOT_FOLDER_NAME));
+
+		let entries: Awaited<ReturnType<IFileService['resolve']>>['children'];
+		try {
+			const stat = await this._fileService.resolve(shadowRootUri);
+			entries = stat.children;
+		} catch {
+			// The ainative-shadow root itself doesn't exist yet (e.g. first-ever run of this IDE on
+			// this machine, or a tmpdir that's just been cleared) - nothing to sweep, not an error.
+			return [];
+		}
+		if (!entries) return [];
+
+		// fsPaths of every shadow this SERVICE INSTANCE currently owns - see this method's own
+		// interface doc comment for why this matters only for an unusual caller (e.g. a test) that
+		// sweeps after already creating shadows in the same process; the overwhelmingly common
+		// startup-time caller has an empty _shadowOfThreadId at sweep time by construction.
+		const liveRootFsPaths = new Set(Array.from(this._shadowOfThreadId.values(), s => s.rootUri.fsPath));
+
+		const now = Date.now();
+		const removed: string[] = [];
+		for (const entry of entries) {
+			if (!entry.isDirectory) continue; // the root should only ever contain directories, but
+			// skip anything else defensively rather than trying to recursively-delete a stray file
+			// the same way as a shadow dir.
+			if (liveRootFsPaths.has(entry.resource.fsPath)) continue;
+
+			let ageMs: number;
+			try {
+				ageMs = now - fs.statSync(entry.resource.fsPath).mtimeMs;
+			} catch {
+				continue; // disappeared between listing and stat-ing (e.g. raced with another sweep/process) - leave it, nothing to clean up
+			}
+			if (ageMs < maxAgeMs) continue; // young enough to plausibly belong to another, still-running window - leave it alone
+
+			try {
+				await this._fileService.del(entry.resource, { recursive: true, useTrash: false });
+				removed.push(entry.resource.fsPath);
+			} catch {
+				// best-effort, per this method's own interface doc comment - one directory failing to
+				// delete (e.g. a transient file lock) must never block sweeping the rest.
+			}
+		}
+
+		return removed;
 	}
 
 	override dispose(): void {
