@@ -3,6 +3,11 @@ name: Build macOS x64 (Signed)
 on:
   workflow_dispatch:
   workflow_call:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
 
 jobs:
   build-macos-x64:
