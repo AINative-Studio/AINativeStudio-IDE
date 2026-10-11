@@ -343,9 +343,9 @@
   },
   "dependencies": {
     "glob": "^9.3.1",
-    "simple-socks": "git+https://github.com/jeanp413/simple-socks#main",
+    "simple-socks": "https://codeload.github.com/jeanp413/simple-socks/tar.gz/2ac739301a82d6baff04804ed494436a026acb60",
     "socks": "^2.5.0",
     "@jeanp413/ssh-config": "^4.3.1",
-    "ssh2": "git+https://github.com/jeanp413/ssh2#master"
+    "ssh2": "https://codeload.github.com/jeanp413/ssh2/tar.gz/a169f627213aa663e0aa2fd2f0ef5c8931890c26"
   }
 }
