@@ -28,11 +28,29 @@ jobs:
             ainative-studio/package-lock.json
             ainative-studio/build/package-lock.json
       
+      # native-keymap needs these for its binding.gyp pkg-config check
+      # ("gyp: Call to 'pkg-config x11 xkbfile --libs' returned exit status
+      # 127" otherwise - pkg-config itself wasn't even installed).
+      #
+      # ubuntu-22.04's default gcc/g++ is 11.4, which cannot parse Electron
+      # 43's V8 headers: they mix a [[deprecated]] attribute with a GNU
+      # __attribute__ in a way GCC <=12 chokes on ("error: expected
+      # identifier before '__attribute__'" in v8config.h's V8_EXPORT macro,
+      # confirmed by direct local reproduction). GCC 13+ (or clang 14+) is
+      # required - installed here via the Toolchain PPA and selected with
+      # update-alternatives so plain `gcc`/`g++` (what node-gyp invokes)
+      # resolves to it.
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libkrb5-dev
-      
+          sudo apt-get install -y libkrb5-dev pkg-config libx11-dev libxkbfile-dev software-properties-common
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install -y gcc-13 g++-13
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+          gcc --version
+
       - name: Install build dependencies
         working-directory: ainative-studio/build
         run: |
@@ -46,7 +64,7 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Install dependencies
         working-directory: ainative-studio
         run: |
