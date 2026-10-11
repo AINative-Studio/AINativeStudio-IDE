@@ -329,14 +329,17 @@ jobs:
             exit 1
           fi
 
-          # Create wrapper scripts for command line access
+          # Create wrapper scripts for command line access. The real
+          # Electron binary is named "ainative" - this used to hardcode
+          # "void" (the pre-rebrand name, which no longer exists), leaving
+          # the installed .deb's CLI command broken.
           echo '#!/bin/bash' > deb-package/usr/bin/ainative-studio
-          echo 'exec /opt/ainative-studio/void "$@"' >> deb-package/usr/bin/ainative-studio
+          echo 'exec /opt/ainative-studio/ainative "$@"' >> deb-package/usr/bin/ainative-studio
           chmod +x deb-package/usr/bin/ainative-studio
-          
+
           # Create alias for ainativestudio command
           echo '#!/bin/bash' > deb-package/usr/bin/ainativestudio
-          echo 'exec /opt/ainative-studio/void "$@"' >> deb-package/usr/bin/ainativestudio
+          echo 'exec /opt/ainative-studio/ainative "$@"' >> deb-package/usr/bin/ainativestudio
           chmod +x deb-package/usr/bin/ainativestudio
           
           # Copy desktop file and icon
@@ -475,16 +478,19 @@ jobs:
             chmod 4755 %{buildroot}/opt/ainative-studio/chrome-sandbox
           fi
 
-          # Create wrapper scripts
+          # Create wrapper scripts. The real Electron binary is named
+          # "ainative" - this used to hardcode "void" (the pre-rebrand
+          # name, which no longer exists), leaving the installed RPM's
+          # CLI command broken.
           cat > %{buildroot}/usr/bin/ainative-studio << 'SCRIPT'
           #!/bin/bash
-          exec /opt/ainative-studio/void "$@"
+          exec /opt/ainative-studio/ainative "$@"
           SCRIPT
           chmod +x %{buildroot}/usr/bin/ainative-studio
-          
+
           cat > %{buildroot}/usr/bin/ainativestudio << 'SCRIPT'
           #!/bin/bash
-          exec /opt/ainative-studio/void "$@"
+          exec /opt/ainative-studio/ainative "$@"
           SCRIPT
           chmod +x %{buildroot}/usr/bin/ainativestudio
           

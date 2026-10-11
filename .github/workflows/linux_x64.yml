@@ -211,14 +211,14 @@ jobs:
             echo "Creating wrapper scripts..."
             echo '#!/bin/bash' > ainative-studio
             echo 'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' >> ainative-studio
-            echo 'exec "${DIR}/void" "$@"' >> ainative-studio
+            echo 'exec "${DIR}/ainative" "$@"' >> ainative-studio
             chmod +x ainative-studio
             
-            echo '#!/bin/bash' > ainativestudio  
+            echo '#!/bin/bash' > ainativestudio
             echo 'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' >> ainativestudio
-            echo 'exec "${DIR}/void" "$@"' >> ainativestudio
+            echo 'exec "${DIR}/ainative" "$@"' >> ainativestudio
             chmod +x ainativestudio
-            
+
             echo "Wrapper scripts created, verifying:"
             ls -la ainative*
 
@@ -246,14 +246,14 @@ jobs:
             echo "Creating wrapper scripts..."
             echo '#!/bin/bash' > ainative-studio
             echo 'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' >> ainative-studio
-            echo 'exec "${DIR}/void" "$@"' >> ainative-studio
+            echo 'exec "${DIR}/ainative" "$@"' >> ainative-studio
             chmod +x ainative-studio
             
             echo '#!/bin/bash' > ainativestudio
             echo 'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' >> ainativestudio
-            echo 'exec "${DIR}/void" "$@"' >> ainativestudio
+            echo 'exec "${DIR}/ainative" "$@"' >> ainativestudio
             chmod +x ainativestudio
-            
+
             echo "Wrapper scripts created, verifying:"
             ls -la ainative*
 
@@ -314,7 +314,7 @@ jobs:
           Name=AINative Studio
           GenericName=Code Editor
           Comment=AI-powered code editor
-          Exec=code %F
+          Exec=ainative-studio %F
           Icon=ainative-studio
           Categories=Development;IDE;TextEditor;
           MimeType=text/plain;text/x-chdr;text/x-csrc;text/x-c++hdr;text/x-c++src;text/x-java;text/x-dsrc;text/x-pascal;text/x-perl;text/x-python;application/x-php;application/x-httpd-php3;application/x-httpd-php4;application/x-httpd-php5;application/javascript;application/json;text/css;text/html;text/xml;
@@ -330,7 +330,7 @@ jobs:
           cat > AppDir/AppRun << 'EOF'
           #!/bin/bash
           HERE="$(dirname "$(readlink -f "${0}")")"
-          exec "${HERE}/usr/bin/void" --no-sandbox "$@"
+          exec "${HERE}/usr/bin/ainative" --no-sandbox "$@"
           EOF
           chmod +x AppDir/AppRun
           
@@ -411,13 +411,20 @@ jobs:
           fi
           
           # Create wrapper scripts for command line access
+          #
+          # The actual Electron binary is named "ainative" (confirmed by
+          # listing deb-package/opt/ainative-studio/ after staging) - this
+          # used to hardcode "void" (the pre-rebrand binary name, which no
+          # longer exists), leaving the installed .deb's CLI command
+          # completely broken ("No such file or directory"), confirmed by
+          # installing and running the real package in a clean container.
           echo '#!/bin/bash' > deb-package/usr/bin/ainative-studio
-          echo 'exec /opt/ainative-studio/void "$@"' >> deb-package/usr/bin/ainative-studio
+          echo 'exec /opt/ainative-studio/ainative "$@"' >> deb-package/usr/bin/ainative-studio
           chmod +x deb-package/usr/bin/ainative-studio
-          
+
           # Create alias for ainativestudio command
           echo '#!/bin/bash' > deb-package/usr/bin/ainativestudio
-          echo 'exec /opt/ainative-studio/void "$@"' >> deb-package/usr/bin/ainativestudio
+          echo 'exec /opt/ainative-studio/ainative "$@"' >> deb-package/usr/bin/ainativestudio
           chmod +x deb-package/usr/bin/ainativestudio
           
           # Copy desktop file and icon
@@ -575,16 +582,20 @@ jobs:
             chmod 4755 %{buildroot}/opt/ainative-studio/chrome-sandbox
           fi
 
-          # Create wrapper scripts
+          # Create wrapper scripts. The real Electron binary is named
+          # "ainative" (confirmed by listing the staged VSCode-linux-x64/
+          # output) - this used to hardcode "void" (the pre-rebrand name,
+          # which no longer exists), leaving the installed RPM's CLI command
+          # broken.
           cat > %{buildroot}/usr/bin/ainative-studio << 'SCRIPT'
           #!/bin/bash
-          exec /opt/ainative-studio/void "$@"
+          exec /opt/ainative-studio/ainative "$@"
           SCRIPT
           chmod +x %{buildroot}/usr/bin/ainative-studio
 
           cat > %{buildroot}/usr/bin/ainativestudio << 'SCRIPT'
           #!/bin/bash
-          exec /opt/ainative-studio/void "$@"
+          exec /opt/ainative-studio/ainative "$@"
           SCRIPT
           chmod +x %{buildroot}/usr/bin/ainativestudio
 
