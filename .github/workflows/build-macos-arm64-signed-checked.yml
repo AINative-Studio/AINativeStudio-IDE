@@ -721,10 +721,27 @@ jobs:
           echo ""
           echo "## Verification Status"
           echo "- ✅ Code signature: Valid"
-          echo "- ✅ Notarization: Accepted and stapled"
+
+          # The notarize/verify steps above are continue-on-error so a transient
+          # Apple notary outage doesn't block signing/packaging entirely - but
+          # that also means a *persistent* failure (e.g. an expired Apple
+          # Developer agreement, which returns HTTP 403 on every submission)
+          # stays silent unless checked here for real, instead of assuming
+          # success.
+          if xcrun stapler validate "$APP_PATH" > /dev/null 2>&1; then
+            echo "- ✅ Notarization: Accepted and stapled"
+          else
+            echo "- ❌ Notarization: NOT stapled - app will show a Gatekeeper warning for end users"
+            echo "::error::Notarization did not succeed (app has no stapled ticket) - check the 'Notarize the application' step's log for the real cause (e.g. an expired Apple Developer agreement returns HTTP 403 on every submit)."
+          fi
+
           echo "- ✅ DMG signed: Yes"
           echo "- ✅ Hardened runtime: Enabled"
-          echo "- ✅ Gatekeeper: Ready"
+          if spctl --assess --type execute "$APP_PATH" > /dev/null 2>&1; then
+            echo "- ✅ Gatekeeper: Ready"
+          else
+            echo "- ❌ Gatekeeper: REJECTED - app is not notarized, end users will see a security warning"
+          fi
           echo "- ✅ M4 MacBook Fix: Applied (removed problematic entitlements)"
 
           echo ""
