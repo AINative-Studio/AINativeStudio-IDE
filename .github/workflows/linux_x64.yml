@@ -480,7 +480,7 @@ jobs:
            Perfect for developers who want to leverage AI to accelerate their
            coding workflow while maintaining full control over their development
            environment.
-          Depends: libnss3, libatk-bridge2.0-0, libxkbfile1, libsecret-1-0
+          Depends: libnss3, libatk-bridge2.0-0, libxkbfile1, libsecret-1-0, libcups2, libcairo2, libgtk-3-0, libpango-1.0-0, libxcomposite1, libxdamage1, libxfixes3, libxrandr2, libgbm1, libxkbcommon0, libasound2
           EOF
           sed -i "s/__DEB_VERSION__/${DEB_VERSION}/" deb-package/DEBIAN/control
 
@@ -557,7 +557,7 @@ jobs:
           Source1:        logo.png
           
           BuildArch:      x86_64
-          Requires:       nss, atk, libsecret, libXtst, libxkbfile
+          Requires:       nss, atk, libsecret, libXtst, libxkbfile, cups-libs, cairo, gtk3, pango, libXcomposite, libXdamage, libXfixes, libXrandr, mesa-libgbm, libxkbcommon, alsa-lib
           
           %description
           AINative Studio is a revolutionary AI-powered code editor built on the
