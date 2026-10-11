@@ -65,6 +65,15 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Native modules built with GCC 13 link against its newer
+          # libstdc++ (GLIBCXX_3.4.31), which isn't present on Ubuntu
+          # 22.04's own libstdc++6 - confirmed directly: the packaged
+          # package crashed at runtime with "GLIBCXX_3.4.31 not found" for
+          # @vscode/spdlog, @vscode/sqlite3, kerberos, @parcel/watcher, and
+          # native-keymap. Statically linking it in means these modules
+          # carry their own copy and work on any Ubuntu/Debian version,
+          # with no extra runtime package dependency to declare.
+          LDFLAGS: -static-libstdc++ -static-libgcc
       
       - name: Install dependencies
         working-directory: ainative-studio
@@ -79,6 +88,8 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # See the comment on "Install build dependencies" above.
+          LDFLAGS: -static-libstdc++ -static-libgcc
       
       - name: Cache node build cache
         uses: actions/cache@v4
@@ -267,6 +278,15 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Native modules built with GCC 13 link against its newer
+          # libstdc++ (GLIBCXX_3.4.31), which isn't present on Ubuntu
+          # 22.04's own libstdc++6 - confirmed directly: the packaged
+          # package crashed at runtime with "GLIBCXX_3.4.31 not found" for
+          # @vscode/spdlog, @vscode/sqlite3, kerberos, @parcel/watcher, and
+          # native-keymap. Statically linking it in means these modules
+          # carry their own copy and work on any Ubuntu/Debian version,
+          # with no extra runtime package dependency to declare.
+          LDFLAGS: -static-libstdc++ -static-libgcc
       
       - name: Install dependencies
         working-directory: ainative-studio
@@ -281,6 +301,8 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # See the comment on "Install build dependencies" above.
+          LDFLAGS: -static-libstdc++ -static-libgcc
       
       - name: Download build artifact
         uses: actions/download-artifact@v4
