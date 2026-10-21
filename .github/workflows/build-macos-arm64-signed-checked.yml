@@ -3,11 +3,12 @@ name: Build macOS ARM64 (Signed - Checked)
 on:
   workflow_dispatch:
   workflow_call:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+  # Removed auto-trigger on push to main: macOS GitHub Actions runners are
+  # billed per-minute at a 10x multiplier even on public repos (only Linux
+  # and Windows runners are free/unlimited there) - triggering this on
+  # every push to main, for any reason, was a real and significant cost
+  # driver. Trigger manually (workflow_dispatch) or via a version tag when
+  # an actual macOS build is needed.
 
 jobs:
   build-macos-arm64:
